@@ -467,6 +467,112 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 }
 #battle .btn { flex: none; }
 
+/* ---------- 武将 ---------- */
+.portrait { border-radius: 50%; flex: none; border: 2px solid rgba(90, 60, 20, 0.35); background: #fbf5e4; }
+.glist { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 6px; margin-bottom: 6px; -webkit-overflow-scrolling: touch; }
+.glist .hint { margin: 4px 0; }
+.glist.pick, .glist.roster { flex-direction: column; overflow: visible; }
+.gcard {
+  position: relative;
+  display: flex; align-items: center; gap: 6px;
+  flex: none; min-width: 190px;
+  padding: 5px 8px 5px 5px;
+  background: linear-gradient(180deg, #fffaf0, #f1e6ca);
+  border: 1px solid var(--line); border-radius: 8px;
+  cursor: pointer;
+}
+.gcard.acted { opacity: 0.45; }
+.gcard .gi { min-width: 0; }
+.gcard .gn { font-family: var(--mincho); font-weight: 800; font-size: 14px; white-space: nowrap; }
+.gcard .gt { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.gcard .gs { font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gcard .check { margin-left: auto; color: var(--red); font-size: 20px; font-weight: 800; }
+.gcard .where {
+  margin-left: auto; font-family: var(--mincho); font-weight: 800; font-size: 13px;
+  background: var(--paper-2); border-radius: 4px; padding: 2px 6px;
+}
+.glist.pick .gcard:has(.check) { border: 2px solid var(--red); background: #fbe5e2; }
+.skill {
+  display: inline-block; font-size: 10.5px; font-weight: 800; color: #fff;
+  background: #7a5a1e; border-radius: 3px; padding: 0 4px; vertical-align: 1px;
+}
+.lord {
+  font-size: 10px; font-weight: 800; color: var(--red); border: 1px solid var(--red);
+  border-radius: 3px; padding: 0 3px; margin-left: 4px; vertical-align: 2px;
+}
+.gdetail { text-align: center; }
+.gdetail h2 { margin: 6px 0 0; }
+.gdetail .news { font-family: var(--brush); color: var(--red); font-size: 20px; margin: 0 0 6px; letter-spacing: 0.3em; }
+.gstats { display: grid; gap: 5px; margin: 10px 0; text-align: left; }
+.gstats div { display: grid; grid-template-columns: 3em 1fr 2.2em; align-items: center; gap: 6px; }
+.gstats span { font-family: var(--mincho); font-weight: 800; font-size: 13px; }
+.gstats i { display: block; height: 9px; border-radius: 5px; background: linear-gradient(90deg, var(--gold), var(--red)); }
+.gstats b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 委任スイッチ */
+.switch { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; pointer-events: none; }
+.switch span {
+  font-family: var(--mincho); font-weight: 800; font-size: 13px;
+  padding: 4px 10px 4px 26px; border-radius: 999px; position: relative;
+  background: var(--paper-2); border: 1px solid var(--line); color: var(--muted);
+}
+.switch span::before {
+  content: ''; position: absolute; left: 4px; top: 50%; width: 16px; height: 16px; margin-top: -8px;
+  border-radius: 50%; background: #fff; border: 1px solid var(--line);
+}
+.switch input:checked + span { background: #2f6b3f; color: #fff; border-color: #1f4a2a; }
+.switch input:checked + span::before { background: var(--gold-hi); }
+
+/* 地図の印 */
+#map .castle .gbadge circle { fill: #2f6b3f; stroke: #fff; stroke-width: 1.5; }
+#map .castle .gbadge.none-left circle { fill: #8a8070; }
+#map .castle .gbadge text { fill: #fff; font-size: 10px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+#map .castle .deleg { display: none; }
+#map .castle.delegated .deleg { display: inline; }
+#map .castle .deleg circle { fill: #2f6b3f; stroke: #fff; stroke-width: 1.2; }
+#map .castle .deleg text { fill: #fff; font-size: 9px; font-weight: 800; text-anchor: middle; dominant-baseline: central; font-family: var(--mincho); }
+
+.bulk { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bulk .btn { font-size: 15px; padding: 10px; margin-top: 4px; }
+
+/* 旗揚げ */
+.name-input {
+  width: 100%; font: inherit; font-family: var(--mincho); font-weight: 800; font-size: 20px;
+  padding: 10px 12px; border: 2px solid var(--line); border-radius: 6px; background: #fffaf0;
+  -webkit-user-select: text; user-select: text;
+}
+.diff-list { display: grid; gap: 6px; }
+.diff-list button {
+  text-align: left; padding: 10px 12px; border-radius: 6px;
+  border: 2px solid var(--line); background: #fffaf0;
+}
+.diff-list button b { font-family: var(--mincho); font-size: 17px; margin-right: 8px; }
+.diff-list button small { color: var(--muted); }
+.diff-list button.on { border-color: var(--red); background: #fbe5e2; }
+.total { text-align: center; margin: 10px 0 0; }
+.total b { font-size: 20px; }
+
+/* 知らせ */
+#toast {
+  position: absolute; left: 12px; right: 12px; bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(35, 16, 22, 0.92); color: #fdf3dc;
+  border: 1px solid var(--gold); border-radius: 10px;
+  padding: 8px 12px; font-size: 14px; line-height: 1.45;
+  z-index: 4; pointer-events: none;
+}
+#toast.show { animation: toast 2.6s ease-out forwards; }
+#toast b { color: var(--gold-hi); }
+@keyframes toast { 0% { opacity: 0; transform: translateY(8px); } 10%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* 合戦の武将 */
+.b-gen { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.b-side.right .b-gen { justify-content: flex-end; }
+.b-gen b { display: block; font-family: var(--mincho); font-size: 14px; white-space: nowrap; }
+.b-gen small { font-size: 11px; opacity: 0.8; }
+.b-msg { white-space: pre-line; }
+
 /* ---------- 結末 ---------- */
 .ending { text-align: center; }
 .ending .big { font-family: var(--brush); font-size: 64px; line-height: 1.1; margin: 8px 0; }

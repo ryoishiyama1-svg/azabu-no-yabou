@@ -35,6 +35,58 @@ function crestBadge(clan, size = 20) {
     <circle r="30" fill="${c.color}"/>${crestInner(c.crest, '#fff')}</svg>`;
 }
 
+// ---------- 武将の顔 ----------
+// look（数値）から髪型や肌の色を決めて、制服姿の胸像を描く
+function portrait(g, size = 48) {
+  const r = seeded(g.look + 7);
+  const skin = ['#f6d7bd', '#efc9a6', '#e8bd97', '#f3d0b0'][Math.floor(r() * 4)];
+  const hair = ['#1d1a1a', '#2b211c', '#3d2b20', '#141414', '#4a3326'][Math.floor(r() * 5)];
+  const style = Math.floor(r() * 4);
+  const clan = CLANS[g.clan] ? g.clan : g.origin && CLANS[g.origin] ? g.origin : 'none';
+  const color = CLANS[clan].color;
+  const f = g.female;
+  let back = '', front = '', body, extra = '';
+
+  if (f) {
+    if (style === 0) back = `<path d="M-14,-2 Q-15,-19 0,-19 Q15,-19 14,-2 L15,22 L-15,22 Z" fill="${hair}"/>`;
+    if (style === 1) back = `<path d="M-14,-2 Q-15,-19 0,-19 Q15,-19 14,-2 L14,8 Q0,12 -14,8 Z" fill="${hair}"/>`;
+    if (style === 2) back = `<path d="M9,-12 Q22,-8 17,14 Q14,4 9,-2 Z" fill="${hair}"/>`;
+    if (style === 3) back = `<circle cx="0" cy="-17" r="5.5" fill="${hair}"/><path d="M-13,-2 Q-14,-18 0,-18 Q14,-18 13,-2 L13,4 L-13,4 Z" fill="${hair}"/>`;
+    front = `<path d="M-12,-2 Q-12,-17 0,-17 Q12,-17 12,-2 Q7,-10 1,-8 Q-5,-11 -12,-2 Z" fill="${hair}"/>`;
+    body = `<path d="M-27,32 Q-25,13 0,12 Q25,13 27,32 Z" fill="#26325c"/>
+      <path d="M-15,13 L0,25 L15,13" fill="none" stroke="#fff" stroke-width="2"/>
+      <path d="M-4,22 L4,22 L0,29 Z" fill="${color}"/>`;
+  } else {
+    if (style === 0) front = `<path d="M-12,-3 Q-13,-18 0,-18 Q13,-18 12,-3 Q9,-11 0,-11 Q-9,-11 -12,-3 Z" fill="${hair}"/>`;
+    if (style === 1) front = `<path d="M-12,-3 L-13,-14 L-9,-12 L-8,-19 L-4,-14 L0,-21 L4,-14 L8,-19 L9,-12 L13,-14 L12,-3 Q6,-10 0,-10 Q-6,-10 -12,-3 Z" fill="${hair}"/>`;
+    if (style === 2) front = `<path d="M-12,-2 Q-13,-18 1,-18 Q13,-17 12,-3 Q10,-9 3,-10 Q-6,-13 -12,-2 Z" fill="${hair}"/>`;
+    if (style === 3) front = `<path d="M-11.5,-5 Q-11,-15 0,-15.5 Q11,-15 11.5,-5 Q6,-9 0,-9 Q-6,-9 -11.5,-5 Z" fill="${hair}" opacity="0.85"/>`;
+    body = `<path d="M-27,32 Q-25,13 0,12 Q25,13 27,32 Z" fill="#1e2029"/>
+      <path d="M-6,12 L-6,17 L6,17 L6,12" fill="#1e2029" stroke="#3a3d4d" stroke-width="1"/>
+      <circle cx="0" cy="22" r="1.6" fill="#d4a93c"/><circle cx="0" cy="28" r="1.6" fill="#d4a93c"/>`;
+  }
+  if (g.str >= 75) {
+    extra += `<rect x="-12.5" y="-10.5" width="25" height="3.5" fill="${color}"/>
+      <path d="M11,-9 L17,-12 L16,-7 Z" fill="${color}"/>`;
+  }
+  const brow = g.str >= 70 ? 1.8 : 0;
+  const face = `
+    <path d="M-8.5,${-5 - brow} L-2.5,-4.5 M8.5,${-5 - brow} L2.5,-4.5" stroke="${hair}" stroke-width="1.4" stroke-linecap="round"/>
+    <ellipse cx="-4.5" cy="-1" rx="1.3" ry="1.7" fill="#222"/>
+    <ellipse cx="4.5" cy="-1" rx="1.3" ry="1.7" fill="#222"/>
+    <path d="M-2.5,6 Q0,${g.cha >= 70 ? 8 : 6.6} 2.5,6" stroke="#8a4a3a" stroke-width="1.1" fill="none" stroke-linecap="round"/>`;
+  const glasses = g.int >= 80
+    ? '<g fill="none" stroke="#333" stroke-width="1"><circle cx="-4.5" cy="-1" r="3.4"/><circle cx="4.5" cy="-1" r="3.4"/><path d="M-1.1,-1 L1.1,-1"/></g>'
+    : '';
+  return `<svg class="portrait" width="${size}" height="${size}" viewBox="-30 -30 60 60" aria-hidden="true">
+    <rect x="-30" y="-30" width="60" height="60" fill="${color}" opacity="0.28"/>
+    ${back}${body}
+    <rect x="-4" y="7" width="8" height="7" fill="${skin}"/>
+    <ellipse cx="0" cy="-2" rx="11" ry="13" fill="${skin}"/>
+    ${front}${extra}${face}${glasses}
+  </svg>`;
+}
+
 // ---------- 天守閣 ----------
 function castleMarkup(capital) {
   const shachi = capital
