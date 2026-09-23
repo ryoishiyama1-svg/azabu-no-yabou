@@ -110,6 +110,6 @@ const SKILLS = {
 // 難易度
 const DIFFICULTY = {
   easy: { name: '初級', desc: '資金が多く、敵はおとなしい', gold: 1200, aiGold: 0.7, aiRatio: 1.6, aiIncome: 0.8, neutralGrowth: 10 },
-  normal: { name: '中級', desc: '標準的な難しさ', gold: 800, aiGold: 1.2, aiRatio: 1.3, aiIncome: 1.2, neutralGrowth: 15 },
-  hard: { name: '上級', desc: '資金が少なく、敵は好戦的', gold: 600, aiGold: 1.6, aiRatio: 1.15, aiIncome: 1.5, neutralGrowth: 20 },
+  normal: { name: '中級', desc: '標準的な難しさ', gold: 800, aiGold: 1.4, aiRatio: 1.25, aiIncome: 1.35, neutralGrowth: 15 },
+  hard: { name: '上級', desc: '資金が少なく、敵は好戦的', gold: 600, aiGold: 2.0, aiRatio: 1.1, aiIncome: 1.85, neutralGrowth: 20 },
 };

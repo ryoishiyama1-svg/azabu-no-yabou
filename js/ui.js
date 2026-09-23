@@ -91,7 +91,13 @@ $('btn-new').onclick = () => {
   if (saved && !saved.result && !confirm('今の戦いを捨てて、最初からはじめますか？')) return;
   showSetup();
 };
-$('btn-resume').onclick = () => { Sound.unlock(); Sound.tap(); S = load(); startGame(false); };
+$('btn-resume').onclick = () => {
+  Sound.unlock();
+  Sound.tap();
+  S = migrate(load());
+  startGame(false);
+  if (S.pending.length) runEvents(() => {});
+};
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
 
 // 当主の名前と難易度を決める
@@ -164,6 +170,14 @@ function showHelp() {
     </ul>
     <h3>委任と一括命令</h3>
     <p>城を<b>委任</b>にすると、ターン終了時に自動で命令します。「全城で徴兵／開発」でまとめて命令もできます。</p>
+    <h3>外交</h3>
+    <ul>
+      <li>各家との<b>友好度</b>を「贈答」で上げ、<b>停戦</b>や<b>同盟</b>を申し込めます（使者＝魅力の高い武将が1人行動します）</li>
+      <li>停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います</li>
+      <li>麻布家が城の${Math.round(DIPLO.encircleShare * 100)}%以上を持つと、諸家が<b>麻布包囲網</b>を結成して一斉に攻めてきます</li>
+    </ul>
+    <h3>イベント</h3>
+    <p>季節ごとに入学式・夏合宿・文化祭・受験シーズンが訪れ、転校生や寝返りの誘いなどの出来事も起こります。</p>
     <h3>合戦のコツ</h3>
     <p>守る側は「兵力×防御×守将」で戦います。<b>勝算大</b>と出るまで兵や援軍を集めましょう。その日の士気で結果が変わることもあります。</p>
     <p class="hint">※実在の学校名を使ったフィクションです。武将・能力値・家紋はすべて架空です。</p>
@@ -334,13 +348,20 @@ function render() {
 
 function modeTargets() {
   if (!mode) return [];
-  return mode.kind === 'attack' ? enemyNeighbors(S, mode.from) : ownNeighbors(S, mode.from);
+  return mode.kind === 'attack' ? hostileNeighbors(S, mode.from) : ownNeighbors(S, mode.from);
 }
 
 // 敵の城を攻められる自分の城
 function attackSources(target) {
+  if (atPeace(S, PLAYER, S.castles[target].owner)) return [];
   return MAP.adj[target].filter((id) => S.castles[id].owner === PLAYER && !S.delegate[id] &&
     S.castles[id].troops > 0 && idleGensAt(S, id).length > 0);
+}
+
+function relIcon(k) {
+  const r = S.rel[k];
+  if (!r) return '';
+  return r.ally > 0 ? '🤝' : r.truce > 0 ? '🕊️' : '';
 }
 
 function renderPanel() {
@@ -369,7 +390,7 @@ function renderPanel() {
       : !idle.length ? 'この城の武将は、今季の命令を終えました。' : '';
     body = `${hint ? `<p class="hint">${hint}</p>` : ''}
       <div class="cmds">
-        <button class="btn red" id="c-attack" ${dis(enemyNeighbors(S, selected).length && c.troops > 0)}><span class="k">攻</span>出陣<small>敵城を攻める</small></button>
+        <button class="btn red" id="c-attack" ${dis(hostileNeighbors(S, selected).length && c.troops > 0)}><span class="k">攻</span>出陣<small>敵城を攻める</small></button>
         <button class="btn" id="c-move" ${dis(ownNeighbors(S, selected).length && c.troops > 0)}><span class="k">送</span>輸送<small>兵を送る</small></button>
         <button class="btn" id="c-gen" ${dis(ownNeighbors(S, selected).length)}><span class="k">移</span>移動<small>武将を移す</small></button>
         <button class="btn" id="c-recruit" ${dis(canRecruit(S, selected))}><span class="k">兵</span>徴兵<small>金${RULES.recruitCost}</small></button>
@@ -379,8 +400,12 @@ function renderPanel() {
       </div>`;
   } else {
     const srcs = attackSources(selected);
-    body = `<div class="cmds">
-        <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${srcs.length ? 'となりの城から出陣できます' : 'となりに命令できる麻布家の城と武将がいません'}</small></button>
+    const peace = atPeace(S, PLAYER, c.owner);
+    const why = peace ? `${CLANS[c.owner].name}とは${relLabel(S, c.owner)}のため攻められません`
+      : srcs.length ? 'となりの城から出陣できます' : 'となりに命令できる麻布家の城と武将がいません';
+    body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}</p>` : ''}
+      <div class="cmds">
+        <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
         <button class="btn plain wide" id="c-close">閉じる</button>
       </div>`;
   }
@@ -398,15 +423,97 @@ function renderCouncil() {
   panel.innerHTML = `<div class="council">
     <div class="p-head"><h2>軍議</h2><span class="p-sub">武将 ${gensOf(S, PLAYER).length}人 ／ 収入 ${fmt(income(S, PLAYER))}</span></div>
     <p class="hint">城をタップして命令しましょう。命令できる武将：<b>${idleGens}人</b>${delegCount ? `　委任中の城：<b>${delegCount}</b>` : ''}</p>
-    <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}</span>`).join('')}</div>
+    ${S.encircle ? '<p class="warn">🔥 麻布包囲網：諸家が手を結んで麻布家を狙っている</p>' : ''}
+    <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
     <div class="bulk">
       <button class="btn" id="bulk-recruit" ${S.gold[PLAYER] >= RULES.recruitCost && idleGens ? '' : 'disabled'}>全城で徴兵</button>
       <button class="btn" id="bulk-develop" ${S.gold[PLAYER] >= RULES.developCost && idleGens ? '' : 'disabled'}>全城で開発</button>
+      <button class="btn" id="btn-diplo">外 交</button>
     </div>
     <button class="btn red end-btn" id="btn-end">ターン終了</button></div>`;
   $('btn-end').onclick = onEndTurn;
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
+  $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
+}
+
+// ---------- 外交 ----------
+function showDiplomacy(message) {
+  const envoy = envoyOf(S);
+  const alive = aiClans().filter((k) => castlesOf(S, k).length);
+  const rows = alive.map((k) => {
+    const r = S.rel[k];
+    const peace = r.ally > 0 || r.truce > 0;
+    const off = !envoy || S.encircle;
+    const tc = envoy ? Math.round(truceChance(S, k, envoy) * 100) : 0;
+    const ac = envoy ? Math.round(allyChance(S, k, envoy) * 100) : 0;
+    return `<div class="diplo-row">
+      <div class="dr-head">${clanChip(k)}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
+      <div class="friend"><span>友好度</span><i><b style="width:${r.friend}%"></b></i><em>${r.friend}</em></div>
+      <div class="dr-btns">
+        <button class="btn plain" data-act="gift" data-clan="${k}" ${off || S.gold[PLAYER] < DIPLO.giftCost ? 'disabled' : ''}>贈答<small>金${DIPLO.giftCost}</small></button>
+        <button class="btn plain" data-act="truce" data-clan="${k}" ${off || peace ? 'disabled' : ''}>停戦<small>${tc}%</small></button>
+        <button class="btn plain" data-act="ally" data-clan="${k}" ${off || r.ally > 0 ? 'disabled' : ''}>同盟<small>${ac}%</small></button>
+        ${peace ? `<button class="btn" data-act="break" data-clan="${k}">破棄<small>信用を失う</small></button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  openModal(`<h2>外 交</h2>
+    ${message ? `<p class="result">${message}</p>` : ''}
+    <p class="hint" style="text-align:center">${envoy ? `使者：<b>${esc(envoy.name)}</b>（魅力${envoy.cha}）が向かいます` : '使者に出せる武将がいません（全員が命令ずみ）'}</p>
+    ${S.encircle ? '<p class="warn">麻布包囲網の最中のため、諸家は交渉に応じません</p>' : ''}
+    ${rows || '<p>交渉できる家はもうない。</p>'}
+    <p class="hint">停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います。</p>
+    <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-act]').forEach((b) => {
+    b.onclick = () => {
+      const k = b.dataset.clan, act = b.dataset.act;
+      let msg;
+      if (act === 'break') {
+        if (!confirm(`${CLANS[k].name}との約束を破棄しますか？`)) return;
+        msg = diploBreak(S, k);
+        Sound.lose();
+      } else if (act === 'gift') {
+        msg = diploGift(S, k, envoyOf(S));
+        Sound.tap();
+      } else {
+        const r = act === 'truce' ? diploTruce(S, k, envoyOf(S)) : diploAlly(S, k, envoyOf(S));
+        msg = r.text;
+        if (r.ok) Sound.win(); else Sound.lose();
+      }
+      save();
+      render();
+      showDiplomacy(msg);
+    };
+  });
+}
+
+// ---------- イベント ----------
+function runEvents(done) {
+  if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
+  const ev = S.pending[0];
+  const v = eventView(S, ev);
+  Sound.taiko(0, 0.7);
+  openModal(`<div class="event" data-lock>
+      <div class="ev-icon">${v.icon}</div>
+      <h2>${v.title}</h2>
+      ${v.gid ? `<div class="glist pick">${genCard(S.gens[v.gid])}</div>` : ''}
+      <p>${esc(v.text)}</p>
+    </div>
+    ${v.choices.map((c, i) => `<button class="btn ${i === 0 ? 'red' : 'plain'}" data-ci="${i}" ${c.disabled ? 'disabled' : ''}>${c.label}${c.sub ? `<small class="sub">${c.sub}</small>` : ''}</button>`).join('')}`);
+  modalBody.querySelectorAll('[data-ci]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      const result = resolveEvent(S, ev, +b.dataset.ci);
+      S.pending.shift();
+      save();
+      render();
+      if (!result) { runEvents(done); return; }
+      openModal(`<div class="event" data-lock><div class="ev-icon">${v.icon}</div><p>${esc(result)}</p></div>
+        <button class="btn red" id="ev-next">承 知</button>`);
+      $('ev-next').onclick = () => { Sound.tap(); runEvents(done); };
+    };
+  });
 }
 
 function bulk(kind) {
@@ -793,7 +900,12 @@ function onEndTurn() {
       <ul class="log">${log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li>諸国に大きな動きはなかった。</li>'}</ul>
       <p>💰 麻布家の収支：<b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
       <button class="btn red" id="ok">承 知</button>`);
-    $('ok').onclick = () => { Sound.tap(); closeModal(); if (S.result) showEnding(); };
+    $('ok').onclick = () => {
+      Sound.tap();
+      closeModal();
+      if (S.result) showEnding();
+      else runEvents(() => {});
+    };
   });
 }
 
@@ -820,10 +932,12 @@ $('btn-menu').onclick = () => {
   Sound.tap();
   openModal(`<h2>目 録</h2>
     <button class="btn plain" id="m-roster">家臣団（武将一覧）</button>
+    <button class="btn plain" id="m-diplo">外交</button>
     <button class="btn plain" id="m-help">遊び方</button>
     <button class="btn plain" id="m-title">タイトルへ（自動で保存されます）</button>
     <button class="btn plain" data-close>閉じる</button>`);
   $('m-roster').onclick = () => { Sound.tap(); showRoster(); };
+  $('m-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };
   $('m-title').onclick = () => { closeModal(); showTitle(); };
 };

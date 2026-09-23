@@ -149,7 +149,136 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal' } = {}) {
   Object.keys(CLANS).forEach((k) => {
     s.gold[k] = k === PLAYER ? D.gold : Math.round(RULES.aiStartGold * D.aiGold);
   });
+  return migrate(s);
+}
+
+// 古いセーブデータに、あとから増えた項目を足す
+function migrate(s) {
+  s.rel = s.rel || {};
+  aiClans().forEach((k) => { s.rel[k] = s.rel[k] || { friend: 30, truce: 0, ally: 0 }; });
+  s.encircle = !!s.encircle;
+  s.pending = s.pending || [];
   return s;
+}
+
+function aiClans() {
+  return Object.keys(CLANS).filter((k) => !CLANS[k].player && k !== 'none');
+}
+
+// ---------- 外交 ----------
+const DIPLO = {
+  giftCost: 300,
+  truceTurns: 8,
+  allyTurns: 12,
+  encircleShare: 0.45,
+};
+
+// 2つの勢力が戦わない関係か
+function atPeace(s, a, b) {
+  if (a === b) return true;
+  if (a === 'none' || b === 'none') return false;
+  if (a === PLAYER || b === PLAYER) {
+    const r = s.rel[a === PLAYER ? b : a];
+    return !!r && (r.truce > 0 || r.ally > 0);
+  }
+  return s.encircle; // 包囲網の間、他家どうしは争わない
+}
+
+function relLabel(s, clan) {
+  const r = s.rel[clan];
+  if (!r) return '';
+  if (r.ally > 0) return `同盟（残り${r.ally}季）`;
+  if (r.truce > 0) return `停戦（残り${r.truce}季）`;
+  return '交戦中';
+}
+
+function changeFriend(s, clan, d) {
+  const r = s.rel[clan];
+  if (r) r.friend = clamp(Math.round(r.friend + d), 0, 100);
+}
+
+function envoyOf(s) {
+  // 使者：命令できる武将のうち、いちばん魅力が高い人
+  return bestBy(gensOf(s, PLAYER).filter((g) => g.loc && !s.acted[g.id] && !s.delegate[g.loc]), 'cha');
+}
+
+function truceChance(s, clan, g) {
+  const r = s.rel[clan];
+  const size = (castlesOf(s, PLAYER).length - castlesOf(s, clan).length) / 60;
+  return clamp((r.friend - 30) / 60 + g.cha / 400 + size, 0.03, 0.95);
+}
+function allyChance(s, clan, g) {
+  const r = s.rel[clan];
+  return clamp((r.friend - 50) / 45 + g.cha / 300, 0, 0.9);
+}
+
+function diploGift(s, clan, g) {
+  s.gold[PLAYER] -= DIPLO.giftCost;
+  s.acted[g.id] = true;
+  const d = 8 + Math.round(g.cha / 10);
+  changeFriend(s, clan, d);
+  grow(g, 'cha');
+  return `${CLANS[clan].name}に贈り物をした。友好度 +${d}`;
+}
+function diploTruce(s, clan, g) {
+  s.acted[g.id] = true;
+  if (Math.random() < truceChance(s, clan, g)) {
+    s.rel[clan].truce = DIPLO.truceTurns;
+    grow(g, 'cha');
+    return { ok: true, text: `${CLANS[clan].name}と停戦した（${DIPLO.truceTurns}季）` };
+  }
+  changeFriend(s, clan, -5);
+  return { ok: false, text: `${CLANS[clan].name}に停戦を断られた…` };
+}
+function diploAlly(s, clan, g) {
+  s.acted[g.id] = true;
+  if (Math.random() < allyChance(s, clan, g)) {
+    s.rel[clan].ally = DIPLO.allyTurns;
+    s.rel[clan].truce = 0;
+    grow(g, 'cha');
+    return { ok: true, text: `${CLANS[clan].name}と同盟を結んだ（${DIPLO.allyTurns}季）` };
+  }
+  changeFriend(s, clan, -5);
+  return { ok: false, text: `${CLANS[clan].name}に同盟を断られた…` };
+}
+function diploBreak(s, clan) {
+  const r = s.rel[clan];
+  r.ally = 0;
+  r.truce = 0;
+  changeFriend(s, clan, -40);
+  aiClans().forEach((k) => { if (k !== clan) changeFriend(s, k, -10); }); // 信用を失う
+  return `${CLANS[clan].name}との約束を破棄した。諸家の信用を失った…`;
+}
+
+// 毎ターンの外交の変化
+function tickDiplomacy(s, log) {
+  aiClans().forEach((k) => {
+    const r = s.rel[k];
+    if (!castlesOf(s, k).length) return;
+    if (r.truce > 0 && --r.truce === 0) log.push(`🕊️ ${CLANS[k].name}との停戦が終わった`);
+    if (r.ally > 0 && --r.ally === 0) log.push(`🤝 ${CLANS[k].name}との同盟が期限を迎えた`);
+    if (r.ally > 0) changeFriend(s, k, 1);
+    // 国境を接していると少しずつ緊張が高まる
+    const border = castlesOf(s, PLAYER).some((id) => MAP.adj[id].some((n) => s.castles[n].owner === k));
+    if (border && !r.ally && !r.truce) changeFriend(s, k, -1);
+  });
+  // 麻布包囲網
+  const share = castlesOf(s, PLAYER).length / MAP.nodes.length;
+  const alive = aiClans().filter((k) => castlesOf(s, k).length);
+  if (!s.encircle && share >= DIPLO.encircleShare && alive.length >= 2) {
+    s.encircle = true;
+    alive.forEach((k) => {
+      s.rel[k].ally = 0; s.rel[k].truce = 0; changeFriend(s, k, -30);
+      s.gold[k] += 600; // 軍資金
+    });
+    log.push('🔥 麻布家の台頭を恐れた諸家が「麻布包囲網」を結成！ 同盟・停戦はすべて破棄された');
+  }
+}
+
+// 攻めてよい相手のとなりの城
+function hostileNeighbors(s, id) {
+  const owner = s.castles[id].owner;
+  return MAP.adj[id].filter((n) => !atPeace(s, owner, s.castles[n].owner));
 }
 
 function diffOf(s) { return DIFFICULTY[s.diff] || DIFFICULTY.normal; }
@@ -192,7 +321,7 @@ function castleIncome(s, id) {
 
 function income(s, clan) {
   const base = castlesOf(s, clan).reduce((a, id) => a + castleIncome(s, id), 0);
-  return clan === PLAYER ? base : Math.round(base * diffOf(s).aiIncome);
+  return clan === PLAYER ? base : Math.round(base * diffOf(s).aiIncome * (s.encircle ? 1.2 : 1));
 }
 
 function enemyNeighbors(s, id) {
@@ -345,6 +474,9 @@ function attack(s, from, to, n, gid, log, support = []) {
   const dg = defLeader(s, to);
   src.troops -= n;
   s.acted[gid] = true;
+  // 攻められた家は麻布家を恨む
+  if (attacker === PLAYER && s.rel[defender]) changeFriend(s, defender, -15);
+  if (defender === PLAYER && s.rel[attacker]) changeFriend(s, attacker, -3);
   support.forEach((sp) => {
     s.castles[sp.from].troops -= sp.n;
     s.acted[sp.gid] = true;
@@ -407,7 +539,7 @@ function frontDistance(s, clan) {
   const dist = {};
   const queue = [];
   castlesOf(s, clan).forEach((id) => {
-    if (enemyNeighbors(s, id).length) { dist[id] = 0; queue.push(id); }
+    if (hostileNeighbors(s, id).length) { dist[id] = 0; queue.push(id); }
   });
   while (queue.length) {
     const id = queue.shift();
@@ -437,7 +569,7 @@ function autoCastle(s, clan, id, cfg, dist, log) {
   const reserve = cfg.reserve;
   const idle = () => idleGensAt(s, id);
   const use = (g) => { if (g) s.acted[g.id] = true; };
-  const enemies = enemyNeighbors(s, id);
+  const enemies = hostileNeighbors(s, id);
 
   if (!enemies.length) {
     // 後方：兵と武将を前線へ送り、残りは開発
@@ -465,7 +597,9 @@ function autoCastle(s, clan, id, cfg, dist, log) {
   // 前線：勝てそうなら攻める
   const leader = bestBy(idle(), 'str');
   if (leader && c.troops > 0) {
-    const target = enemies.reduce((a, b) => (defensePower(s, a) <= defensePower(s, b) ? a : b));
+    // 包囲網の間は麻布家の城を優先して狙う
+    const aim = (t) => defensePower(s, t) * (s.encircle && clan !== PLAYER && s.castles[t].owner === PLAYER ? 0.6 : 1);
+    const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
     const need = defensePower(s, target) * cfg.ratio + 100;
     let support = [];
@@ -550,7 +684,9 @@ function endTurn(s) {
   });
   s.acted = {};
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
+  tickDiplomacy(s, log);
   checkWin(s);
+  s.pending = s.result ? [] : rollEvents(s);
   s.log = log;
   return log;
 }
