@@ -202,34 +202,131 @@ const Sound = (() => {
     n.start(t); n.stop(t + Math.min(dur, 0.35));
   }
 
-  // 何歩目に笛のどの音が始まるか
-  const FUE_AT = (() => {
+  // 旋律 [[音, 8分音符いくつ分], ...] を「何歩目（16分音符）に何の音を何歩ぶん」の表にする
+  function melodyAt(notes) {
     const map = {};
     let pos = 0;
-    FUE.forEach(([m, len]) => { if (m) map[pos] = [m, len * 2]; pos += len * 2; });
+    notes.forEach(([m, len]) => { if (m) map[pos] = [m, len * 2]; pos += len * 2; });
     return map;
-  })();
-  const LOOP = 16 * 8;
+  }
+  const FUE_AT = melodyAt(FUE);
 
-  function bgmStart() {
-    const c = ensure(); if (!c) return;
-    bgmStop(0);
-    const out = c.createGain();
-    out.gain.setValueAtTime(0.0001, c.currentTime);
-    out.gain.exponentialRampToValueAtTime(0.55, c.currentTime + 0.8);
-    out.connect(c.destination);
-    const state = { out, step: 0, next: c.currentTime + 0.1, timer: null };
-    state.timer = setInterval(() => {
-      while (state.next < c.currentTime + 0.15) {
-        const s = state.step % LOOP, bar = Math.floor(s / 16), b = s % 16, t = state.next;
+  // ---------- 地図BGM ----------
+  // 陽音階（レ・ミ・ソ・ラ・シ）で、琴の分散和音と尺八の旋律。ゆったり16小節
+  const MAP_STEP = 60 / 72 / 4;
+  const YO = [50, 52, 55, 57, 59, 62, 64, 67, 69, 71, 74, 76, 79, 81];
+  const SHAKU = [
+    [69, 4], [71, 2], [74, 2],
+    [71, 6], [69, 2],
+    [67, 4], [69, 2], [71, 2],
+    [69, 8],
+    [74, 4], [76, 2], [74, 2],
+    [71, 4], [69, 4],
+    [67, 2], [69, 2], [71, 2], [69, 2],
+    [67, 6], [0, 2],
+    [64, 4], [67, 2], [69, 2],
+    [71, 6], [69, 2],
+    [74, 4], [71, 2], [69, 2],
+    [67, 8],
+    [69, 4], [71, 2], [74, 2],
+    [76, 4], [74, 4],
+    [71, 2], [69, 2], [67, 2], [64, 2],
+    [62, 6], [0, 2],
+  ];
+  const SHAKU_AT = melodyAt(SHAKU);
+  // 1小節ごとの琴の根音（YO の何番目か）
+  const KOTO_ROOT = [0, 0, 2, 3, 0, 4, 2, 3, 1, 2, 3, 2, 0, 1, 2, 0];
+
+  // 琴：ばちではじいた瞬間に少し音が下がり、ゆっくり消える
+  function bgmKoto(c, out, t, m, vol = 0.14) {
+    const f0 = midi(m);
+    [[1, 'triangle', vol], [2, 'sine', vol * 0.35], [3, 'sine', vol * 0.12]].forEach(([h, type, v]) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(f0 * h * 1.012, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * h, t + 0.04);
+      env(c, g, t, v, 0.003, h === 1 ? 1.6 : 0.6);
+      o.connect(g).connect(out);
+      o.start(t); o.stop(t + 1.7);
+    });
+  }
+
+  // 尺八：下から入って、のばすと揺れる。息の音が多め
+  function bgmShaku(c, out, t, m, dur) {
+    const f = midi(m);
+    const o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain();
+    const lfo = c.createOscillator(), lg = c.createGain();
+    o.type = 'sine'; o2.type = 'triangle';
+    [o, o2].forEach((x) => {
+      x.frequency.setValueAtTime(f * 0.94, t);
+      x.frequency.exponentialRampToValueAtTime(f, t + 0.18);
+    });
+    lfo.frequency.value = 4.5;
+    lg.gain.setValueAtTime(0, t);
+    lg.gain.linearRampToValueAtTime(dur > 0.8 ? f * 0.012 : 0, t + Math.min(dur * 0.6, 0.9));
+    lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+    const o2g = c.createGain(); o2g.gain.value = 0.25;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 0.15);
+    g.gain.setValueAtTime(0.1, t + dur * 0.75);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.99);
+    o.connect(g); o2.connect(o2g).connect(g); g.connect(out);
+    [o, o2, lfo].forEach((x) => { x.start(t); x.stop(t + dur); });
+    noise = noise || noiseBuffer(c);
+    const n = c.createBufferSource(), nf = c.createBiquadFilter(), ng = c.createGain();
+    n.buffer = noise; n.loop = true;
+    nf.type = 'bandpass'; nf.frequency.value = f * 1.5; nf.Q.value = 1.5;
+    env(c, ng, t, 0.05, 0.06, Math.min(dur, 0.5));
+    n.connect(nf).connect(ng).connect(out);
+    n.start(t); n.stop(t + Math.min(dur, 0.6));
+  }
+
+  const TRACKS = {
+    battle: {
+      step: STEP, loop: 16 * 8, vol: 0.55,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
         if (ODAIKO[b] === 'D') bgmDrum(c, out, t, true);
         if (ODAIKO[b] === 'd') bgmDrum(c, out, t, false);
         if (SHIME[b] === 't') bgmShime(c, out, t, b % 4 === 0);
         if (b % 4 === 0 || b === 14) bgmShamisen(c, out, t, BASS[bar] - (b === 14 ? 5 : 0));
         if (b % 4 === 2) bgmShamisen(c, out, t, BASS[bar] + 12);
         if (FUE_AT[s]) bgmFue(c, out, t, FUE_AT[s][0], FUE_AT[s][1] * STEP);
+      },
+    },
+    map: {
+      step: MAP_STEP, loop: 16 * 16, vol: 0.5,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
+        const r = KOTO_ROOT[bar] + 3; // 分散和音の最初の音
+        const arp = [YO[r], YO[r + 2], YO[r + 4], YO[r + 5]];
+        const up = bar % 2 === 0;
+        if (b === 0) bgmKoto(c, out, t, YO[KOTO_ROOT[bar]], 0.16); // 低音
+        if (b % 4 === 0) bgmKoto(c, out, t + (b ? 0 : 0.03), up ? arp[b / 4] : arp[3 - b / 4], 0.1);
+        if (b === 14 && bar % 4 === 3) bgmKoto(c, out, t, arp[2], 0.07);
+        if (SHAKU_AT[s]) bgmShaku(c, out, t, SHAKU_AT[s][0], SHAKU_AT[s][1] * MAP_STEP);
+      },
+    },
+  };
+
+  function bgmStart(kind = 'battle') {
+    const c = ensure(); if (!c) return;
+    if (bgm && bgm.kind === kind) return; // すでに流れている
+    bgmStop(0.6);
+    const tr = TRACKS[kind];
+    const out = c.createGain();
+    out.gain.setValueAtTime(0.0001, c.currentTime);
+    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'map' ? 2 : 0.8));
+    out.connect(c.destination);
+    const state = { kind, out, step: 0, next: c.currentTime + 0.1, timer: null };
+    state.timer = setInterval(() => {
+      if (c.state !== 'running') return;
+      // 裏にいた間などで大きく遅れたら、今の時刻から続ける
+      if (state.next < c.currentTime - 0.5) state.next = c.currentTime + 0.05;
+      while (state.next < c.currentTime + 0.15) {
+        tr.play(c, out, state.step % tr.loop, state.next);
         state.step++;
-        state.next += STEP;
+        state.next += tr.step;
       }
     }, 25);
     bgm = state;
@@ -247,8 +344,32 @@ const Sound = (() => {
     setTimeout(() => b.out.disconnect(), (fade + 0.5) * 1000);
   }
 
+  // 確認用：曲を音にせずデータとして作り、音量の最大値と平均を返す
+  async function analyze(kind, seconds = 20) {
+    const rate = 22050;
+    const c = new OfflineAudioContext(1, rate * seconds, rate);
+    const tr = TRACKS[kind];
+    const out = c.createGain();
+    out.gain.value = tr.vol;
+    out.connect(c.destination);
+    for (let i = 0, t = 0.05; t < seconds - 2; i++, t += tr.step) tr.play(c, out, i % tr.loop, t);
+    const buf = await c.startRendering();
+    const d = buf.getChannelData(0);
+    let peak = 0, sum = 0;
+    for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > peak) peak = v; sum += v * v; }
+    return { peak: +peak.toFixed(3), rms: +Math.sqrt(sum / d.length).toFixed(4) };
+  }
+
+  // アプリが裏に回ったら音を止め、戻ったら再開する
+  document.addEventListener('visibilitychange', () => {
+    if (!ctx) return;
+    if (document.hidden) ctx.suspend();
+    else if (on) ctx.resume();
+  });
+
   return {
     get on() { return on; },
+    get playing() { return bgm ? bgm.kind : null; },
     toggle() {
       on = !on;
       try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
@@ -257,6 +378,7 @@ const Sound = (() => {
     },
     bgmStart,
     bgmStop,
+    analyze,
     unlock() { ensure(); },
     tap,
     taiko,

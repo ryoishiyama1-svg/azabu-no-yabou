@@ -145,6 +145,7 @@ function startGame(isNew) {
   drawMap();
   render();
   centerOn(PLAYER);
+  Sound.bgmStart('map');
   if (isNew) {
     Sound.horagai();
     const lord = lordOf(S);
@@ -784,7 +785,7 @@ function playBattle(r, log = []) {
     <button class="btn plain" id="skip">結果を見る</button>`;
   box.hidden = false;
   Sound.horagai();
-  Sound.bgmStart();
+  Sound.bgmStart('battle');
 
   const show = (i) => {
     const { a, d } = r.rounds[i];
@@ -831,6 +832,7 @@ function playBattle(r, log = []) {
     btn.onclick = () => {
       Sound.tap();
       box.hidden = true;
+      Sound.bgmStart('map');
       handleCaptives(r.captured || [], () => {
         tutAdvance(5);
         if (S.result) showEnding();
@@ -964,6 +966,7 @@ function onEndTurn() {
 }
 
 function showEnding() {
+  Sound.bgmStop(1);
   const win = S.result === 'win';
   if (win) Sound.win(); else Sound.lose();
   const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord);
@@ -995,7 +998,11 @@ $('btn-menu').onclick = () => {
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };
   $('m-title').onclick = () => { closeModal(); showTitle(); };
 };
-$('btn-sound').onclick = () => { Sound.toggle(); $('btn-sound').textContent = Sound.on ? '♪' : '✕'; };
+$('btn-sound').onclick = () => {
+  Sound.toggle();
+  $('btn-sound').textContent = Sound.on ? '♪' : '✕';
+  if (Sound.on && !$('game').hidden && $('battle').hidden && S && !S.result) Sound.bgmStart('map');
+};
 
 modal.addEventListener('click', (e) => {
   const locked = !!modalBody.querySelector('[data-lock]');
