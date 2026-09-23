@@ -1,16 +1,17 @@
 // オフラインでも遊べるようにファイルを保存しておく
-// ファイルを更新したら VERSION の数字を上げる
-const VERSION = 'v3';
+// ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
+const V = 3;
+const VERSION = `v${V}`;
 const FILES = [
   './',
   'index.html',
-  'style.css',
+  `style.css?v=${V}`,
   'manifest.json',
-  'js/data.js',
-  'js/game.js',
-  'js/art.js',
-  'js/sound.js',
-  'js/ui.js',
+  `js/data.js?v=${V}`,
+  `js/game.js?v=${V}`,
+  `js/art.js?v=${V}`,
+  `js/sound.js?v=${V}`,
+  `js/ui.js?v=${V}`,
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -18,7 +19,8 @@ const FILES = [
 const FONT_CACHE = 'fonts';
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES)));
+  // ブラウザに残った古いファイルを使わないよう、必ずサーバーから取り直す
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))));
   self.skipWaiting();
 });
 
@@ -38,6 +40,11 @@ self.addEventListener('fetch', (e) => {
       caches.open(FONT_CACHE).then((c) =>
         c.match(e.request).then((hit) => hit || fetch(e.request).then((res) => { c.put(e.request, res.clone()); return res; })))
     );
+    return;
+  }
+  // ページ本体はネット優先（最新版を表示）、つながらないときは保存版
+  if (e.request.mode === 'navigate') {
+    e.respondWith(fetch(e.request).catch(() => caches.match('index.html')));
     return;
   }
   e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
