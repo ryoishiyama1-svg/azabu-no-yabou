@@ -393,8 +393,6 @@ function openMove(from, to) {
 
 // ---------- ターン終了 ----------
 function onEndTurn() {
-  const idle = castlesOf(S, PLAYER).filter((id) => !S.acted[id]).length;
-  if (idle > 0 && !confirm(`まだ命令していない城が ${idle} あります。ターンを終了しますか？`)) return;
   selected = null;
   mode = null;
   const before = S.gold[PLAYER];
