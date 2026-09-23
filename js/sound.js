@@ -317,7 +317,75 @@ const Sound = (() => {
     });
   }
 
+  // ---------- エンディングBGM ----------
+  // 勝利：祭囃子（締太鼓・大太鼓・当り鉦・篠笛）
+  const WIN_STEP = 60 / 104 / 4;
+  const WIN_MELO = melodyAt([
+    [74, 1], [76, 1], [79, 2], [76, 2], [74, 2],
+    [71, 2], [74, 2], [76, 4],
+    [79, 1], [81, 1], [79, 2], [76, 2], [74, 2],
+    [76, 6], [0, 2],
+    [74, 2], [71, 2], [69, 2], [71, 2],
+    [74, 2], [76, 2], [74, 4],
+    [71, 1], [74, 1], [76, 2], [74, 2], [71, 2],
+    [69, 2], [71, 2], [74, 4],
+  ]);
+  const MATSURI_SHIME = 'tt.tt.t.tt.tt.t.';
+  const MATSURI_KANE = '..k...k...k...k.';
+
+  // 当り鉦：金属の高い音が重なって、すぐ消える
+  function bgmKane(c, out, t) {
+    [1800, 2650, 3900].forEach((f, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = i ? 'sine' : 'square';
+      o.frequency.value = f;
+      env(c, g, t, i ? 0.03 : 0.02, 0.001, 0.12);
+      o.connect(g).connect(out);
+      o.start(t); o.stop(t + 0.15);
+    });
+  }
+
+  // 敗北：都節音階の尺八の独奏
+  const LOSE_STEP = 60 / 56 / 4;
+  const LOSE_MELO = melodyAt([
+    [74, 4], [75, 2], [74, 2],
+    [70, 6], [69, 2],
+    [67, 4], [69, 2], [70, 2],
+    [69, 8],
+    [62, 4], [63, 2], [67, 2],
+    [69, 4], [70, 2], [69, 2],
+    [67, 2], [63, 2], [62, 4],
+    [62, 8],
+  ]);
+  const LOSE_SHO = [[50, 57, 62], [55, 62, 70], [51, 58, 63], [50, 57, 62]];
+  const LOSE_BASS = [50, 50, 55, 57, 50, 55, 51, 50];
+
   const TRACKS = {
+    win: {
+      step: WIN_STEP, loop: 16 * 8, vol: 0.5,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
+        if (b === 0 || b === 8) bgmDrum(c, out, t, true);
+        if (b === 6 || b === 14) bgmDrum(c, out, t, false);
+        if (MATSURI_SHIME[b] === 't') bgmShime(c, out, t, b % 4 === 0);
+        if (MATSURI_KANE[b] === 'k') bgmKane(c, out, t);
+        if (b === 0 && bar % 2 === 0) bgmSho(c, out, t, SHO[(bar / 2) % 4], WIN_STEP * 32);
+        if (WIN_MELO[s]) bgmFue(c, out, t, WIN_MELO[s][0], WIN_MELO[s][1] * WIN_STEP);
+      },
+    },
+    lose: {
+      step: LOSE_STEP, loop: 16 * 8, vol: 0.55,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
+        if (b === 0 && bar % 2 === 0) bgmSho(c, out, t, LOSE_SHO[bar / 2], LOSE_STEP * 32);
+        if (b === 0) bgmKoto(c, out, t, LOSE_BASS[bar], 0.13);
+        if (b === 8 && bar % 2 === 1) {
+          bgmKoto(c, out, t, LOSE_BASS[bar] + 19, 0.06);
+          bgmKoto(c, out, t + LOSE_STEP * 2, LOSE_BASS[bar] + 17, 0.05);
+        }
+        if (LOSE_MELO[s]) bgmShaku(c, out, t, LOSE_MELO[s][0], LOSE_MELO[s][1] * LOSE_STEP);
+      },
+    },
     title: {
       step: TITLE_STEP, loop: 16 * 8, vol: 0.5,
       play(c, out, s, t) {
@@ -367,7 +435,7 @@ const Sound = (() => {
     const tr = TRACKS[kind];
     const out = c.createGain();
     out.gain.setValueAtTime(0.0001, c.currentTime);
-    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'battle' ? 0.8 : 2));
+    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'battle' || kind === 'win' ? 0.8 : 2));
     out.connect(c.destination);
     const state = { kind, out, step: 0, next: c.currentTime + 0.1, timer: null };
     state.timer = setInterval(() => {

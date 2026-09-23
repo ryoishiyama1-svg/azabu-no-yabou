@@ -983,9 +983,8 @@ function onEndTurn() {
 }
 
 function showEnding() {
-  Sound.bgmStop(1);
   const win = S.result === 'win';
-  if (win) Sound.win(); else Sound.lose();
+  Sound.bgmStart(win ? 'win' : 'lose');
   const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord);
   openModal(`<div class="ending ${win ? 'win' : 'lose'}" data-lock>
       ${lord ? portrait(lord, 84) : crestBadge(PLAYER, 72)}
