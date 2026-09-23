@@ -117,6 +117,13 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
   mix-blend-mode: multiply;
 }
 .title-buttons { width: 100%; margin-top: auto; }
+.title-sound {
+  position: absolute; z-index: 3;
+  top: calc(env(safe-area-inset-top) + 12px); right: 14px;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid var(--ink); background: rgba(255, 244, 208, 0.7);
+  color: var(--ink); font-size: 18px; font-weight: 800;
+}
 .disclaimer { font-size: 11px; color: #d8d2c0; margin: 14px 0 0; line-height: 1.6; }
 
 /* ---------- 舞い散るもの ---------- */

@@ -281,7 +281,58 @@ const Sound = (() => {
     n.start(t); n.stop(t + Math.min(dur, 0.6));
   }
 
+  // ---------- タイトルBGM ----------
+  // 笙（しょう）のような和音がゆっくりふくらみ、大太鼓と尺八で幕が開くような曲
+  const TITLE_STEP = 60 / 66 / 4;
+  const TITLE_MELO = melodyAt([
+    [62, 2], [69, 4], [71, 2],
+    [74, 6], [71, 2],
+    [69, 4], [67, 2], [69, 2],
+    [64, 8],
+    [67, 2], [69, 2], [71, 2], [74, 2],
+    [76, 6], [74, 2],
+    [71, 3], [69, 1], [67, 2], [64, 2],
+    [62, 8],
+  ]);
+  // 2小節ごとの笙の和音
+  const SHO = [[62, 69, 74, 76], [67, 74, 76, 81], [69, 76, 81, 83], [62, 69, 71, 76]];
+
+  function bgmSho(c, out, t, notes, dur) {
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + dur * 0.35);
+    g.gain.setValueAtTime(0.05, t + dur * 0.8);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 2200;
+    g.connect(f).connect(out);
+    notes.forEach((m, i) => {
+      [0, 3].forEach((cents) => { // 少しずらして重ね、うなりを出す
+        const o = c.createOscillator();
+        o.type = i % 2 ? 'sine' : 'triangle';
+        o.frequency.value = midi(m) * Math.pow(2, cents / 1200);
+        o.connect(g);
+        o.start(t); o.stop(t + dur + 0.05);
+      });
+    });
+  }
+
   const TRACKS = {
+    title: {
+      step: TITLE_STEP, loop: 16 * 8, vol: 0.5,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
+        if (s === 0) {
+          // 琴のグリッサンド
+          YO.slice(5, 13).forEach((m, i) => bgmKoto(c, out, t + i * 0.06, m, 0.08));
+        }
+        if (b === 0 && bar % 2 === 0) bgmSho(c, out, t, SHO[bar / 2], TITLE_STEP * 32);
+        if (b === 0 || b === 8) bgmDrum(c, out, t, true);
+        if (bar % 4 === 3 && b >= 12) bgmDrum(c, out, t, false); // 太鼓の連打
+        if (b === 0) bgmKoto(c, out, t, [50, 55, 57, 50][bar % 4], 0.14);
+        if (TITLE_MELO[s]) bgmShaku(c, out, t, TITLE_MELO[s][0], TITLE_MELO[s][1] * TITLE_STEP);
+      },
+    },
     battle: {
       step: STEP, loop: 16 * 8, vol: 0.55,
       play(c, out, s, t) {
@@ -316,7 +367,7 @@ const Sound = (() => {
     const tr = TRACKS[kind];
     const out = c.createGain();
     out.gain.setValueAtTime(0.0001, c.currentTime);
-    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'map' ? 2 : 0.8));
+    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'battle' ? 0.8 : 2));
     out.connect(c.destination);
     const state = { kind, out, step: 0, next: c.currentTime + 0.1, timer: null };
     state.timer = setInterval(() => {
@@ -370,6 +421,7 @@ const Sound = (() => {
   return {
     get on() { return on; },
     get playing() { return bgm ? bgm.kind : null; },
+    get ready() { return !!ctx; }, // 一度タップされて音を出せる状態か
     toggle() {
       on = !on;
       try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}

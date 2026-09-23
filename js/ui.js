@@ -73,10 +73,27 @@ $('title-art').innerHTML = titleArt();
 $('title-crest').innerHTML = crestBadge(PLAYER, 84);
 petals($('title-petals'), 0, 18);
 
+// タイトルの音楽：iPhoneは画面に触れるまで音を出せないので、最初のタッチで流し始める
+function titleMusic() {
+  $('title-sound').textContent = Sound.on ? '♪' : '✕';
+  if (Sound.ready && Sound.on && !$('title').hidden) Sound.bgmStart('title');
+}
+['touchend', 'click'].forEach((ev) => $('title').addEventListener(ev, (e) => {
+  if (e.target.closest('#title-sound')) return;
+  Sound.unlock();
+  titleMusic();
+}, true));
+$('title-sound').onclick = () => {
+  Sound.unlock();
+  Sound.toggle();
+  titleMusic();
+};
+
 function showTitle() {
-  Sound.bgmStop(0.1);
+  Sound.bgmStop(0.6);
   $('game').hidden = true;
   $('title').hidden = false;
+  titleMusic();
   const saved = load();
   const canResume = saved && !saved.result;
   $('btn-resume').hidden = !canResume;
