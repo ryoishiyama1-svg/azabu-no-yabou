@@ -606,6 +606,39 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .result { background: #fff3cf; border: 1px solid var(--gold); border-radius: 6px; padding: 6px 10px; font-weight: 700; text-align: center; }
 .bulk { grid-template-columns: 1fr 1fr 1fr; }
 
+/* ---------- シナリオ選択 ---------- */
+.diff-list .lv {
+  display: inline-block; font-size: 11px; font-weight: 800; color: #fff; background: var(--red);
+  border-radius: 3px; padding: 0 5px; margin-right: 6px; vertical-align: 2px;
+}
+.check-row { display: flex; align-items: center; gap: 8px; margin: 14px 0 4px; font-weight: 700; font-size: 14px; }
+.check-row input { width: 20px; height: 20px; accent-color: var(--red); }
+
+/* ---------- 軍師 ---------- */
+#coach {
+  position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 3;
+  display: flex; gap: 8px; align-items: flex-start;
+  background: var(--washi), linear-gradient(180deg, #fffaf0, #f4e8c8);
+  border: 2px solid var(--gold); border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  animation: drop 0.3s ease-out;
+}
+#coach .ct { min-width: 0; flex: 1; }
+#coach .ct > b { font-family: var(--mincho); color: var(--red); font-size: 13px; }
+#coach p { margin: 2px 0 6px; font-size: 13.5px; line-height: 1.55; }
+#coach .cb { display: flex; gap: 6px; justify-content: flex-end; }
+#coach .cb button {
+  border: 1px solid var(--line); background: #fff; border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; color: var(--muted);
+}
+#coach .cb button.go { background: var(--red); border-color: var(--red); color: #fff; font-weight: 800; font-size: 13px; }
+.tut-hint {
+  display: flex; gap: 8px; align-items: center;
+  background: #fff3cf; border: 1px solid var(--gold); border-radius: 8px;
+  padding: 6px 8px; font-size: 13px; margin: 6px 0;
+}
+
 /* ---------- 結末 ---------- */
 .ending { text-align: center; }
 .ending .big { font-family: var(--brush); font-size: 64px; line-height: 1.1; margin: 8px 0; }

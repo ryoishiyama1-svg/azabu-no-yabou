@@ -136,8 +136,8 @@ function sceneryMarkup() {
 
   // 山（多摩の奥）
   const hachi = MAP.byId.hachioji;
-  const mx = hachi.x - 40, my = hachi.y - 150;
-  s += `<g class="mountains" transform="translate(${mx},${my})">
+  const mx = hachi ? hachi.x - 40 : -9999, my = hachi ? hachi.y - 150 : -9999;
+  if (hachi) s += `<g class="mountains" transform="translate(${mx},${my})">
     <path d="M-80,120 C-40,60 -20,20 20,0 C50,30 70,60 120,120 Z" fill="url(#mtn)"/>
     <path d="M40,120 C80,50 100,30 130,15 C160,45 190,80 230,120 Z" fill="url(#mtn)" opacity="0.8"/>
     <path d="M-20,120 C10,80 30,65 60,55 C90,75 110,95 140,120 Z" fill="url(#mtn)" opacity="0.6"/>
@@ -170,11 +170,13 @@ function sceneryMarkup() {
 
   // 地域名
   const tama = MAP.nodes.filter((n) => n.ward.endsWith('市'));
-  const avgX = tama.reduce((a, n) => a + n.x, 0) / tama.length;
-  s += `<text class="map-label region" x="${avgX.toFixed(0)}" y="${(Math.max(...tama.map((n) => n.y)) + 90).toFixed(0)}">多 摩</text>`;
+  if (tama.length) {
+    const avgX = tama.reduce((a, n) => a + n.x, 0) / tama.length;
+    s += `<text class="map-label region" x="${avgX.toFixed(0)}" y="${(Math.max(...tama.map((n) => n.y)) + 90).toFixed(0)}">多 摩</text>`;
+  }
   const ku = MAP.nodes.filter((n) => n.ward.endsWith('区'));
   const kx = ku.reduce((a, n) => a + n.x, 0) / ku.length;
-  s += `<text class="map-label region" x="${kx.toFixed(0)}" y="46">江 戸 二 十 三 区</text>`;
+  s += `<text class="map-label region" x="${kx.toFixed(0)}" y="46">${MAP_SCENARIO === 'toshin' ? '江 戸 都 心' : '江 戸 二 十 三 区'}</text>`;
   return s;
 }
 

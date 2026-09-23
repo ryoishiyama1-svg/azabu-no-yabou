@@ -100,27 +100,37 @@ $('btn-resume').onclick = () => {
 };
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
 
-// 当主の名前と難易度を決める
+// シナリオ・当主の名前・難易度を決める
+const TUT_KEY = 'azabu-tut-done';
+function tutDone() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch (e) { return false; } }
+
 function showSetup() {
   let diff = 'normal';
+  let scenario = tutDone() ? 'tokyo' : 'toshin';
+  const pickList = (attr, obj, cur, label) => `<div class="diff-list">${Object.entries(obj).map(([k, d]) =>
+    `<button data-${attr}="${k}" class="${k === cur ? 'on' : ''}"><b>${d.name}</b>${label(d)}<small>${d.desc}</small></button>`).join('')}</div>`;
   openModal(`<h2>旗 揚 げ</h2>
+    <h3>シナリオ</h3>
+    ${pickList('sc', SCENARIOS, scenario, (d) => `<span class="lv">${d.level}</span>`)}
     <h3>麻布家 当主の名前</h3>
     <input class="name-input" id="lord-name" maxlength="10" value="麻布 一郎" autocomplete="off">
     <h3>難易度</h3>
-    <div class="diff-list">${Object.entries(DIFFICULTY).map(([k, d]) =>
-      `<button data-diff="${k}" class="${k === diff ? 'on' : ''}"><b>${d.name}</b><small>${d.desc}</small></button>`).join('')}</div>
+    ${pickList('diff', DIFFICULTY, diff, () => '')}
+    <label class="check-row"><input type="checkbox" id="tut" ${tutDone() ? '' : 'checked'}> 軍師の手ほどき（チュートリアル）を受ける</label>
     <button class="btn red" id="setup-go">出 陣</button>
     <button class="btn plain" data-close>やめる</button>`);
-  document.querySelectorAll('[data-diff]').forEach((b) => {
+  const bindPick = (attr, set) => modalBody.querySelectorAll(`[data-${attr}]`).forEach((b) => {
     b.onclick = () => {
       Sound.tap();
-      diff = b.dataset.diff;
-      document.querySelectorAll('[data-diff]').forEach((x) => x.classList.toggle('on', x === b));
+      set(b.dataset[attr]);
+      modalBody.querySelectorAll(`[data-${attr}]`).forEach((x) => x.classList.toggle('on', x === b));
     };
   });
+  bindPick('sc', (v) => { scenario = v; });
+  bindPick('diff', (v) => { diff = v; });
   $('setup-go').onclick = () => {
     const name = $('lord-name').value.trim() || '麻布 一郎';
-    S = newGame({ lordName: name, diff });
+    S = newGame({ lordName: name, diff, scenario, tutorial: $('tut').checked });
     save();
     closeModal();
     startGame(true);
@@ -138,12 +148,13 @@ function startGame(isNew) {
   if (isNew) {
     Sound.horagai();
     const lord = lordOf(S);
-    openModal(`<h2>天下統一への第一歩</h2>
+    const rivals = aiClans().map((k) => CLANS[k].name.replace('家', '')).join('・');
+    openModal(`<h2>${SCENARIOS[S.scenario].name}</h2>
       <p style="text-align:center">${portrait(lord, 84)}</p>
       <p>時は${dateLabel(0)}。麻布家当主 <b>${esc(lord.name)}</b> は、元麻布の地に旗を揚げた。</p>
-      <p>都内には <b>${MAP.nodes.length}校</b> がひしめき、<b>開成・筑駒・日比谷・早稲田・西</b> の各家も勢力拡大をねらっている。</p>
+      <p>この地には <b>${MAP.nodes.length}校</b> がひしめき、<b>${rivals}</b> の各家も勢力拡大をねらっている。</p>
       <p>頼れる家臣は3人。城を落として武将を登用し、天下を統一せよ！</p>
-      <p class="hint">難易度：${diffOf(S).name}</p>
+      <p class="hint">難易度：${diffOf(S).name} ・ 最初の${graceTurns(S)}季は他家も様子見をしている</p>
       <button class="btn red" data-close>出陣じゃ！</button>`);
   }
 }
@@ -192,8 +203,9 @@ function el(tag, attrs, parent) {
   return e;
 }
 
+let CELLS_SC = null;
 function drawMap() {
-  CELLS = CELLS || buildCells();
+  if (CELLS_SC !== MAP_SCENARIO) { CELLS = buildCells(); CELLS_SC = MAP_SCENARIO; }
   svg.setAttribute('viewBox', `0 0 ${MAP.width} ${MAP.height}`);
   svg.innerHTML = `<defs>
       <linearGradient id="mtn" x1="0" y1="0" x2="0" y2="1">
@@ -336,7 +348,9 @@ function render() {
 
   const banner = $('mode-banner');
   if (mode) {
-    const label = { attack: '⚔ 攻める城を選べ', move: '🐎 兵を送る城を選べ', gen: `🚶 ${esc(S.gens[mode.gid].name)}の移動先を選べ` }[mode.kind];
+    const label = mode.kind === 'attack' ? '⚔ 攻める城を選べ'
+      : mode.kind === 'move' ? '🐎 兵を送る城を選べ'
+      : `🚶 ${esc(S.gens[mode.gid].name)}の移動先を選べ`;
     banner.hidden = false;
     banner.innerHTML = `<span>${label}</span><button id="mode-cancel">やめる</button>`;
     $('mode-cancel').onclick = () => { Sound.tap(); mode = null; render(); };
@@ -344,6 +358,7 @@ function render() {
     banner.hidden = true;
   }
   renderPanel();
+  renderCoach();
 }
 
 function modeTargets() {
@@ -421,7 +436,7 @@ function renderCouncil() {
   const idleGens = gensOf(S, PLAYER).filter((g) => !S.acted[g.id] && g.loc && !S.delegate[g.loc]).length;
   const delegCount = castlesOf(S, PLAYER).filter((id) => S.delegate[id]).length;
   panel.innerHTML = `<div class="council">
-    <div class="p-head"><h2>軍議</h2><span class="p-sub">武将 ${gensOf(S, PLAYER).length}人 ／ 収入 ${fmt(income(S, PLAYER))}</span></div>
+    <div class="p-head"><h2>軍議</h2><span class="p-sub">${SCENARIOS[S.scenario].name} ／ 武将 ${gensOf(S, PLAYER).length}人 ／ 収入 ${fmt(income(S, PLAYER))}</span></div>
     <p class="hint">城をタップして命令しましょう。命令できる武将：<b>${idleGens}人</b>${delegCount ? `　委任中の城：<b>${delegCount}</b>` : ''}</p>
     ${S.encircle ? '<p class="warn">🔥 麻布包囲網：諸家が手を結んで麻布家を狙っている</p>' : ''}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
@@ -435,6 +450,40 @@ function renderCouncil() {
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
   $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
+}
+
+// ---------- 軍師の手ほどき（チュートリアル） ----------
+const SENSEI = { look: 4242, female: false, str: 40, pol: 70, cha: 60, int: 95, clan: PLAYER };
+const TUT = {
+  1: { text: '殿、軍師でございます。まずは地図の<b>麻布</b>の城をタップしてくだされ。', done: () => selected && S.castles[selected].owner === PLAYER },
+  2: { text: '下に城の兵力と<b>武将</b>が出ております。命令は武将1人につき1季に1回。さっそく<b>「出陣」</b>を押してみましょう。', done: () => mode && mode.kind === 'attack' },
+  3: { text: '<b>赤く光る城</b>が攻められる城です。兵の少ない城をタップしてくだされ。' },
+  4: { text: '大将と兵の数を決めて「出陣！」。<b>勝算大</b>と出ていれば、まず負けませぬ。' },
+  5: { text: '初陣、お見事でした！ 城を落とすと敵の武将を捕らえることがあり、<b>登用</b>すれば家臣になります。残った武将で<b>徴兵</b>や<b>開発</b>もできますぞ。', next: true },
+  6: { text: '命令が済んだら、下の<b>「ターン終了」</b>を押してくだされ。季節が変わり、他家も動きます。', done: () => S.turn >= 1 },
+  7: { text: '季節ごとに行事が起こり、<b>外交</b>で他家と手を結ぶこともできます。城が増えたら<b>委任</b>や<b>全城で徴兵</b>を使うと楽ですぞ。では殿、天下統一を！', next: true, last: true },
+};
+
+function tutAdvance(to) {
+  if (S && S.tut && S.tut < to) { S.tut = to; save(); renderCoach(); }
+}
+function endTutorial() {
+  S.tut = 0;
+  save();
+  try { localStorage.setItem(TUT_KEY, '1'); } catch (e) {}
+  renderCoach();
+}
+function renderCoach() {
+  const box = $('coach');
+  const step = S && TUT[S.tut];
+  if (!step) { box.hidden = true; return; }
+  if (step.done && step.done()) { S.tut++; save(); renderCoach(); return; }
+  box.hidden = false;
+  box.innerHTML = `${portrait(SENSEI, 44)}<div class="ct"><b>軍師</b><p>${step.text}</p>
+    <div class="cb">${step.next ? `<button class="go" id="coach-next">${step.last ? '心得た' : '次へ'}</button>` : ''}<button id="coach-skip">手ほどきを終える</button></div></div>`;
+  const next = $('coach-next');
+  if (next) next.onclick = () => { Sound.tap(); if (step.last) endTutorial(); else { S.tut++; save(); renderCoach(); } };
+  $('coach-skip').onclick = () => { Sound.tap(); endTutorial(); };
 }
 
 // ---------- 外交 ----------
@@ -615,6 +664,7 @@ function doMoveGeneral(gid, to) {
 
 // ---------- 出陣 ----------
 function openAttack(from, to) {
+  tutAdvance(4);
   const srcs = from ? [from] : attackSources(to);
   let src = srcs.reduce((a, b) => (S.castles[a].troops >= S.castles[b].troops ? a : b));
   let gid = null;
@@ -665,6 +715,7 @@ function openAttack(from, to) {
       }).join('')}</div>` : ''}
       <p class="total">総勢 <b id="total-v"></b> 兵</p>
       <p class="odds" id="odds"></p>
+      ${S.tut === 4 ? `<div class="tut-hint">${portrait(SENSEI, 32)}<span>${TUT[4].text}</span></div>` : ''}
       <button class="btn red" id="go">出 陣 ！</button>
       <button class="btn plain" data-close>やめる</button>`);
     modalBody.querySelectorAll('[data-src]').forEach((b) => { b.onclick = () => { Sound.tap(); src = b.dataset.src; support = {}; draw(); }; });
@@ -780,7 +831,10 @@ function playBattle(r, log = []) {
     btn.onclick = () => {
       Sound.tap();
       box.hidden = true;
-      handleCaptives(r.captured || [], () => { if (S.result) showEnding(); });
+      handleCaptives(r.captured || [], () => {
+        tutAdvance(5);
+        if (S.result) showEnding();
+      });
     };
   }
   $('skip').onclick = finish;
@@ -919,7 +973,7 @@ function showEnding() {
       <p>${win
         ? `${dateLabel(S.turn)}、麻布家当主 ${esc(lord.name)} は都内${MAP.nodes.length}校をすべて制覇した！`
         : `${dateLabel(S.turn)}、麻布家の城はすべて奪われた…`}</p>
-      <p class="hint">難易度：${diffOf(S).name} ・ 家臣 ${gensOf(S, PLAYER).length}人</p>
+      <p class="hint">${SCENARIOS[S.scenario].name} ・ 難易度：${diffOf(S).name} ・ 家臣 ${gensOf(S, PLAYER).length}人</p>
     </div>
     <button class="btn red" id="again">もう一度</button>
     <button class="btn plain" id="to-title">タイトルへ</button>`);

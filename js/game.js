@@ -35,8 +35,8 @@ function project(lat, lon) {
   return { x, y: (35.80 - lat) * 3200 };
 }
 
-function buildMap() {
-  const nodes = SCHOOL_ROWS.map(([id, name, short, ward, lat, lon, clan]) => ({
+function buildMap(filter = () => true) {
+  const nodes = SCHOOL_ROWS.filter(filter).map(([id, name, short, ward, lat, lon, clan]) => ({
     id, name, short, ward, clan: clan || 'none', ...project(lat, lon),
   }));
 
@@ -92,7 +92,17 @@ function buildMap() {
   return { nodes, byId, edges, adj, width, height, geo };
 }
 
-const MAP = buildMap();
+// 地図はシナリオごとに作り直す
+let MAP = buildMap();
+let MAP_SCENARIO = 'tokyo';
+function setScenario(id) {
+  const key = SCENARIOS[id] ? id : 'tokyo';
+  if (key !== MAP_SCENARIO) {
+    MAP = buildMap(SCENARIOS[key].filter);
+    MAP_SCENARIO = key;
+  }
+  return key;
+}
 
 // ---------- 武将の作成 ----------
 function makeGeneral(s, school, clan, { strong = false, title } = {}) {
@@ -120,11 +130,12 @@ function makeGeneral(s, school, clan, { strong = false, title } = {}) {
 }
 
 // ---------- ゲームの状態 ----------
-function newGame({ lordName = '麻布 一郎', diff = 'normal' } = {}) {
+function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false } = {}) {
+  scenario = setScenario(scenario);
   const D = DIFFICULTY[diff];
   const s = {
-    turn: 0, diff, gold: {}, castles: {}, gens: {}, genSeq: 0, usedNames: {},
-    acted: {}, delegate: {}, log: [], result: null,
+    turn: 0, diff, scenario, gold: {}, castles: {}, gens: {}, genSeq: 0, usedNames: {},
+    acted: {}, delegate: {}, log: [], result: null, tut: tutorial ? 1 : 0,
   };
   MAP.nodes.forEach((n) => {
     const r = seeded(hashStr(n.id));
@@ -146,14 +157,17 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal' } = {}) {
       for (let i = 0; i < count; i++) makeGeneral(s, n.id, 'none', { title: i === 0 ? '生徒会長' : undefined });
     }
   });
+  const sc = SCENARIOS[scenario];
   Object.keys(CLANS).forEach((k) => {
-    s.gold[k] = k === PLAYER ? D.gold : Math.round(RULES.aiStartGold * D.aiGold);
+    s.gold[k] = k === PLAYER ? D.gold : Math.round(RULES.aiStartGold * D.aiGold * (sc.aiGold || 1));
   });
   return migrate(s);
 }
 
 // 古いセーブデータに、あとから増えた項目を足す
 function migrate(s) {
+  s.scenario = setScenario(s.scenario || 'tokyo');
+  s.tut = s.tut || 0;
   s.rel = s.rel || {};
   aiClans().forEach((k) => { s.rel[k] = s.rel[k] || { friend: 30, truce: 0, ally: 0 }; });
   s.encircle = !!s.encircle;
@@ -162,7 +176,7 @@ function migrate(s) {
 }
 
 function aiClans() {
-  return Object.keys(CLANS).filter((k) => !CLANS[k].player && k !== 'none');
+  return Object.keys(CLANS).filter((k) => !CLANS[k].player && k !== 'none' && MAP.byId[k]);
 }
 
 // ---------- 外交 ----------
@@ -321,7 +335,8 @@ function castleIncome(s, id) {
 
 function income(s, clan) {
   const base = castlesOf(s, clan).reduce((a, id) => a + castleIncome(s, id), 0);
-  return clan === PLAYER ? base : Math.round(base * diffOf(s).aiIncome * (s.encircle ? 1.2 : 1));
+  const sc = SCENARIOS[s.scenario] || SCENARIOS.tokyo;
+  return clan === PLAYER ? base : Math.round(base * diffOf(s).aiIncome * sc.aiIncome * (s.encircle ? 1.2 : 1));
 }
 
 function enemyNeighbors(s, id) {
@@ -535,12 +550,22 @@ function releaseCaptive(s, gid) {
 
 // ---------- 自動で命令する（敵の思考・委任） ----------
 // 前線までの距離（自分の城の中で）
+// 城がどれだけ危ないか（となりの敵兵 ÷ 自分の守り）
+function threatOf(s, id) {
+  const c = s.castles[id];
+  const enemy = hostileNeighbors(s, id)
+    .filter((n) => s.castles[n].owner !== 'none') // 独立校は攻めてこない
+    .reduce((a, n) => a + s.castles[n].troops * 0.8, 0);
+  return enemy / Math.max(1, c.troops * c.def);
+}
+
+// 前線までの距離。危ない城があれば、そこへ兵が集まるようにする
 function frontDistance(s, clan) {
   const dist = {};
   const queue = [];
-  castlesOf(s, clan).forEach((id) => {
-    if (hostileNeighbors(s, id).length) { dist[id] = 0; queue.push(id); }
-  });
+  const fronts = castlesOf(s, clan).filter((id) => hostileNeighbors(s, id).length);
+  const danger = fronts.filter((id) => threatOf(s, id) >= 0.9);
+  (danger.length ? danger : fronts).forEach((id) => { dist[id] = 0; queue.push(id); });
   while (queue.length) {
     const id = queue.shift();
     ownNeighbors(s, id).forEach((n) => {
@@ -569,7 +594,9 @@ function autoCastle(s, clan, id, cfg, dist, log) {
   const reserve = cfg.reserve;
   const idle = () => idleGensAt(s, id);
   const use = (g) => { if (g) s.acted[g.id] = true; };
-  const enemies = hostileNeighbors(s, id);
+  // 旗揚げ直後の猶予期間は、他家は麻布家を攻めない
+  const grace = clan !== PLAYER && s.turn < graceTurns(s);
+  const enemies = hostileNeighbors(s, id).filter((n) => !(grace && s.castles[n].owner === PLAYER));
 
   if (!enemies.length) {
     // 後方：兵と武将を前線へ送り、残りは開発
@@ -638,17 +665,38 @@ function autoCastle(s, clan, id, cfg, dist, log) {
 
 function aiTurn(s, log) {
   const D = diffOf(s);
-  const clans = Object.keys(CLANS).filter((k) => !CLANS[k].player && k !== 'none');
-  for (const clan of clans) {
+  for (const clan of aiClans()) {
+    const mine = castlesOf(s, clan);
+    if (!mine.length) continue;
+    hireRonin(s, clan);
     const dist = frontDistance(s, clan);
-    castlesOf(s, clan)
-      .sort(() => Math.random() - 0.5)
+    // 前線の城から先に動く（攻めたあとで後方から兵を補充できるように）
+    mine
+      .sort((a, b) => (dist[a] ?? 99) - (dist[b] ?? 99) || Math.random() - 0.5)
       .forEach((id) => autoCastle(s, clan, id, { ratio: D.aiRatio, reserve: 0, noGeneral: true }, dist, log));
   }
   // 独立校は少しずつ兵が増える
   Object.values(s.castles).forEach((c) => {
     if (c.owner === 'none') c.troops = Math.min(RULES.neutralCap, c.troops + D.neutralGrowth);
   });
+}
+
+function graceTurns(s) {
+  const g = (SCENARIOS[s.scenario] || SCENARIOS.tokyo).grace;
+  return s.diff === 'hard' ? Math.floor(g / 2) : g;
+}
+
+// 敵の家は、浪人を雇って武将のいない城に置く
+function hireRonin(s, clan) {
+  if (s.gold[clan] < 700 || Math.random() > 0.3) return;
+  const ronin = Object.values(s.gens).filter((g) => g.clan === 'ronin');
+  const empty = castlesOf(s, clan).filter((id) => !gensAt(s, id).length);
+  if (!ronin.length || !empty.length) return;
+  const g = bestBy(ronin, (x) => x.str + x.int);
+  const dest = empty.reduce((a, b) => (threatOf(s, a) >= threatOf(s, b) ? a : b));
+  g.clan = clan;
+  g.loc = dest;
+  s.gold[clan] -= 300;
 }
 
 // 委任した城と、一括命令

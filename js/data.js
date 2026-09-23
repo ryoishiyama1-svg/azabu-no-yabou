@@ -107,9 +107,27 @@ const SKILLS = {
   chikujou: { name: '築城', desc: '築城の効果2倍' },
 };
 
+// シナリオ（どの学校を地図に出すか）
+const CENTER_WARDS = ['港区', '千代田区', '中央区', '新宿区', '渋谷区', '文京区', '豊島区', '世田谷区', '目黒区', '品川区'];
+const SCENARIOS = {
+  // grace = 旗揚げ直後、他家が麻布家を攻めてこない季節の数
+  toshin: {
+    name: '都心の陣', level: '入門', desc: '都心の約30校。短い時間で遊べる',
+    filter: (row) => CENTER_WARDS.includes(row[3]), grace: 8, aiIncome: 0.72, aiGold: 0.7,
+  },
+  ku23: {
+    name: '二十三区統一', level: '中編', desc: '二十三区の50校。五つの家がしのぎを削る',
+    filter: (row) => row[3].endsWith('区'), grace: 4, aiIncome: 1,
+  },
+  tokyo: {
+    name: '東京統一', level: '本編', desc: '多摩も含めた全61校を制覇する',
+    filter: () => true, grace: 2, aiIncome: 1,
+  },
+};
+
 // 難易度
 const DIFFICULTY = {
   easy: { name: '初級', desc: '資金が多く、敵はおとなしい', gold: 1200, aiGold: 0.7, aiRatio: 1.6, aiIncome: 0.8, neutralGrowth: 10 },
-  normal: { name: '中級', desc: '標準的な難しさ', gold: 800, aiGold: 1.4, aiRatio: 1.25, aiIncome: 1.35, neutralGrowth: 15 },
-  hard: { name: '上級', desc: '資金が少なく、敵は好戦的', gold: 600, aiGold: 2.0, aiRatio: 1.1, aiIncome: 1.85, neutralGrowth: 20 },
+  normal: { name: '中級', desc: '標準的な難しさ', gold: 800, aiGold: 1.2, aiRatio: 1.25, aiIncome: 1.15, neutralGrowth: 15 },
+  hard: { name: '上級', desc: '資金が少なく、敵は好戦的', gold: 600, aiGold: 1.6, aiRatio: 1.1, aiIncome: 1.5, neutralGrowth: 20 },
 };
