@@ -13,51 +13,78 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho+B1:wght@600;800&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <!-- タイトル -->
   <section id="title" class="screen">
+    <div id="title-art"></div>
+    <div class="petals" id="title-petals"></div>
     <div class="title-inner">
-      <div class="crest">麻</div>
-      <h1>麻布の野望</h1>
-      <p class="tagline">── 都内高校 国盗り絵巻 ──</p>
-      <button class="btn gold" id="btn-resume" hidden>つづきから</button>
-      <button class="btn gold" id="btn-new">天下統一をめざす</button>
-      <button class="btn ghost" id="btn-help">遊び方</button>
-      <p class="disclaimer">※実在の学校名を使ったフィクションです。兵力などの能力値はすべて架空で、実際の学校とは関係ありません。</p>
+      <div class="title-crest" id="title-crest"></div>
+      <h1><span>麻布</span><small>の</small><span>野望</span></h1>
+      <p class="tagline">都内高校 国盗り絵巻</p>
+      <div class="seal">天下<br>統一</div>
+      <div class="title-buttons">
+        <button class="btn fuda" id="btn-resume" hidden>つづきから</button>
+        <button class="btn fuda red" id="btn-new">天下統一をめざす</button>
+        <button class="btn fuda" id="btn-help">遊び方</button>
+      </div>
+      <p class="disclaimer">※実在の学校名を使ったフィクションです。兵力などの能力値や家紋はすべて架空で、実際の学校とは関係ありません。</p>
     </div>
   </section>
 
   <!-- ゲーム画面 -->
   <section id="game" class="screen" hidden>
     <header class="hud">
-      <div><span class="l">時</span><b id="hud-date"></b></div>
-      <div><span class="l">金</span><b id="hud-gold"></b></div>
-      <div><span class="l">城</span><b id="hud-castles"></b></div>
+      <span id="hud-crest"></span>
+      <div class="hud-date" id="hud-date"></div>
+      <div class="hud-item"><span class="l">金</span><b id="hud-gold"></b></div>
+      <div class="hud-item"><span class="l">城</span><b id="hud-castles"></b></div>
+      <button class="icon" id="btn-sound" aria-label="効果音"></button>
       <button class="icon" id="btn-menu" aria-label="メニュー">☰</button>
     </header>
 
-    <div id="mapwrap">
-      <svg id="map" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="map-area">
+      <div id="mapwrap">
+        <svg id="map" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="petals" id="map-petals"></div>
+      <div class="zoom">
+        <button id="zoom-in" aria-label="拡大">＋</button>
+        <button id="zoom-out" aria-label="縮小">－</button>
+        <button id="zoom-home" aria-label="麻布へ">麻</button>
+      </div>
+      <div id="mode-banner" hidden></div>
     </div>
-    <div class="zoom">
-      <button id="zoom-in" aria-label="拡大">＋</button>
-      <button id="zoom-out" aria-label="縮小">－</button>
-      <button id="zoom-home" aria-label="麻布へ">麻</button>
-    </div>
-    <div id="mode-banner" hidden></div>
 
     <footer id="panel"></footer>
   </section>
 
-  <!-- ダイアログ -->
+  <!-- 季節の変わり目 -->
+  <div id="season" hidden>
+    <div class="season-inner">
+      <div class="season-year" id="season-year"></div>
+      <div class="season-kanji" id="season-kanji"></div>
+      <div class="season-word" id="season-word"></div>
+    </div>
+  </div>
+
+  <!-- 合戦 -->
+  <div id="battle" hidden></div>
+
+  <!-- ダイアログ（巻物） -->
   <div id="modal" class="modal" hidden>
-    <div class="sheet" id="modal-body"></div>
+    <div class="sheet"><div class="sheet-body" id="modal-body"></div></div>
   </div>
 
   <script src="js/data.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/ui.js"></script>
 </body>
 </html>

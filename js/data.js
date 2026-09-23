@@ -1,13 +1,14 @@
 // 勢力と学校（城）のデータ
 // 能力値はすべて架空。実在の学校の実力・評判とは関係ありません。
+// 家紋は伝統的な文様をもとにしたオリジナル（各校の校章とは無関係）
 const CLANS = {
-  azabu: { name: '麻布家', color: '#c8323c', player: true },
-  kaisei: { name: '開成家', color: '#2f6fd0' },
-  tsukukoma: { name: '筑駒家', color: '#2e9a5c' },
-  hibiya: { name: '日比谷家', color: '#d9a400' },
-  waseda: { name: '早稲田家', color: '#8e44ad' },
-  nishi: { name: '西家', color: '#139fb5' },
-  none: { name: '独立校', color: '#8d8579' },
+  azabu: { name: '麻布家', color: '#c0303a', crest: 'asanoha', player: true },
+  kaisei: { name: '開成家', color: '#2d5fb4', crest: 'kuyo' },
+  tsukukoma: { name: '筑駒家', color: '#2f8a55', crest: 'tomoe' },
+  hibiya: { name: '日比谷家', color: '#c99a12', crest: 'kikyo' },
+  waseda: { name: '早稲田家', color: '#7d3c98', crest: 'hishi' },
+  nishi: { name: '西家', color: '#12879b', crest: 'hiki' },
+  none: { name: '独立校', color: '#857b6c', crest: 'maru' },
 };
 
 // [id, 正式名, 地図の表示名, 所在地, 緯度, 経度, 最初の勢力]

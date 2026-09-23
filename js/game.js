@@ -38,7 +38,7 @@ function buildMap() {
   }));
 
   // 近すぎる城を押し広げる
-  const MIN = 64;
+  const MIN = 76;
   for (let it = 0; it < 300; it++) {
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
@@ -55,11 +55,16 @@ function buildMap() {
     }
   }
 
-  const PAD = 50;
+  const PAD = 70;
   const minX = Math.min(...nodes.map((n) => n.x)), minY = Math.min(...nodes.map((n) => n.y));
   nodes.forEach((n) => { n.x = Math.round(n.x - minX + PAD); n.y = Math.round(n.y - minY + PAD); });
   const width = Math.max(...nodes.map((n) => n.x)) + PAD;
   const height = Math.max(...nodes.map((n) => n.y)) + PAD;
+  // 川や湾を描くための「緯度経度 → 地図座標」
+  const geo = (lat, lon) => {
+    const p = project(lat, lon);
+    return { x: p.x - minX + PAD, y: p.y - minY + PAD };
+  };
 
   // ガブリエルグラフで隣接関係を作る（間に他の城がない2城を道でつなぐ）
   const edges = [];
@@ -81,7 +86,7 @@ function buildMap() {
 
   const byId = {};
   nodes.forEach((n) => (byId[n.id] = n));
-  return { nodes, byId, edges, adj, width, height };
+  return { nodes, byId, edges, adj, width, height, geo };
 }
 
 const MAP = buildMap();
