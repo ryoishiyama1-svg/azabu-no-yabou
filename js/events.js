@@ -33,10 +33,26 @@ function borderEnemies(s, clanFilter) {
 const EVENTS = {
   // ---------- 季節の行事 ----------
   spring: {
-    icon: '桜', title: '入学式',
-    text: () => '新入生が入学した！ すべての学校で兵が1割増えた。',
+    icon: '桜', title: '卒業式と入学式',
+    text: (s) => {
+      const g = s.grad || { left: [], joined: [] };
+      const left = g.left.length ? `卒業：${g.left.join('、')}` : '卒業した家臣はいない';
+      const joined = g.joined.length ? `入学：${g.joined.join('、')}` : '';
+      return `桜の季節。三年生が巣立ち、新入生がやってきた。すべての学校で兵が1割増えた。\n${left}\n${joined}`;
+    },
     choices: () => [{ label: 'めでたい' }],
     apply(s) { scaleTroops(s, allCastles(), 1.1); return ''; },
+  },
+  succession: {
+    icon: '継', title: '家督相続',
+    text: (s, p) => `当主${s.gens[p.old].name}が卒業の日を迎えた。\n「${p.words}」\n${pName()}を継ぐ者を選べ。選ばなかった実力者は、家を去るかもしれない。`,
+    gen: (s, p) => p.old,
+    choiceGens: (s, p) => p.cands,
+    choices: (s, p) => p.cands.map((id) => {
+      const g = s.gens[id];
+      return { label: `${g.name}（${g.grade}年）`, sub: `家訓「${KAKUN[kakunOf(g)].name}」：${KAKUN[kakunOf(g)].desc}` };
+    }),
+    apply(s, p, ci) { return succeed(s, p.cands[ci]); },
   },
   summer: {
     icon: '夏', title: '夏合宿',
@@ -50,7 +66,7 @@ const EVENTS = {
   },
   autumn: {
     icon: '祭', title: '文化祭',
-    text: (s) => `いよいよ文化祭。麻布家の出し物を決めよう。`,
+    text: (s) => `いよいよ文化祭。${pName()}の出し物を決めよう。`,
     choices: (s) => [
       { label: '模擬店', sub: `金 +${150 + 25 * castlesOf(s, PLAYER).length}` },
       { label: '演劇', sub: '家臣の魅力が上がる' },
@@ -77,7 +93,7 @@ const EVENTS = {
   donation: {
     icon: '寄', title: 'OB会からの寄付', weight: 3,
     init: () => ({ amount: randInt(4, 10) * 50 }),
-    text: (s, p) => `麻布家のOB会から、活動資金の寄付が届いた。金 +${p.amount}`,
+    text: (s, p) => `${pName()}のOB会から、活動資金の寄付が届いた。金 +${p.amount}`,
     choices: () => [{ label: 'ありがたい' }],
     apply(s, p) { s.gold[PLAYER] += p.amount; return ''; },
   },
@@ -112,7 +128,7 @@ const EVENTS = {
       Object.assign(g, { loc: null, origin: 'none', title: '転校生' });
       return { gid: g.id };
     },
-    text: (s, p) => `${MAP.byId[s.gens[p.gid].school].name}から転校してきた${s.gens[p.gid].name}が、麻布家に仕えたいと言っている。`,
+    text: (s, p) => `${MAP.byId[s.gens[p.gid].school].name}から転校してきた${s.gens[p.gid].name}が、${pName()}に仕えたいと言っている。`,
     gen: (s, p) => p.gid,
     choices: (s) => [{ label: '迎え入れる（金200）', disabled: s.gold[PLAYER] < 200 }, { label: '断る' }],
     apply(s, p, ci) {
@@ -134,7 +150,7 @@ const EVENTS = {
       Object.assign(g, { loc: null, origin: 'none', title: '天才転校生' });
       return { gid: g.id };
     },
-    text: (s, p) => `全国模試1位の天才・${s.gens[p.gid].name}が転校してきた！ 支度金を出せば麻布家に加わるという。`,
+    text: (s, p) => `全国模試1位の天才・${s.gens[p.gid].name}が転校してきた！ 支度金を出せば${pName()}に加わるという。`,
     gen: (s, p) => p.gid,
     choices: (s) => [{ label: '迎え入れる（金600）', disabled: s.gold[PLAYER] < 600 }, { label: '断る' }],
     apply(s, p, ci) {
@@ -168,7 +184,7 @@ const EVENTS = {
     init: (s) => ({ gid: pick(defectCandidates(s)).id }),
     text: (s, p) => {
       const g = s.gens[p.gid];
-      return `${CLANS[g.clan].name}の${g.name}（${g.title}）から密書が届いた。「金300をいただければ、麻布家に寝返りましょう」`;
+      return `${CLANS[g.clan].name}の${g.name}（${g.title}）から密書が届いた。「金300をいただければ、${pName()}に寝返りましょう」`;
     },
     gen: (s, p) => p.gid,
     choices: (s) => [{ label: '受け入れる（金300）', disabled: s.gold[PLAYER] < 300 }, { label: '断る' }],
@@ -206,15 +222,23 @@ const EVENTS = {
   },
 };
 
-// 麻布家と接している敵城にいる、当主以外の武将
+// プレイヤーの家と接している敵城にいる、当主以外の武将
 function defectCandidates(s) {
   return borderEnemies(s, (o) => o !== 'none' && CLANS[o] && !atPeace(s, PLAYER, o))
     .flatMap((id) => gensAt(s, id))
     .filter((g) => !g.lord && gensAt(s, g.loc).length > 1);
 }
 
+const FAREWELLS = ['あとは頼んだぞ。', '天下統一の夢、お前たちに託す。', 'この学び舎で過ごした日々は忘れぬ。',
+  'わが家訓を胸に、前へ進め！', '振り返るな。わが家はまだ強くなる。'];
+
 function rollEvents(s) {
   const list = [];
+  // 当主の卒業：後継者選びを最初に
+  if (s.grad && s.grad.lordLeft) {
+    const cands = successionCandidates(s).map((g) => g.id);
+    if (cands.length) list.push({ id: 'succession', p: { old: s.grad.lordLeft, cands, words: pick(FAREWELLS) } });
+  }
   const season = ['spring', 'summer', 'autumn', 'winter'][s.turn % 4];
   list.push({ id: season, p: {} });
 
@@ -246,6 +270,7 @@ function eventView(s, ev) {
     text: e.text(s, ev.p),
     choices: e.choices(s, ev.p),
     gid: e.gen ? e.gen(s, ev.p) : null,
+    choiceGens: e.choiceGens ? e.choiceGens(s, ev.p) : null,
   };
 }
 

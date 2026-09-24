@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho+B1:wght@600;800&display=swap">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <!-- タイトル -->
@@ -33,6 +33,7 @@
         <button class="btn fuda" id="btn-resume" hidden>つづきから</button>
         <button class="btn fuda red" id="btn-new">天下統一をめざす</button>
         <button class="btn fuda" id="btn-help">遊び方</button>
+        <button class="btn fuda" id="btn-records">戦績・実績</button>
       </div>
       <p class="disclaimer">※実在の学校名を使ったフィクションです。兵力などの能力値や家紋はすべて架空で、実際の学校とは関係ありません。</p>
     </div>
@@ -79,16 +80,20 @@
   <!-- 合戦 -->
   <div id="battle" hidden></div>
 
+  <!-- 実績の知らせ -->
+  <div id="ach-toast" hidden></div>
+
   <!-- ダイアログ（巻物） -->
   <div id="modal" class="modal" hidden>
     <div class="sheet"><div class="sheet-body" id="modal-body"></div></div>
   </div>
 
-  <script src="js/data.js?v=9"></script>
-  <script src="js/game.js?v=9"></script>
-  <script src="js/events.js?v=9"></script>
-  <script src="js/art.js?v=9"></script>
-  <script src="js/sound.js?v=9"></script>
-  <script src="js/ui.js?v=9"></script>
+  <script src="js/data.js?v=10"></script>
+  <script src="js/game.js?v=10"></script>
+  <script src="js/events.js?v=10"></script>
+  <script src="js/records.js?v=10"></script>
+  <script src="js/art.js?v=10"></script>
+  <script src="js/sound.js?v=10"></script>
+  <script src="js/ui.js?v=10"></script>
 </body>
 </html>

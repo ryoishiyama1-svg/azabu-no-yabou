@@ -45,12 +45,15 @@ function statLine(g) {
 function skillTag(g) {
   return g.skill ? `<span class="skill" title="${SKILLS[g.skill].desc}">${SKILLS[g.skill].name}</span>` : '';
 }
+function gradeTag(g) {
+  return g.grade ? `<span class="grade g${g.grade}">${g.grade}年</span>` : '';
+}
 function genCard(g, { acted = false, extra = '' } = {}) {
   return `<div class="gcard ${acted ? 'acted' : ''}" data-gid="${g.id}">
     ${portrait(g, 46)}
     <div class="gi">
       <div class="gn">${esc(g.name)}${g.lord ? '<span class="lord">当主</span>' : ''}</div>
-      <div class="gt">${esc(g.title)} ${skillTag(g)}</div>
+      <div class="gt">${gradeTag(g)}${esc(g.title)} ${skillTag(g)}</div>
       <div class="gs">${statLine(g)}</div>
     </div>${extra}
   </div>`;
@@ -116,23 +119,36 @@ $('btn-resume').onclick = () => {
   if (S.pending.length) runEvents(() => {});
 };
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
+$('btn-records').onclick = () => { Sound.unlock(); Sound.tap(); showRecords(); };
 
-// シナリオ・当主の名前・難易度を決める
+// シナリオ・家・当主の名前・難易度を決める
 const TUT_KEY = 'azabu-tut-done';
 function tutDone() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch (e) { return false; } }
 
 function showSetup() {
-  let diff = 'normal';
-  let scenario = tutDone() ? 'tokyo' : 'toshin';
+  const rec = loadRecords();
+  const st = { diff: 'normal', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '' };
   const pickList = (attr, obj, cur, label) => `<div class="diff-list">${Object.entries(obj).map(([k, d]) =>
     `<button data-${attr}="${k}" class="${k === cur ? 'on' : ''}"><b>${d.name}</b>${label(d)}<small>${d.desc}</small></button>`).join('')}</div>`;
+  const clanList = () => {
+    const ids = Object.keys(CLANS).filter((k) => k !== 'none' && SCHOOL_ROWS.some((r) => r[0] === k && SCENARIOS[st.scenario].filter(r)));
+    return `<div class="clan-pick">${ids.map((k) => {
+      const locked = !rec.unlocked.includes(k);
+      return `<button data-clan="${k}" class="${k === st.clan ? 'on' : ''}" ${locked ? 'disabled' : ''}>
+        ${crestBadge(k, 36)}<b>${CLANS[k].name.replace('家', '')}</b>
+        <small>${locked ? '🔒 天下統一で解放' : '★'.repeat(CLANS[k].stars) + '☆'.repeat(5 - CLANS[k].stars)}</small></button>`;
+    }).join('')}</div><p class="hint" id="clan-note">${CLANS[st.clan].note}</p>`;
+  };
+  const defaultName = () => `${CLANS[st.clan].name.replace('家', '')} 一郎`;
   openModal(`<h2>旗 揚 げ</h2>
     <h3>シナリオ</h3>
-    ${pickList('sc', SCENARIOS, scenario, (d) => `<span class="lv">${d.level}</span>`)}
-    <h3>麻布家 当主の名前</h3>
-    <input class="name-input" id="lord-name" maxlength="10" value="麻布 一郎" autocomplete="off">
+    ${pickList('sc', SCENARIOS, st.scenario, (d) => `<span class="lv">${d.level}</span>`)}
+    <h3>率いる家</h3>
+    <div id="clan-box">${clanList()}</div>
+    <h3 id="name-head">当主の名前</h3>
+    <input class="name-input" id="lord-name" maxlength="10" value="${defaultName()}" autocomplete="off">
     <h3>難易度</h3>
-    ${pickList('diff', DIFFICULTY, diff, () => '')}
+    ${pickList('diff', DIFFICULTY, st.diff, () => '')}
     <label class="check-row"><input type="checkbox" id="tut" ${tutDone() ? '' : 'checked'}> 軍師の手ほどき（チュートリアル）を受ける</label>
     <button class="btn red" id="setup-go">出 陣</button>
     <button class="btn plain" data-close>やめる</button>`);
@@ -143,11 +159,25 @@ function showSetup() {
       modalBody.querySelectorAll(`[data-${attr}]`).forEach((x) => x.classList.toggle('on', x === b));
     };
   });
-  bindPick('sc', (v) => { scenario = v; });
-  bindPick('diff', (v) => { diff = v; });
+  const bindClans = () => bindPick('clan', (v) => {
+    const input = $('lord-name');
+    const wasDefault = input.value === defaultName();
+    st.clan = v;
+    if (wasDefault) input.value = defaultName();
+    $('clan-note').textContent = CLANS[v].note;
+  });
+  bindPick('sc', (v) => {
+    st.scenario = v;
+    // シナリオにいない家は選べないので、麻布家に戻す
+    if (!SCHOOL_ROWS.some((r) => r[0] === st.clan && SCENARIOS[v].filter(r))) st.clan = 'azabu';
+    $('clan-box').innerHTML = clanList();
+    bindClans();
+  });
+  bindClans();
+  bindPick('diff', (v) => { st.diff = v; });
   $('setup-go').onclick = () => {
-    const name = $('lord-name').value.trim() || '麻布 一郎';
-    S = newGame({ lordName: name, diff, scenario, tutorial: $('tut').checked });
+    const name = $('lord-name').value.trim() || defaultName();
+    S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked });
     save();
     closeModal();
     startGame(true);
@@ -162,32 +192,45 @@ function startGame(isNew) {
   drawMap();
   render();
   centerOn(PLAYER);
+  $('zoom-home').textContent = pShort()[0];
   Sound.bgmStart('map');
   if (isNew) {
     Sound.horagai();
     const lord = lordOf(S);
     const rivals = aiClans().map((k) => CLANS[k].name.replace('家', '')).join('・');
+    const retainers = gensOf(S, PLAYER).length - 1;
     openModal(`<h2>${SCENARIOS[S.scenario].name}</h2>
       <p style="text-align:center">${portrait(lord, 84)}</p>
-      <p>時は${dateLabel(0)}。麻布家当主 <b>${esc(lord.name)}</b> は、元麻布の地に旗を揚げた。</p>
+      <p>時は${dateLabel(0)}。${pName()}当主 <b>${esc(lord.name)}</b>（${lord.grade}年）は、${MAP.byId[PLAYER].ward}の地に旗を揚げた。</p>
       <p>この地には <b>${MAP.nodes.length}校</b> がひしめき、<b>${rivals}</b> の各家も勢力拡大をねらっている。</p>
-      <p>頼れる家臣は3人。城を落として武将を登用し、天下を統一せよ！</p>
-      <p class="hint">難易度：${diffOf(S).name} ・ 最初の${graceTurns(S)}季は他家も様子見をしている</p>
+      <p>頼れる家臣は${retainers}人。城を落として武将を登用し、天下を統一せよ！</p>
+      <p class="hint">家訓「${KAKUN[S.kakun].name}」：${KAKUN[S.kakun].desc}<br>
+      難易度：${diffOf(S).name} ・ 最初の${graceTurns(S)}季は他家も様子見をしている<br>
+      ※当主も3年生の春には卒業します。後継者を育てておきましょう</p>
       <button class="btn red" data-close>出陣じゃ！</button>`);
   }
 }
 
 function showHelp() {
+  const me = S ? pName() : '自分の家';
   openModal(`<h2>遊び方</h2>
     <h3>目的</h3>
-    <p>麻布家を率いて、都内${MAP.nodes.length}校すべてを制覇すれば天下統一（クリア）。麻布家の城がすべて奪われると敗北です。</p>
+    <p>${me}を率いて、地図上のすべての学校を制覇すれば天下統一（クリア）。城がすべて奪われると敗北です。</p>
     <h3>武将</h3>
     <ul>
       <li>命令は<b>武将</b>が行います。武将1人につき1ターン1回。武将のいない城は何もできません</li>
-      <li>能力：<b>統率</b>＝合戦の強さ、<b>政治</b>＝開発、<b>魅力</b>＝徴兵・登用、<b>知略</b>＝守り</li>
+      <li>能力：<b>統率</b>＝合戦の強さ、<b>政治</b>＝開発、<b>魅力</b>＝徴兵・登用、<b>知略</b>＝守り・作戦を読む</li>
       <li>城を落とすと、敵の武将を<b>捕らえる</b>ことがあります。登用すれば家臣になります</li>
       <li>命令をこなすと、能力が少しずつ上がります</li>
     </ul>
+    <h3>卒業と家督相続</h3>
+    <ul>
+      <li>武将には<b>学年</b>があります。毎年春、<b>3年生は卒業</b>していなくなり、各校に<b>新入生</b>が入ります</li>
+      <li><b>当主が卒業する</b>と、家臣の中から後継者を選びます。当主のいちばん得意な能力で<b>家訓</b>が決まり、その代のあいだ効果があります</li>
+      <li>選ばれなかった実力者は、不満を抱いて家を去ることもあります</li>
+    </ul>
+    <h3>合戦の作戦</h3>
+    <p>出陣のとき<b>作戦</b>を選べます。突撃は奇襲に、奇襲は籠城に、籠城（持久戦）は突撃に強い、じゃんけんの関係です。読み勝つと大きく有利に。知略の高い大将は、敵の作戦を読めることがあります。</p>
     <h3>命令</h3>
     <ul>
       <li><b>出陣</b>：道でつながった敵城を攻める。攻め先のとなりにある城から<b>援軍</b>も出せます</li>
@@ -203,10 +246,12 @@ function showHelp() {
     <ul>
       <li>各家との<b>友好度</b>を「贈答」で上げ、<b>停戦</b>や<b>同盟</b>を申し込めます（使者＝魅力の高い武将が1人行動します）</li>
       <li>停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います</li>
-      <li>麻布家が城の${Math.round(DIPLO.encircleShare * 100)}%以上を持つと、諸家が<b>麻布包囲網</b>を結成して一斉に攻めてきます</li>
+      <li>城の${Math.round(DIPLO.encircleShare * 100)}%以上を持つと、諸家が<b>包囲網</b>を結成して一斉に攻めてきます</li>
     </ul>
     <h3>イベント</h3>
-    <p>季節ごとに入学式・夏合宿・文化祭・受験シーズンが訪れ、転校生や寝返りの誘いなどの出来事も起こります。</p>
+    <p>季節ごとに卒業式・入学式・夏合宿・文化祭・受験シーズンが訪れ、転校生や寝返りの誘いなどの出来事も起こります。</p>
+    <h3>他家と実績</h3>
+    <p>一度天下統一すると、他の家でも遊べるようになります。「戦績・実績」で記録を見られます。</p>
     <h3>合戦のコツ</h3>
     <p>守る側は「兵力×防御×守将」で戦います。<b>勝算大</b>と出るまで兵や援軍を集めましょう。その日の士気で結果が変わることもあります。</p>
     <p class="hint">※実在の学校名を使ったフィクションです。武将・能力値・家紋はすべて架空です。</p>
@@ -435,7 +480,7 @@ function renderPanel() {
     const srcs = attackSources(selected);
     const peace = atPeace(S, PLAYER, c.owner);
     const why = peace ? `${CLANS[c.owner].name}とは${relLabel(S, c.owner)}のため攻められません`
-      : srcs.length ? 'となりの城から出陣できます' : 'となりに命令できる麻布家の城と武将がいません';
+      : srcs.length ? 'となりの城から出陣できます' : `となりに命令できる${pName()}の城と武将がいません`;
     body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}</p>` : ''}
       <div class="cmds">
         <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
@@ -455,8 +500,9 @@ function renderCouncil() {
   const delegCount = castlesOf(S, PLAYER).filter((id) => S.delegate[id]).length;
   panel.innerHTML = `<div class="council">
     <div class="p-head"><h2>軍議</h2><span class="p-sub">${SCENARIOS[S.scenario].name} ／ 武将 ${gensOf(S, PLAYER).length}人 ／ 収入 ${fmt(income(S, PLAYER))}</span></div>
+    <p class="kakun">${S.lords.length}代目 ${esc((lordOf(S) || {}).name || '（当主不在）')} ・ 家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small>${S.debug ? ' <b class="dbg">DEBUG</b>' : ''}</p>
     <p class="hint">城をタップして命令しましょう。命令できる武将：<b>${idleGens}人</b>${delegCount ? `　委任中の城：<b>${delegCount}</b>` : ''}</p>
-    ${S.encircle ? '<p class="warn">🔥 麻布包囲網：諸家が手を結んで麻布家を狙っている</p>' : ''}
+    ${S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : ''}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
     <div class="bulk">
       <button class="btn" id="bulk-recruit" ${S.gold[PLAYER] >= RULES.recruitCost && idleGens ? '' : 'disabled'}>全城で徴兵</button>
@@ -473,7 +519,7 @@ function renderCouncil() {
 // ---------- 軍師の手ほどき（チュートリアル） ----------
 const SENSEI = { look: 4242, female: false, str: 40, pol: 70, cha: 60, int: 95, clan: PLAYER };
 const TUT = {
-  1: { text: '殿、軍師でございます。まずは地図の<b>麻布</b>の城をタップしてくだされ。', done: () => selected && S.castles[selected].owner === PLAYER },
+  1: { text: '殿、軍師でございます。まずは地図の真ん中に見えている、わが家の<b>本拠地の城</b>をタップしてくだされ。', done: () => selected && S.castles[selected].owner === PLAYER },
   2: { text: '下に城の兵力と<b>武将</b>が出ております。命令は武将1人につき1季に1回。さっそく<b>「出陣」</b>を押してみましょう。', done: () => mode && mode.kind === 'attack' },
   3: { text: '<b>赤く光る城</b>が攻められる城です。兵の少ない城をタップしてくだされ。' },
   4: { text: '大将と兵の数を決めて「出陣！」。<b>勝算大</b>と出ていれば、まず負けませぬ。' },
@@ -528,7 +574,7 @@ function showDiplomacy(message) {
   openModal(`<h2>外 交</h2>
     ${message ? `<p class="result">${message}</p>` : ''}
     <p class="hint" style="text-align:center">${envoy ? `使者：<b>${esc(envoy.name)}</b>（魅力${envoy.cha}）が向かいます` : '使者に出せる武将がいません（全員が命令ずみ）'}</p>
-    ${S.encircle ? '<p class="warn">麻布包囲網の最中のため、諸家は交渉に応じません</p>' : ''}
+    ${S.encircle ? `<p class="warn">${pShort()}包囲網の最中のため、諸家は交渉に応じません</p>` : ''}
     ${rows || '<p>交渉できる家はもうない。</p>'}
     <p class="hint">停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います。</p>
     <button class="btn plain" data-close>閉じる</button>`);
@@ -561,22 +607,29 @@ function runEvents(done) {
   const ev = S.pending[0];
   const v = eventView(S, ev);
   Sound.taiko(0, 0.7);
+  const choiceHtml = v.choiceGens
+    // 後継者選びなど：武将のカードをそのまま選択肢にする
+    ? v.choices.map((c, i) => `<button class="choice-gen" data-ci="${i}">${genCard(S.gens[v.choiceGens[i]])}<small>${c.sub}</small></button>`).join('')
+    : v.choices.map((c, i) => `<button class="btn ${i === 0 ? 'red' : 'plain'}" data-ci="${i}" ${c.disabled ? 'disabled' : ''}>${c.label}${c.sub ? `<small class="sub">${c.sub}</small>` : ''}</button>`).join('');
   openModal(`<div class="event" data-lock>
       <div class="ev-icon">${v.icon}</div>
       <h2>${v.title}</h2>
       ${v.gid ? `<div class="glist pick">${genCard(S.gens[v.gid])}</div>` : ''}
-      <p>${esc(v.text)}</p>
+      <p class="ev-text">${esc(v.text)}</p>
     </div>
-    ${v.choices.map((c, i) => `<button class="btn ${i === 0 ? 'red' : 'plain'}" data-ci="${i}" ${c.disabled ? 'disabled' : ''}>${c.label}${c.sub ? `<small class="sub">${c.sub}</small>` : ''}</button>`).join('')}`);
+    ${choiceHtml}`);
   modalBody.querySelectorAll('[data-ci]').forEach((b) => {
     b.onclick = () => {
       Sound.tap();
+      if (S.pending[0] !== ev) return; // 二重に押されたとき
       const result = resolveEvent(S, ev, +b.dataset.ci);
       S.pending.shift();
       save();
       render();
+      if (ev.id === 'succession') Sound.win();
+      achievementToast(checkAchievements(S));
       if (!result) { runEvents(done); return; }
-      openModal(`<div class="event" data-lock><div class="ev-icon">${v.icon}</div><p>${esc(result)}</p></div>
+      openModal(`<div class="event" data-lock><div class="ev-icon">${v.icon}</div><p class="ev-text">${esc(result)}</p></div>
         <button class="btn red" id="ev-next">承 知</button>`);
       $('ev-next').onclick = () => { Sound.tap(); runEvents(done); };
     };
@@ -629,7 +682,8 @@ function showGeneral(gid) {
   openModal(`<div class="gdetail">
       ${portrait(g, 96)}
       <h2>${esc(g.name)}</h2>
-      <p class="hint">${esc(g.title)}（${MAP.byId[g.school].name}出身）${g.lord ? '・麻布家当主' : ''}</p>
+      <p class="hint">${esc(g.title)}（${MAP.byId[g.school].name}出身）${g.lord ? `・${pName()}当主` : ''}</p>
+      <p class="hint">${gradeTag(g)}${g.grade >= 3 ? '次の春に卒業' : `卒業まであと${4 - g.grade}回の春`}</p>
       <div class="gstats">
         ${['str', 'pol', 'cha', 'int'].map((k) => `<div><span>${STAT_NAMES[k]}</span><i style="width:${g[k]}%"></i><b>${g[k]}</b></div>`).join('')}
       </div>
@@ -688,9 +742,14 @@ function openAttack(from, to) {
   let gid = null;
   let amount = 0;
   let support = {}; // 援軍 { castleId: true }
+  let tactic = 'auto';
   const t = S.castles[to];
   const power = defensePower(S, to);
   const dg = defLeader(S, to);
+  const enemyTactic = aiTactic(S, to); // 守る側の作戦はこの時点で決まっている
+  const guesses = {};                  // 大将ごとの「読み」（開き直しても変わらないように）
+  const guessOf = (g) => (g.id in guesses ? guesses[g.id] : (guesses[g.id] = readTactic(S, g, to, enemyTactic)));
+  const atkLabel = (k) => TACTICS[k].atkName || TACTICS[k].name;
 
   function supportList() {
     return supportCastles(S, PLAYER, to, src).filter((id) => !S.delegate[id]);
@@ -704,7 +763,7 @@ function openAttack(from, to) {
   function update() {
     const g = S.gens[gid];
     const total = amount + supportParts().reduce((a, p) => a + p.n, 0);
-    const ratio = (total * atkMult(g)) / Math.max(1, power);
+    const ratio = (total * atkMult(g) * atkKakun(S, PLAYER)) / Math.max(1, power);
     const odds = ratio >= 1.3 ? ['勝算大', '#2e7d32'] : ratio >= 1.1 ? ['勝算あり', '#8a6d00'] : ratio >= 0.9 ? ['五分五分', '#b35c00'] : ['勝ち目うすし', '#b8262f'];
     $('amt-v').textContent = fmt(amount);
     $('total-v').textContent = fmt(total);
@@ -731,23 +790,37 @@ function openAttack(from, to) {
         const bg = bestBy(idleGensAt(S, id), 'str');
         return `<button data-sup="${id}" class="${support[id] ? 'on' : ''}"><span>${support[id] ? '☑' : '☐'} ${MAP.byId[id].short}（${esc(bg.name)}）</span><span>兵 ${fmt(Math.floor(S.castles[id].troops * 0.8))}</span></button>`;
       }).join('')}</div>` : ''}
+      <h3>作戦</h3>
+      <div class="tactics">${[...Object.keys(TACTICS), 'auto'].map((k) => `<button data-tac="${k}" class="${k === tactic ? 'on' : ''}">
+        <b>${k === 'auto' ? 'おまかせ' : atkLabel(k)}</b><small>${k === 'auto' ? '運を天に任せる' : `${TACTICS[TACTICS[k].beats].name}に強い`}</small></button>`).join('')}</div>
+      <p class="guess">${(() => {
+        const gs = guessOf(S.gens[gid]);
+        return gs ? `🔍 ${esc(S.gens[gid].name)}の読み：敵は<b>「${TACTICS[gs].name}」</b>の構えのようです`
+          : '敵の作戦は読めない（知略の高い大将なら読めることがある）';
+      })()}</p>
       <p class="total">総勢 <b id="total-v"></b> 兵</p>
       <p class="odds" id="odds"></p>
       ${S.tut === 4 ? `<div class="tut-hint">${portrait(SENSEI, 32)}<span>${TUT[4].text}</span></div>` : ''}
       <button class="btn red" id="go">出 陣 ！</button>
       <button class="btn plain" data-close>やめる</button>`);
+    // 選び直しても、スクロール位置と兵の数はそのまま
+    const redraw = () => { const top = modalBody.scrollTop; const a = amount; draw(); amount = a; $('amt').value = a; update(); modalBody.scrollTop = top; };
     modalBody.querySelectorAll('[data-src]').forEach((b) => { b.onclick = () => { Sound.tap(); src = b.dataset.src; support = {}; draw(); }; });
     modalBody.querySelectorAll('[data-sup]').forEach((b) => {
-      b.onclick = () => { Sound.tap(); support[b.dataset.sup] = !support[b.dataset.sup]; const top = modalBody.scrollTop; draw(); modalBody.scrollTop = top; };
+      b.onclick = () => { Sound.tap(); support[b.dataset.sup] = !support[b.dataset.sup]; redraw(); };
     });
     modalBody.querySelectorAll('.glist.pick .gcard').forEach((c) => {
-      c.onclick = () => { Sound.tap(); gid = c.dataset.gid; const top = modalBody.scrollTop; const a = amount; draw(); amount = a; $('amt').value = a; update(); modalBody.scrollTop = top; };
+      c.onclick = () => { Sound.tap(); gid = c.dataset.gid; redraw(); };
+    });
+    modalBody.querySelectorAll('[data-tac]').forEach((b) => {
+      b.onclick = () => { Sound.tap(); tactic = b.dataset.tac; redraw(); };
     });
     $('amt').oninput = (e) => { amount = +e.target.value; update(); };
     update();
     $('go').onclick = () => {
       const log = [];
-      const r = attack(S, src, to, amount, gid, log, supportParts());
+      const a = tactic === 'auto' ? pick(Object.keys(TACTICS)) : tactic;
+      const r = attack(S, src, to, amount, gid, log, supportParts(), { a, d: enemyTactic });
       mode = null;
       selected = r.won ? to : src;
       checkWin(S);
@@ -774,8 +847,12 @@ function playBattle(r, log = []) {
   const defN = d0 > 2000 ? 2 : 1;
   const g = S.gens[r.gid], dg = r.dgid ? S.gens[r.dgid] : null;
   const supNames = (r.support || []).map((p) => S.gens[p.gid].name);
+  const tac = r.tactic
+    ? `<div class="b-tactic" id="b-tactic">${CLANS[r.attacker].name.replace('家', '')}「${TACTICS[r.tactic.a].atkName || TACTICS[r.tactic.a].name}」 対 ${CLANS[r.defender].name.replace('家', '')}「${TACTICS[r.tactic.d].name}」
+       <b class="${r.tr > 0 ? 'good' : r.tr < 0 ? 'bad' : ''}">${r.tr > 0 ? '── 読み勝った！' : r.tr < 0 ? '── 読まれていた…' : '── 互角'}</b></div>`
+    : '';
   box.innerHTML = `
-    <div class="b-head"><div class="b-title">合 戦</div><div class="b-sub">${MAP.byId[r.to].name}の戦い</div></div>
+    <div class="b-head"><div class="b-title">合 戦</div><div class="b-sub">${MAP.byId[r.to].name}の戦い</div>${tac}</div>
     <div class="b-field">
       <div class="army left" id="army-a">${noboriFlags(r.attacker, atkN)}</div>
       <div class="spark" id="spark"></div>
@@ -852,6 +929,7 @@ function playBattle(r, log = []) {
       Sound.bgmStart('map');
       handleCaptives(r.captured || [], () => {
         tutAdvance(5);
+        achievementToast(checkAchievements(S));
         if (S.result) showEnding();
       });
     };
@@ -884,7 +962,7 @@ function handleCaptives(list, done) {
     render();
     if (ok) Sound.win(); else Sound.lose();
     openModal(`<div class="gdetail" data-lock>${portrait(g, 72)}
-        <p>${ok ? `「……よかろう。麻布家のために働こう」<br><b>${esc(g.name)}が家臣になった！</b>` : `「断る！」<br>${esc(g.name)}は去っていった…`}</p></div>
+        <p>${ok ? `「……よかろう。${pName()}のために働こう」<br><b>${esc(g.name)}が家臣になった！</b>` : `「断る！」<br>${esc(g.name)}は去っていった…`}</p></div>
       <button class="btn red" id="cap-next">次へ</button>`);
     $('cap-next').onclick = () => { Sound.tap(); closeModal(); handleCaptives(rest, done); };
   };
@@ -921,14 +999,25 @@ function openMove(from, to) {
 }
 
 // ---------- 武将一覧 ----------
+// 歴代当主の一覧
+function lordsHistory() {
+  return `<ol class="lords">${S.lords.map((l, i) => {
+    const until = S.lords[i + 1] ? dateLabel(S.lords[i + 1].from) : '現在';
+    return `<li><b>${i + 1}代</b> ${esc(l.name)}<small>${dateLabel(l.from)}〜${until}・家訓「${KAKUN[l.kakun].name}」</small></li>`;
+  }).join('')}</ol>`;
+}
+
 function showRoster() {
-  const gens = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || a.loc.localeCompare(b.loc));
+  const gens = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || b.grade - a.grade || a.loc.localeCompare(b.loc));
+  const seniors = gens.filter((g) => g.grade >= 3).length;
   openModal(`<h2>家臣団</h2>
-    <p class="hint" style="text-align:center">${gens.length}人 ・ タップするとその城へ</p>
+    <p class="hint" style="text-align:center">${gens.length}人（うち3年生 ${seniors}人は次の春に卒業）・ タップするとその城へ</p>
     <div class="glist roster">${gens.map((g) => genCard(g, {
       acted: !!S.acted[g.id],
       extra: `<span class="where">${MAP.byId[g.loc].short}</span>`,
     })).join('')}</div>
+    <h3>歴代当主</h3>
+    ${lordsHistory()}
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('.gcard').forEach((c) => {
     c.onclick = () => {
@@ -971,13 +1060,13 @@ function onEndTurn() {
   showSeason(S.turn, () => {
     openModal(`<h2 data-lock>諸国の動き</h2>
       <ul class="log">${log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li>諸国に大きな動きはなかった。</li>'}</ul>
-      <p>💰 麻布家の収支：<b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
+      <p>💰 ${pName()}の収支：<b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
       <button class="btn red" id="ok">承 知</button>`);
     $('ok').onclick = () => {
       Sound.tap();
       closeModal();
       if (S.result) showEnding();
-      else runEvents(() => {});
+      else runEvents(() => achievementToast(checkAchievements(S)));
     };
   });
 }
@@ -985,33 +1074,162 @@ function onEndTurn() {
 function showEnding() {
   const win = S.result === 'win';
   Sound.bgmStart(win ? 'win' : 'lose');
+  const { got, unlockedNow } = recordEnding(S);
+  save();
   const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord);
   openModal(`<div class="ending ${win ? 'win' : 'lose'}" data-lock>
       ${lord ? portrait(lord, 84) : crestBadge(PLAYER, 72)}
       <div class="big">${win ? '天下統一' : '落 日'}</div>
       <p>${win
-        ? `${dateLabel(S.turn)}、麻布家当主 ${esc(lord.name)} は都内${MAP.nodes.length}校をすべて制覇した！`
-        : `${dateLabel(S.turn)}、麻布家の城はすべて奪われた…`}</p>
-      <p class="hint">${SCENARIOS[S.scenario].name} ・ 難易度：${diffOf(S).name} ・ 家臣 ${gensOf(S, PLAYER).length}人</p>
+        ? `${dateLabel(S.turn)}、${pName()} ${S.lords.length}代目当主 ${esc(lord.name)} は${MAP.nodes.length}校をすべて制覇した！`
+        : `${dateLabel(S.turn)}、${pName()}の城はすべて奪われた…`}</p>
+      <p class="hint">${SCENARIOS[S.scenario].name} ・ 難易度：${diffOf(S).name} ・ ${S.turn}季 ・ 家臣 ${gensOf(S, PLAYER).length}人${S.debugUsed ? '<br>（デバッグを使ったため記録されません）' : ''}</p>
     </div>
+    ${unlockedNow ? '<p class="result">🔓 すべての家で遊べるようになった！</p>' : ''}
+    ${got.length ? `<h3>新しい実績</h3><div class="ach-list">${got.map((a) => achCard(a)).join('')}</div>` : ''}
+    <h3>歴代当主</h3>
+    ${lordsHistory()}
     <button class="btn red" id="again">もう一度</button>
     <button class="btn plain" id="to-title">タイトルへ</button>`);
   $('again').onclick = () => { clearSave(); closeModal(); showSetup(); };
   $('to-title').onclick = () => { clearSave(); closeModal(); showTitle(); };
 }
 
+// ---------- 実績と戦績 ----------
+function achCard(a, done = true) {
+  return `<div class="ach ${done ? '' : 'locked'}"><span class="ai">${done ? a.icon : '？'}</span>
+    <div><b>${done ? a.name : '？？？'}</b><small>${a.desc}</small></div></div>`;
+}
+
+let achTimer;
+function achievementToast(list) {
+  if (!list || !list.length) return;
+  const t = $('ach-toast');
+  t.innerHTML = list.map((a) => `<div>🏆 実績「<b>${a.name}</b>」を達成！</div>`).join('');
+  t.hidden = false;
+  t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  Sound.win();
+  clearTimeout(achTimer);
+  achTimer = setTimeout(() => { t.hidden = true; }, 3200);
+}
+
+function showRecords() {
+  const rec = loadRecords();
+  const got = ACHIEVEMENTS.filter((a) => rec.ach[a.id]).length;
+  const best = Object.entries(SCENARIOS).map(([sk, sc]) => {
+    const cells = Object.entries(DIFFICULTY).map(([dk, d]) => {
+      const t = rec.best[`${sk}/${dk}`];
+      return `<td>${t ? `${t}季` : '―'}</td>`;
+    }).join('');
+    return `<tr><th>${sc.name}</th>${cells}</tr>`;
+  }).join('');
+  const clans = Object.keys(CLANS).filter((k) => k !== 'none')
+    .map((k) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name.replace('家', '')} ${rec.clanWins[k] || 0}勝</span>`).join('');
+  openModal(`<h2>戦績・実績</h2>
+    <div class="stats"><div class="stat"><span class="n">${rec.wins}</span><span class="l">天下統一</span></div>
+      <div class="stat"><span class="n">${rec.plays}</span><span class="l">遊んだ回数</span></div>
+      <div class="stat"><span class="n">${got}/${ACHIEVEMENTS.length}</span><span class="l">実績</span></div></div>
+    <h3>最短の天下統一</h3>
+    <table class="best"><tr><th></th>${Object.values(DIFFICULTY).map((d) => `<th>${d.name}</th>`).join('')}</tr>${best}</table>
+    <h3>家ごとの勝利</h3>
+    <div class="clan-list">${clans}</div>
+    <p class="hint">${rec.unlocked.length > 1 ? '🔓 すべての家で遊べます' : '🔒 一度天下統一すると、他の家でも遊べるようになります'}</p>
+    <h3>実績</h3>
+    <div class="ach-list">${ACHIEVEMENTS.map((a) => achCard(a, !!rec.ach[a.id])).join('')}</div>
+    <button class="btn plain" data-close>閉じる</button>`);
+}
+
+// ---------- デバッグモード（テスト用の隠し機能） ----------
+// タイトルの家紋を5回続けてタップすると、切りかわる
+const DEBUG_KEY = 'azabu-debug';
+function debugOn() { try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch (e) { return false; } }
+let crestTaps = 0, crestTimer;
+$('title-crest').addEventListener('click', () => {
+  crestTaps++;
+  clearTimeout(crestTimer);
+  crestTimer = setTimeout(() => { crestTaps = 0; }, 1500);
+  if (crestTaps >= 5) {
+    crestTaps = 0;
+    const on = !debugOn();
+    try { localStorage.setItem(DEBUG_KEY, on ? '1' : '0'); } catch (e) {}
+    Sound.tap();
+    alert(on ? 'デバッグモード：ON\n（ゲーム中の目録に「デバッグ」が出ます）' : 'デバッグモード：OFF');
+  }
+});
+
+function showDebug() {
+  const lord = lordOf(S);
+  openModal(`<h2>デバッグ</h2>
+    <p class="hint">テスト用の機能です。使ったゲームは戦績・実績に記録されません。</p>
+    <div class="dbg-grid">
+      <button class="btn plain" data-dbg="gold">金 +5000</button>
+      <button class="btn plain" data-dbg="refresh">全武将の命令を回復</button>
+      <button class="btn plain" data-dbg="troops">自分の城の兵 +2000</button>
+      <button class="btn plain" data-dbg="spring">次の春まで進める</button>
+      <button class="btn plain" data-dbg="senior">当主を3年生にする</button>
+      <button class="btn plain" data-dbg="freeze">敵の動きを${S.debugFreeze ? '再開' : '止める'}</button>
+      <button class="btn plain" data-dbg="win">勝利エンディングへ</button>
+      <button class="btn plain" data-dbg="lose">敗北エンディングへ</button>
+      <button class="btn plain" data-dbg="unlock">全家を解放</button>
+      <button class="btn plain" data-dbg="reset">戦績・実績を消す</button>
+    </div>
+    <p class="hint">当主：${lord ? `${esc(lord.name)}（${lord.grade}年）` : 'なし'} ／ ${dateLabel(S.turn)}</p>
+    <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-dbg]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      const k = b.dataset.dbg;
+      S.debugUsed = true;
+      S.debug = true;
+      if (k === 'gold') S.gold[PLAYER] += 5000;
+      if (k === 'refresh') S.acted = {};
+      if (k === 'troops') castlesOf(S, PLAYER).forEach((id) => { S.castles[id].troops = Math.min(RULES.troopCap, S.castles[id].troops + 2000); });
+      if (k === 'senior' && lord) lord.grade = 3;
+      if (k === 'freeze') S.debugFreeze = !S.debugFreeze;
+      if (k === 'unlock') { const r = loadRecords(); r.unlocked = Object.keys(CLANS).filter((c) => c !== 'none'); saveRecords(r); }
+      if (k === 'reset') { if (!confirm('戦績・実績・家の解放をすべて消しますか？')) return; try { localStorage.removeItem(RECORD_KEY); } catch (e) {} }
+      if (k === 'win' || k === 'lose') {
+        S.result = k;
+        save();
+        closeModal();
+        showEnding();
+        return;
+      }
+      if (k === 'spring') {
+        // 次の春まで進める（途中の季節の出来事は省略）
+        do {
+          endTurn(S);
+          if (S.turn % 4 !== 0) S.pending = [];
+        } while (S.turn % 4 !== 0 && !S.result);
+        save();
+        render();
+        closeModal();
+        if (S.result) showEnding(); else runEvents(() => {});
+        return;
+      }
+      save();
+      render();
+      showDebug();
+    };
+  });
+}
+
 // ---------- メニュー・音 ----------
 $('btn-menu').onclick = () => {
   Sound.tap();
   openModal(`<h2>目 録</h2>
-    <button class="btn plain" id="m-roster">家臣団（武将一覧）</button>
+    <button class="btn plain" id="m-roster">家臣団（武将一覧・歴代当主）</button>
     <button class="btn plain" id="m-diplo">外交</button>
+    <button class="btn plain" id="m-records">戦績・実績</button>
     <button class="btn plain" id="m-help">遊び方</button>
+    ${debugOn() ? '<button class="btn plain" id="m-debug">🛠 デバッグ</button>' : ''}
     <button class="btn plain" id="m-title">タイトルへ（自動で保存されます）</button>
     <button class="btn plain" data-close>閉じる</button>`);
   $('m-roster').onclick = () => { Sound.tap(); showRoster(); };
   $('m-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
+  $('m-records').onclick = () => { Sound.tap(); showRecords(); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };
+  if ($('m-debug')) $('m-debug').onclick = () => { Sound.tap(); showDebug(); };
   $('m-title').onclick = () => { closeModal(); showTitle(); };
 };
 $('btn-sound').onclick = () => {

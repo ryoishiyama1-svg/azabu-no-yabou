@@ -1,5 +1,9 @@
 // 地図の作成・ゲームのルール・武将・合戦・敵の思考
-const PLAYER = 'azabu';
+// プレイヤーが率いる家（他家でも遊べるように変えられる）
+let PLAYER = 'azabu';
+function setPlayer(clan) { PLAYER = CLANS[clan] ? clan : 'azabu'; return PLAYER; }
+const pName = () => CLANS[PLAYER].name;              // 例：麻布家
+const pShort = () => CLANS[PLAYER].name.replace('家', ''); // 例：麻布
 const RULES = {
   aiStartGold: 600,
   recruitCost: 200, recruitAmount: 300, troopCap: 9990,
@@ -105,12 +109,12 @@ function setScenario(id) {
 }
 
 // ---------- 武将の作成 ----------
-function makeGeneral(s, school, clan, { strong = false, title } = {}) {
+function makeGeneral(s, school, clan, { strong = false, title, grade } = {}) {
   const female = GIRLS_SCHOOLS.includes(school) ? true : BOYS_SCHOOLS.includes(school) ? false : Math.random() < 0.35;
-  let name;
+  let name, tries = 0;
   do {
     name = `${pick(SURNAMES)} ${pick(female ? FEMALE_NAMES : MALE_NAMES)}`;
-  } while (s.usedNames[name]);
+  } while (s.usedNames[name] && ++tries < 50);
   s.usedNames[name] = true;
 
   const [lo, hi] = strong ? [55, 85] : [30, 72];
@@ -119,6 +123,7 @@ function makeGeneral(s, school, clan, { strong = false, title } = {}) {
     name, female,
     title: title || pick(TITLES),
     school, origin: clan, clan, loc: school,
+    grade: grade || randInt(1, 3), // 学年。3年生は春に卒業する
     str: randInt(lo, hi), pol: randInt(lo, hi), cha: randInt(lo, hi), int: randInt(lo, hi),
     skill: Math.random() < (strong ? 0.55 : 0.25) ? pick(Object.keys(SKILLS)) : null,
     look: randInt(0, 9999),
@@ -130,11 +135,12 @@ function makeGeneral(s, school, clan, { strong = false, title } = {}) {
 }
 
 // ---------- ゲームの状態 ----------
-function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false } = {}) {
+function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu' } = {}) {
   scenario = setScenario(scenario);
+  setPlayer(MAP.byId[clan] ? clan : 'azabu');
   const D = DIFFICULTY[diff];
   const s = {
-    turn: 0, diff, scenario, gold: {}, castles: {}, gens: {}, genSeq: 0, usedNames: {},
+    turn: 0, diff, scenario, player: PLAYER, gold: {}, castles: {}, gens: {}, genSeq: 0, usedNames: {},
     acted: {}, delegate: {}, log: [], result: null, tut: tutorial ? 1 : 0,
   };
   MAP.nodes.forEach((n) => {
@@ -147,9 +153,12 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
       eco: capital ? 120 : Math.round(40 + r() * 60),
     };
     if (n.clan === PLAYER) {
-      const lord = makeGeneral(s, n.id, PLAYER, { strong: true, title: '当主' });
+      const lord = makeGeneral(s, n.id, PLAYER, { strong: true, title: '当主', grade: 2 });
       Object.assign(lord, { name: lordName, str: 72, pol: 68, cha: 84, int: 70, skill: 'jinbou', lord: true });
-      for (let i = 0; i < 3; i++) makeGeneral(s, n.id, PLAYER, { strong: true, title: i === 0 ? '生徒会長' : undefined });
+      // 家臣は1・2年生（最初の春にいきなり全員卒業しないように）
+      // 麻布家以外は地図の真ん中で四方から攻められやすいので、家臣を1人多くする
+      const grades = PLAYER === 'azabu' ? [1, 2, 1] : [1, 2, 1, 2];
+      grades.forEach((grade, i) => makeGeneral(s, n.id, PLAYER, { strong: true, grade, title: i === 0 ? '生徒会長' : undefined }));
     } else if (capital) {
       for (let i = 0; i < 3; i++) makeGeneral(s, n.id, n.clan, { strong: true, title: i === 0 ? '生徒会長' : undefined });
     } else {
@@ -161,13 +170,25 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
   Object.keys(CLANS).forEach((k) => {
     s.gold[k] = k === PLAYER ? D.gold : Math.round(RULES.aiStartGold * D.aiGold * (sc.aiGold || 1));
   });
+  if (PLAYER !== 'azabu') {
+    s.gold[PLAYER] += 800;                 // 旗揚げの軍資金
+    s.castles[PLAYER].troops += 800;
+  }
+  const lord = lordOf(s);
+  s.kakun = kakunOf(lord);
+  s.lords = [{ name: lord.name, from: 0, kakun: s.kakun }];
   return migrate(s);
 }
 
 // 古いセーブデータに、あとから増えた項目を足す
 function migrate(s) {
   s.scenario = setScenario(s.scenario || 'tokyo');
+  s.player = setPlayer(s.player || 'azabu');
   s.tut = s.tut || 0;
+  Object.values(s.gens).forEach((g) => { if (!g.grade) g.grade = g.lord ? 2 : randInt(1, 3); });
+  if (!s.kakun) { const l = lordOf(s); s.kakun = l ? kakunOf(l) : 'cha'; }
+  if (!s.lords) { const l = lordOf(s); s.lords = l ? [{ name: l.name, from: 0, kakun: s.kakun }] : []; }
+  s.stats = Object.assign({ battlesWon: 0, tacticWins: 0, recruited: 0, diplo: 0, minCastles: 99 }, s.stats || {});
   s.rel = s.rel || {};
   aiClans().forEach((k) => { s.rel[k] = s.rel[k] || { friend: 30, truce: 0, ally: 0 }; });
   s.encircle = !!s.encircle;
@@ -176,7 +197,7 @@ function migrate(s) {
 }
 
 function aiClans() {
-  return Object.keys(CLANS).filter((k) => !CLANS[k].player && k !== 'none' && MAP.byId[k]);
+  return Object.keys(CLANS).filter((k) => k !== PLAYER && k !== 'none' && MAP.byId[k]);
 }
 
 // ---------- 外交 ----------
@@ -227,6 +248,7 @@ function allyChance(s, clan, g) {
 }
 
 function diploGift(s, clan, g) {
+  s.stats.diplo++;
   s.gold[PLAYER] -= DIPLO.giftCost;
   s.acted[g.id] = true;
   const d = 8 + Math.round(g.cha / 10);
@@ -235,6 +257,7 @@ function diploGift(s, clan, g) {
   return `${CLANS[clan].name}に贈り物をした。友好度 +${d}`;
 }
 function diploTruce(s, clan, g) {
+  s.stats.diplo++;
   s.acted[g.id] = true;
   if (Math.random() < truceChance(s, clan, g)) {
     s.rel[clan].truce = DIPLO.truceTurns;
@@ -245,6 +268,7 @@ function diploTruce(s, clan, g) {
   return { ok: false, text: `${CLANS[clan].name}に停戦を断られた…` };
 }
 function diploAlly(s, clan, g) {
+  s.stats.diplo++;
   s.acted[g.id] = true;
   if (Math.random() < allyChance(s, clan, g)) {
     s.rel[clan].ally = DIPLO.allyTurns;
@@ -276,7 +300,7 @@ function tickDiplomacy(s, log) {
     const border = castlesOf(s, PLAYER).some((id) => MAP.adj[id].some((n) => s.castles[n].owner === k));
     if (border && !r.ally && !r.truce) changeFriend(s, k, -1);
   });
-  // 麻布包囲網
+  // 包囲網（プレイヤーの家が大きくなりすぎると、他家が手を結ぶ）
   const share = castlesOf(s, PLAYER).length / MAP.nodes.length;
   const alive = aiClans().filter((k) => castlesOf(s, k).length);
   if (!s.encircle && share >= DIPLO.encircleShare && alive.length >= 2) {
@@ -285,7 +309,7 @@ function tickDiplomacy(s, log) {
       s.rel[k].ally = 0; s.rel[k].truce = 0; changeFriend(s, k, -30);
       s.gold[k] += 600; // 軍資金
     });
-    log.push('🔥 麻布家の台頭を恐れた諸家が「麻布包囲網」を結成！ 同盟・停戦はすべて破棄された');
+    log.push(`🔥 ${pName()}の台頭を恐れた諸家が「${pShort()}包囲網」を結成！ 同盟・停戦はすべて破棄された`);
   }
 }
 
@@ -336,7 +360,8 @@ function castleIncome(s, id) {
 function income(s, clan) {
   const base = castlesOf(s, clan).reduce((a, id) => a + castleIncome(s, id), 0);
   const sc = SCENARIOS[s.scenario] || SCENARIOS.tokyo;
-  return clan === PLAYER ? base : Math.round(base * diffOf(s).aiIncome * sc.aiIncome * (s.encircle ? 1.2 : 1));
+  if (clan === PLAYER) return Math.round(base * (s.kakun === 'pol' ? 1.15 : 1));
+  return Math.round(base * diffOf(s).aiIncome * sc.aiIncome * (s.encircle ? 1.2 : 1));
 }
 
 function enemyNeighbors(s, id) {
@@ -376,7 +401,7 @@ function canRecruit(s, id) {
 function recruit(s, id, g) {
   const c = s.castles[id];
   s.gold[c.owner] -= RULES.recruitCost;
-  const n = recruitAmount(g);
+  const n = Math.round((recruitAmount(g) * (c.owner === PLAYER && s.kakun === 'cha' ? 1.2 : 1)) / 10) * 10;
   c.troops = Math.min(RULES.troopCap, c.troops + n);
   return { text: `兵+${n}`, grew: grow(g, 'cha') };
 }
@@ -436,7 +461,40 @@ function defensePower(s, id) {
   const c = s.castles[id];
   const dg = defLeader(s, id);
   const def = c.def + (dg && dg.skill === 'teppeki' ? 0.3 : 0);
-  return (c.troops * def * defMult(dg)) / 0.85;
+  return (c.troops * def * defMult(dg) * defKakun(s, c.owner)) / 0.85;
+}
+
+// 家訓による補正
+const atkKakun = (s, clan) => (clan === PLAYER && s.kakun === 'str' ? 1.1 : 1);
+const defKakun = (s, clan) => (clan === PLAYER && s.kakun === 'int' ? 1.15 : 1);
+
+// ---------- 合戦の作戦 ----------
+// 守る側の作戦：城の固さ・兵の多さ・知略で選びやすさが変わる
+function aiTactic(s, to) {
+  const c = s.castles[to];
+  const dg = defLeader(s, to);
+  const w = {
+    siege: 1 + (c.def >= 1.4 ? 1.5 : 0),
+    charge: 1 + (c.troops >= 1500 ? 1.5 : 0),
+    ambush: 1 + (dg && dg.int >= 70 ? 1.5 : 0),
+  };
+  let r = Math.random() * (w.siege + w.charge + w.ambush);
+  for (const k of Object.keys(w)) { r -= w[k]; if (r <= 0) return k; }
+  return 'siege';
+}
+
+// 知略の高い大将は、敵の作戦を読める（ただし8割の確かさ）
+function readTactic(s, g, to, actual) {
+  const dg = defLeader(s, to);
+  const skill = g.int - (dg ? dg.int : 30);
+  if (g.int < 65 && skill < 15) return null;
+  const guess = Math.random() < 0.8 ? actual : pick(Object.keys(TACTICS).filter((k) => k !== actual));
+  return guess;
+}
+
+function tacticResult(a, d) {
+  if (!a || !d || a === d) return 0;
+  return TACTICS[a].beats === d ? 1 : -1;
 }
 
 // 城を失った側の武将：逃げるか捕まるか
@@ -482,14 +540,15 @@ function supportCastles(s, clan, to, except) {
 
 // 攻撃を実行して結果を返す
 // gid = 大将の武将、support = [{ from, n, gid }] 援軍（となりの城から合流する部隊）
-function attack(s, from, to, n, gid, log, support = []) {
+// tactic = { a: 攻める側の作戦, d: 守る側の作戦 }（プレイヤーが攻めるときだけ）
+function attack(s, from, to, n, gid, log, support = [], tactic = null) {
   const src = s.castles[from], dst = s.castles[to];
   const attacker = src.owner, defender = dst.owner;
   const g = s.gens[gid];
   const dg = defLeader(s, to);
   src.troops -= n;
   s.acted[gid] = true;
-  // 攻められた家は麻布家を恨む
+  // 攻められた家はプレイヤーの家を恨む
   if (attacker === PLAYER && s.rel[defender]) changeFriend(s, defender, -15);
   if (defender === PLAYER && s.rel[attacker]) changeFriend(s, attacker, -3);
   support.forEach((sp) => {
@@ -498,12 +557,17 @@ function attack(s, from, to, n, gid, log, support = []) {
     n += sp.n;
   });
   const def = dst.def + (dg && dg.skill === 'teppeki' ? 0.3 : 0);
-  const r = fight(n, dst.troops, def, atkMult(g), defMult(dg), {
+  // 作戦の読み合い：勝てば大きく有利、負ければ不利
+  const tr = tactic ? tacticResult(tactic.a, tactic.d) : 0;
+  const am = atkMult(g) * atkKakun(s, attacker) * (tr > 0 ? 1.35 : tr < 0 ? 0.75 : 1);
+  const dm = defMult(dg) * defKakun(s, defender) * (tr > 0 ? 0.8 : tr < 0 ? 1.25 : 1);
+  const r = fight(n, dst.troops, def, am, dm, {
     totsugeki: g.skill === 'totsugeki',
     shinsanA: g.skill === 'shinsan',
     shinsanD: dg && dg.skill === 'shinsan',
   });
-  const result = { ...r, from, to, attacker, defender, sent: n, gid, dgid: dg ? dg.id : null, support, captured: [], grew: null };
+  const result = { ...r, from, to, attacker, defender, sent: n, gid, dgid: dg ? dg.id : null, support, captured: [], grew: null, tactic, tr };
+  if (attacker === PLAYER && tr > 0) s.stats.tacticWins++;
   if (r.won) {
     dst.owner = attacker;
     dst.troops = r.left;
@@ -511,6 +575,7 @@ function attack(s, from, to, n, gid, log, support = []) {
     moveGeneral(s, gid, to);
     result.captured = scatterGenerals(s, to, defender, attacker, log);
     result.grew = grow(g, 'str');
+    if (attacker === PLAYER) s.stats.battlesWon++;
   } else {
     dst.troops = r.defLeft;
     // 生き残りは出てきた城へ、兵の割合に応じて帰る
@@ -526,6 +591,7 @@ function recruitChance(s, g) {
   const lord = lordOf(s);
   let p = 0.2 + ((lord ? lord.cha : 60) - 50) / 150;
   if (lord && lord.skill === 'jinbou') p += 0.15;
+  if (s.kakun === 'cha') p += 0.1;
   if (g.origin === 'none') p += 0.2;                                  // 独立校の武将は仕えやすい
   if (g.origin !== 'none' && castlesOf(s, g.origin).length === 0) p += 0.25; // 主家が滅んでいる
   return clamp(p, 0.05, 0.95);
@@ -536,6 +602,7 @@ function tryRecruitCaptive(s, gid) {
   if (ok && s.castles[g.capturedAt].owner === PLAYER) {
     g.clan = PLAYER;
     g.loc = g.capturedAt;
+    s.stats.recruited++;
   } else {
     g.clan = 'ronin';
     g.loc = null;
@@ -647,7 +714,7 @@ function autoCastle(s, clan, id, cfg, dist, log) {
         // 委任中に捕らえた武将は、自動で登用を試みる
         r.captured.forEach((gid) => {
           const ok = tryRecruitCaptive(s, gid);
-          log.push(ok ? `🤝 ${s.gens[gid].name}が麻布家に加わった` : `🚶 ${s.gens[gid].name}は登用を断って去った`);
+          log.push(ok ? `🤝 ${s.gens[gid].name}が${pName()}に加わった` : `🚶 ${s.gens[gid].name}は登用を断って去った`);
         });
       }
     }
@@ -721,11 +788,79 @@ function bulkCommand(s, kind) {
   return count;
 }
 
+// ---------- 卒業と入学 ----------
+function kakunOf(g) {
+  return ['str', 'pol', 'cha', 'int'].reduce((a, k) => (g[k] > g[a] ? k : a), 'str');
+}
+const genPower = (g) => g.str + g.pol + g.cha + g.int;
+
+// 春：3年生は卒業、ほかは進級。各校に新入生が入る
+function graduation(s) {
+  const info = { left: [], joined: [], lordLeft: null };
+  Object.values(s.gens).forEach((g) => {
+    if (['graduated', 'ronin', 'captive'].includes(g.clan) && g.grade >= 3) { g.clan = 'graduated'; return; }
+    if (g.clan === 'graduated') return;
+    if (g.grade >= 3) {
+      if (g.clan === PLAYER) info.left.push(g.name);
+      if (g.lord && g.clan === PLAYER) info.lordLeft = g.id;
+      g.clan = 'graduated';
+      g.loc = null;
+      g.lord = false;
+    } else {
+      g.grade++;
+      // 進級すると少し成長する
+      const k = pick(['str', 'pol', 'cha', 'int']);
+      g[k] = Math.min(100, g[k] + randInt(1, 3));
+    }
+  });
+  // 新入生：各城に一定の確率で加わる（どの家でも同じ）
+  Object.keys(s.castles).forEach((id) => {
+    const owner = s.castles[id].owner;
+    const need = gensAt(s, id).length === 0;
+    if (Math.random() < (need ? 0.6 : 0.3)) {
+      const g = makeGeneral(s, id, owner, { grade: 1, title: '新入生', strong: Math.random() < 0.15 });
+      if (owner === PLAYER) info.joined.push(g.name);
+    }
+  });
+  // プレイヤーの家には、少なくとも2人は入ってくる
+  const mine = castlesOf(s, PLAYER);
+  while (mine.length && info.joined.length < 2) {
+    const g = makeGeneral(s, pick(mine), PLAYER, { grade: 1, title: '新入生' });
+    info.joined.push(g.name);
+  }
+  return info;
+}
+
+// 後継者の候補（来春も残る1・2年生を優先して、実力順に3人）
+function successionCandidates(s) {
+  const gens = gensOf(s, PLAYER).filter((g) => g.loc);
+  const young = gens.filter((g) => g.grade <= 2);
+  return (young.length ? young : gens).sort((a, b) => genPower(b) - genPower(a)).slice(0, 3);
+}
+
+// 家督を継がせる。選ばれなかった実力者は出奔することがある
+function succeed(s, gid) {
+  const heir = s.gens[gid];
+  const passed = successionCandidates(s).filter((g) => g.id !== gid);
+  heir.lord = true;
+  heir.title = '当主';
+  s.kakun = kakunOf(heir);
+  s.lords.push({ name: heir.name, from: s.turn, kakun: s.kakun });
+  let text = `${heir.name}が${s.lords.length}代目当主となった。家訓は「${KAKUN[s.kakun].name}」（${KAKUN[s.kakun].desc}）。`;
+  const rival = passed.find((g) => genPower(g) > genPower(heir) + 15);
+  if (rival && Math.random() < 0.5) {
+    rival.clan = 'ronin';
+    rival.loc = null;
+    text += `\n家督争いに敗れた${rival.name}は、不満を抱いて家を去った…`;
+  }
+  return text;
+}
+
 // ---------- ターン終了 ----------
 function endTurn(s) {
   const log = [];
   runDelegated(s, log);
-  aiTurn(s, log);
+  if (!s.debugFreeze) aiTurn(s, log);
   s.turn++;
   Object.keys(CLANS).forEach((k) => {
     if (k !== 'none') s.gold[k] += income(s, k);
@@ -733,7 +868,9 @@ function endTurn(s) {
   s.acted = {};
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
   tickDiplomacy(s, log);
+  s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
+  if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
   s.pending = s.result ? [] : rollEvents(s);
   s.log = log;
   return log;

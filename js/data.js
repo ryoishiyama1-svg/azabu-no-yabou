@@ -1,13 +1,14 @@
 // 勢力と学校（城）のデータ
 // 能力値はすべて架空。実在の学校の実力・評判とは関係ありません。
 // 家紋は伝統的な文様をもとにしたオリジナル（各校の校章とは無関係）
+// stars = その家で遊んだときの難しさ（東京統一・中級で試した結果から）
 const CLANS = {
-  azabu: { name: '麻布家', color: '#c0303a', crest: 'asanoha', player: true },
-  kaisei: { name: '開成家', color: '#2d5fb4', crest: 'kuyo' },
-  tsukukoma: { name: '筑駒家', color: '#2f8a55', crest: 'tomoe' },
-  hibiya: { name: '日比谷家', color: '#c99a12', crest: 'kikyo' },
-  waseda: { name: '早稲田家', color: '#7d3c98', crest: 'hishi' },
-  nishi: { name: '西家', color: '#12879b', crest: 'hiki' },
+  azabu: { name: '麻布家', color: '#c0303a', crest: 'asanoha', stars: 2, note: '湾を背にした守りやすい地' },
+  kaisei: { name: '開成家', color: '#2d5fb4', crest: 'kuyo', stars: 2, note: '下町の要。東へ広がる余地がある' },
+  tsukukoma: { name: '筑駒家', color: '#2f8a55', crest: 'tomoe', stars: 4, note: '西と都心の板ばさみ' },
+  hibiya: { name: '日比谷家', color: '#c99a12', crest: 'kikyo', stars: 2, note: '都心の真ん中。攻めも守りも忙しい' },
+  waseda: { name: '早稲田家', color: '#7d3c98', crest: 'hishi', stars: 3, note: '山手の中心。四方に敵' },
+  nishi: { name: '西家', color: '#12879b', crest: 'hiki', stars: 3, note: '多摩への入口を押さえる' },
   none: { name: '独立校', color: '#857b6c', crest: 'maru' },
 };
 
@@ -123,6 +124,21 @@ const SCENARIOS = {
     name: '東京統一', level: '本編', desc: '多摩も含めた全61校を制覇する',
     filter: () => true, grace: 2, aiIncome: 1,
   },
+};
+
+// 家訓：当主のいちばん高い能力で決まり、その当主の代のあいだ効果がある
+const KAKUN = {
+  str: { name: '武断', desc: '出陣した部隊の強さ+10%' },
+  pol: { name: '内政', desc: '収入+15%' },
+  cha: { name: '人望', desc: '徴兵+20%・登用が成功しやすい' },
+  int: { name: '智謀', desc: '城の守りの強さ+15%' },
+};
+
+// 合戦の作戦（じゃんけん）：突撃は奇襲に強く、奇襲は籠城に強く、籠城は突撃に強い
+const TACTICS = {
+  charge: { name: '突撃', beats: 'ambush', desc: '正面から一気に攻める' },
+  ambush: { name: '奇襲', beats: 'siege', desc: '裏をかいて攻める' },
+  siege: { name: '籠城', atkName: '持久戦', beats: 'charge', desc: '守りを固めて相手の消耗を待つ' },
 };
 
 // 難易度
