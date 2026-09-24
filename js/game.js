@@ -255,6 +255,14 @@ function migrate(s) {
   s.pendingDefense = s.pendingDefense || [];
   s.aiRel = s.aiRel || {};
   s.underAttack = s.underAttack || {};
+  s.diploLog = s.diploLog || [];
+  // 以前の「停戦・同盟の申し出」は、使者の来訪に置きかえる
+  (s.pending || []).forEach((ev) => {
+    if (ev.id === 'offerTruce' || ev.id === 'offerAlly') {
+      ev.p = { clan: ev.p.clan, kind: ev.id === 'offerAlly' ? 'ally' : 'truce', gold: 0, target: null, gid: null };
+      ev.id = 'envoy';
+    }
+  });
   return s;
 }
 
@@ -310,6 +318,7 @@ function tickAiDiplomacy(s, log) {
           if (r.ally > 0 && castlesOf(s, y).length * 2 < castlesOf(s, x).length && Math.random() < px.betray) {
             r.ally = 0; r.truce = 0; r.friend = clamp(r.friend - 40, 0, 100);
             log.push(`💢 ${CLANS[x].name}が${CLANS[y].name}との同盟を破った！`);
+            addDiploLog(s, `${CLANS[x].name}が${CLANS[y].name}との同盟を破った`, 'ai');
           }
         });
         continue;
@@ -319,9 +328,11 @@ function tickAiDiplomacy(s, log) {
       if (r.friend >= 60 && Math.random() < 0.025 * mood) {
         r.ally = DIPLO.allyTurns; r.truce = 0;
         log.push(`🤝 ${na}と${nb}が同盟を結んだ`);
+        addDiploLog(s, `${na}と${nb}が同盟を結んだ`, 'ai');
       } else if (!r.truce && Math.random() < 0.015 * mood * (r.friend >= 45 ? 2 : 1)) {
         r.truce = DIPLO.truceTurns;
         log.push(`🕊️ ${na}と${nb}が停戦した`);
+        addDiploLog(s, `${na}と${nb}が停戦した`, 'ai');
       }
     }
   }
@@ -341,7 +352,7 @@ function atPeace(s, a, b) {
   if (a === 'none' || b === 'none') return false;
   if (a === PLAYER || b === PLAYER) {
     const r = s.rel[a === PLAYER ? b : a];
-    return !!r && (r.truce > 0 || r.ally > 0);
+    return !!r && (r.truce > 0 || r.ally > 0 || !!r.sister);
   }
   if (s.encircle) return true; // 包囲網の間、他家どうしは争わない
   const r = s.aiRel && s.aiRel[aiRelKey(a, b)];
@@ -351,9 +362,16 @@ function atPeace(s, a, b) {
 function relLabel(s, clan) {
   const r = s.rel[clan];
   if (!r) return '';
-  if (r.ally > 0) return `同盟（残り${r.ally}季）`;
-  if (r.truce > 0) return `停戦（残り${r.truce}季）`;
-  return '交戦中';
+  const trade = r.trade > 0 ? `・通商（残り${r.trade}季）` : '';
+  if (r.sister) return `姉妹校${trade}`;
+  if (r.ally > 0) return `同盟（残り${r.ally}季）${trade}`;
+  if (r.truce > 0) return `停戦（残り${r.truce}季）${trade}`;
+  return `交戦中${trade}`;
+}
+
+// 通商協定で毎季入る金（相手も同じだけ得る）
+function tradeIncome(s, clan) {
+  return Math.round(30 + income(s, clan) * 0.06);
 }
 
 function changeFriend(s, clan, d) {
@@ -410,10 +428,15 @@ function diploAlly(s, clan, g) {
 }
 function diploBreak(s, clan) {
   const r = s.rel[clan];
+  const sister = !!r.sister;
   r.ally = 0;
   r.truce = 0;
-  changeFriend(s, clan, -40);
-  aiClans().forEach((k) => { if (k !== clan) changeFriend(s, k, -10); }); // 信用を失う
+  r.sister = false;
+  r.trade = 0;
+  if (s.joint && s.joint.ally === clan) s.joint = null;
+  changeFriend(s, clan, sister ? -60 : -40);
+  aiClans().forEach((k) => { if (k !== clan) changeFriend(s, k, sister ? -20 : -10); }); // 信用を失う
+  addDiploLog(s, `${pName()}が${CLANS[clan].name}との${sister ? '姉妹校提携' : '約束'}を破棄した`, 'bad');
   return `${CLANS[clan].name}との約束を破棄した。諸家の信用を失った…`;
 }
 
@@ -424,7 +447,16 @@ function tickDiplomacy(s, log) {
     if (!castlesOf(s, k).length) return;
     if (r.truce > 0 && --r.truce === 0) log.push(`🕊️ ${CLANS[k].name}との停戦が終わった`);
     if (r.ally > 0 && --r.ally === 0) log.push(`🤝 ${CLANS[k].name}との同盟が期限を迎えた`);
-    if (r.ally > 0) changeFriend(s, k, 1);
+    if (r.ally > 0 || r.sister) changeFriend(s, k, 1);
+    if (r.aidCd > 0) r.aidCd--;
+    // 通商協定：おたがいに金が入る
+    if (r.trade > 0) {
+      const g = tradeIncome(s, k);
+      s.gold[PLAYER] += g;
+      s.gold[k] += g;
+      if (Math.random() < 0.5) changeFriend(s, k, 1);
+      if (--r.trade === 0) log.push(`💰 ${CLANS[k].name}との通商協定が期限を迎えた`);
+    }
     // 国境を接していると少しずつ緊張が高まる
     const border = castlesOf(s, PLAYER).some((id) => MAP.adj[id].some((n) => s.castles[n].owner === k));
     if (border && !r.ally && !r.truce) changeFriend(s, k, -1);
@@ -434,11 +466,20 @@ function tickDiplomacy(s, log) {
   const alive = aiClans().filter((k) => castlesOf(s, k).length);
   if (!s.encircle && share >= DIPLO.encircleShare && alive.length >= 2) {
     s.encircle = true;
-    alive.forEach((k) => {
-      s.rel[k].ally = 0; s.rel[k].truce = 0; changeFriend(s, k, -30);
+    const sisters = alive.filter((k) => s.rel[k].sister);
+    alive.filter((k) => !s.rel[k].sister).forEach((k) => {
+      s.rel[k].ally = 0; s.rel[k].truce = 0; s.rel[k].trade = 0; changeFriend(s, k, -30);
       s.gold[k] += 600; // 軍資金
     });
+    s.joint = null;
     log.push(`🔥 ${pName()}の台頭を恐れた諸家が「${pShort()}包囲網」を結成！ 同盟・停戦はすべて破棄された`);
+    if (sisters.length) log.push(`🌸 姉妹校の${sisters.map((k) => CLANS[k].name).join('・')}は包囲網に加わらなかった`);
+    addDiploLog(s, `諸家が「${pShort()}包囲網」を結成した`, 'bad');
+  }
+  // 共同出兵の期限
+  if (s.joint && --s.joint.turns <= 0) {
+    log.push(`⚔️ ${CLANS[s.joint.ally].name}との共同出兵が終わった`);
+    s.joint = null;
   }
 }
 
@@ -684,6 +725,9 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
   // 攻められた家はプレイヤーの家を恨む
   if (attacker === PLAYER && s.rel[defender]) changeFriend(s, defender, -15);
   if (defender === PLAYER && s.rel[attacker]) changeFriend(s, attacker, -3);
+  // 通商協定の相手と戦うと、協定は打ち切り
+  const foe = attacker === PLAYER ? defender : defender === PLAYER ? attacker : null;
+  if (foe && s.rel[foe] && s.rel[foe].trade > 0) s.rel[foe].trade = 0;
   // 他家どうしの戦いも、仲を悪くする
   if (attacker !== PLAYER && defender !== PLAYER && defender !== 'none') {
     const r = aiRel(s, attacker, defender);
@@ -796,6 +840,11 @@ function battleLine(s, r) {
   return `⚔️ ${a}が ${t}${d}を攻略`;
 }
 
+// 共同出兵中の他家にとって、その城が標的の家のものか
+function jointTarget(s, clan, id) {
+  return !!s.joint && s.joint.ally === clan && s.castles[id].owner === s.joint.target;
+}
+
 function autoCastle(s, clan, id, cfg, dist, log) {
   const c = s.castles[id];
   if (c.owner !== clan) return;
@@ -835,10 +884,11 @@ function autoCastle(s, clan, id, cfg, dist, log) {
     // 包囲網の間は麻布家の城を優先して狙う
     const aim = (t) => defensePower(s, t) *
       (s.encircle && clan !== PLAYER && s.castles[t].owner === PLAYER ? 0.6 : 1) *
-      (clan !== PLAYER && personaOf(clan).neutral && s.castles[t].owner === 'none' ? 0.7 : 1); // 拡張型は独立校を優先
+      (clan !== PLAYER && personaOf(clan).neutral && s.castles[t].owner === 'none' ? 0.7 : 1) * // 拡張型は独立校を優先
+      (jointTarget(s, clan, t) ? 0.5 : 1); // 共同出兵の標的を優先
     const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
-    const need = defensePower(s, target) * cfg.ratio + 100;
+    const need = defensePower(s, target) * cfg.ratio * (jointTarget(s, clan, target) ? 0.85 : 1) + 100;
     let support = [];
     if (send * atkMult(leader) <= need) {
       // 一城で足りなければ、となりの城から援軍を集める

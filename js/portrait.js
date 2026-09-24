@@ -3,7 +3,8 @@
 const SKIN_TONES = [['#f7dcc4', '#e9c0a2'], ['#f1cfb1', '#dfb48f'], ['#e9c19e', '#d4a57f'], ['#f4d4b8', '#e2b797'], ['#e2b48f', '#c99670']];
 const HAIR_COLORS = [['#1b1818', '#4a4040'], ['#2a1f1a', '#5a4436'], ['#3b2a1f', '#6e5240'], ['#141414', '#3d3d45'], ['#4a3326', '#7d5c45'], ['#2c2433', '#564a66']];
 
-function portrait(g, size = 48) {
+// mood：会談などで表情を変える（'happy' 笑顔 / 'angry' 怒り / 'think' 思案）。省略すると能力値で決まる
+function portrait(g, size = 48, mood = null) {
   const r = seeded((g.look || 1) * 7 + 3);
   const rr = (n) => Math.floor(r() * n);
   const [skin, skinShade] = SKIN_TONES[rr(SKIN_TONES.length)];
@@ -125,9 +126,13 @@ function portrait(g, size = 48) {
     }
   };
   // 眉：統率が高いとつり上がり、低いと下がる
-  const tilt = g.str >= 75 ? 2 : g.str < 45 ? -1.2 : 0.6;
-  const brows = `<path d="M-8.5,${-5.4 - tilt} L-2.6,-5" stroke="${hair}" stroke-width="1.5" stroke-linecap="round"/>
-    <path d="M8.5,${-5.4 - tilt} L2.6,-5" stroke="${hair}" stroke-width="1.5" stroke-linecap="round"/>`;
+  let tilt = g.str >= 75 ? 2 : g.str < 45 ? -1.2 : 0.6;
+  if (mood === 'angry') tilt = 3.2;
+  if (mood === 'happy') tilt = -1.5;
+  // 思案顔は片方の眉だけ上げる
+  const tiltR = mood === 'think' ? -2 : tilt;
+  const brows = `<path d="M-8.5,${-5.4 - tilt} L-2.6,${mood === 'angry' ? -4.2 : -5}" stroke="${hair}" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M8.5,${-5.4 - tiltR} L2.6,${mood === 'angry' ? -4.2 : -5}" stroke="${hair}" stroke-width="1.5" stroke-linecap="round"/>`;
   const nose = `<path d="M0.2,1 L-0.8,4 L0.8,4.3" stroke="${skinShade}" stroke-width="0.9" fill="none" stroke-linecap="round"/>`;
   // 口：魅力が高いと笑顔、統率が高いと不敵な笑み
   let mouth;
@@ -135,7 +140,12 @@ function portrait(g, size = 48) {
   else if (g.str >= 78) mouth = '<path d="M-2.8,7.2 Q0.5,8.6 3,6.4" stroke="#7a3a30" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
   else if (g.cha >= 55) mouth = '<path d="M-2.6,7 Q0,8.6 2.6,7" stroke="#8a4a3a" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
   else mouth = '<path d="M-2.2,7.6 L2.2,7.6" stroke="#8a4a3a" stroke-width="1.1" stroke-linecap="round"/>';
-  const blush = g.cha >= 65 ? '<ellipse cx="-6.8" cy="3.6" rx="2.2" ry="1.2" fill="#f08a8a" opacity="0.35"/><ellipse cx="6.8" cy="3.6" rx="2.2" ry="1.2" fill="#f08a8a" opacity="0.35"/>' : '';
+  if (mood === 'happy') mouth = '<path d="M-3.4,6.2 Q0,10.4 3.4,6.2 Z" fill="#9c3b35"/><path d="M-2.8,6.5 L2.8,6.5" stroke="#fff" stroke-width="0.8"/>';
+  if (mood === 'angry') mouth = '<path d="M-3,8.6 Q0,6.2 3,8.6" stroke="#7a3a30" stroke-width="1.2" fill="none" stroke-linecap="round"/>';
+  if (mood === 'think') mouth = '<path d="M-1.6,7.6 Q1,7 2.4,7.9" stroke="#8a4a3a" stroke-width="1.1" fill="none" stroke-linecap="round"/>';
+  const vein = mood === 'angry' ? '<path d="M7,-12 l2,1.4 M8.6,-13.4 l-0.2,2.4 M9.8,-12.2 l-2.2,0.2" stroke="#c0392b" stroke-width="0.9" stroke-linecap="round"/>' : '';
+  const sweat = mood === 'think' ? '<path d="M-11.5,-9 Q-12.8,-6.5 -11.5,-5.6 Q-10.2,-6.5 -11.5,-9 Z" fill="#9fd3f0" stroke="#5a9cc4" stroke-width="0.4"/>' : '';
+  const blush = mood === 'happy' || g.cha >= 65 ? '<ellipse cx="-6.8" cy="3.6" rx="2.2" ry="1.2" fill="#f08a8a" opacity="0.35"/><ellipse cx="6.8" cy="3.6" rx="2.2" ry="1.2" fill="#f08a8a" opacity="0.35"/>' : '';
 
   // ---------- 小物 ----------
   let extra = '';
@@ -162,6 +172,6 @@ function portrait(g, size = 48) {
     <path d="M-4.5,6 L-4.5,13 Q0,15 4.5,13 L4.5,6 Z" fill="${skinShade}"/>
     ${ears}${faceShape.replace('SKIN', skin)}
     <path d="M-10,-8 Q0,-4.5 10,-8 L10,-10 L-10,-10 Z" fill="${skinShade}" opacity="0.35"/>
-    ${front}${brows}${eye(-4.6)}${eye(4.6)}${nose}${mouth}${blush}${extra}
+    ${front}${brows}${eye(-4.6)}${eye(4.6)}${nose}${mouth}${blush}${extra}${vein}${sweat}
   </svg>`;
 }

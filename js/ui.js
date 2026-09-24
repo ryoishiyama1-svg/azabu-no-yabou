@@ -746,11 +746,9 @@ function showDiplomacy(message) {
   const alive = aiClans().filter((k) => castlesOf(S, k).length);
   const rows = alive.map((k) => {
     const r = S.rel[k];
-    const peace = r.ally > 0 || r.truce > 0;
-    const off = !envoy || S.encircle;
-    const tc = envoy ? Math.round(truceChance(S, k, envoy) * 100) : 0;
-    const ac = envoy ? Math.round(allyChance(S, k, envoy) * 100) : 0;
-    return `<div class="diplo-row">
+    const peace = r.ally > 0 || r.truce > 0 || r.sister || r.trade > 0;
+    const off = !envoy || (S.encircle && !r.sister);
+    return `<div class="diplo-row ${r.sister ? 'sister' : ''}">
       <div class="dr-head">${clanChip(k)}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
       <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
       ${(() => {
@@ -761,22 +759,26 @@ function showDiplomacy(message) {
           ? `<p class="persona rel">${allies.length ? `🤝 同盟：${allies.join('・')}` : ''}${allies.length && truces.length ? '　' : ''}${truces.length ? `🕊️ 停戦：${truces.join('・')}` : ''}</p>`
           : '';
       })()}
+      ${S.joint && S.joint.ally === k ? `<p class="persona rel">⚔️ 共同出兵：${CLANS[S.joint.target].name}を攻撃中（残り${S.joint.turns}季）</p>` : ''}
+      ${r.trade > 0 ? `<p class="persona rel">💰 通商：毎季 金+${tradeIncome(S, k)}</p>` : ''}
       <div class="friend"><span>友好度</span><i><b style="width:${r.friend}%"></b></i><em>${r.friend}</em></div>
       <div class="dr-btns">
         <button class="btn plain" data-act="gift" data-clan="${k}" ${off || S.gold[PLAYER] < DIPLO.giftCost ? 'disabled' : ''}>贈答<small>金${DIPLO.giftCost}</small></button>
-        <button class="btn plain" data-act="truce" data-clan="${k}" ${off || peace ? 'disabled' : ''}>停戦<small>${tc}%</small></button>
-        <button class="btn plain" data-act="ally" data-clan="${k}" ${off || r.ally > 0 ? 'disabled' : ''}>同盟<small>${ac}%</small></button>
+        <button class="btn red" data-act="talk" data-clan="${k}" ${off ? 'disabled' : ''}>会談<small>申し出を選ぶ</small></button>
         ${peace ? `<button class="btn" data-act="break" data-clan="${k}">破棄<small>信用を失う</small></button>` : ''}
       </div>
     </div>`;
   }).join('');
+  const logN = (S.diploLog || []).length;
   openModal(`<h2>外 交</h2>
     ${message ? `<p class="result">${message}</p>` : ''}
     <p class="hint" style="text-align:center">${envoy ? `使者：<b>${esc(envoy.name)}</b>（魅力${envoy.cha}）が向かいます` : '使者に出せる武将がいません（全員が命令ずみ）'}</p>
-    ${S.encircle ? `<p class="warn">${pShort()}包囲網の最中のため、諸家は交渉に応じません</p>` : ''}
+    ${S.encircle ? `<p class="warn">${pShort()}包囲網の最中のため、諸家は交渉に応じません${alive.some((k) => S.rel[k].sister) ? '（姉妹校をのぞく）' : ''}</p>` : ''}
     ${rows || '<p>交渉できる家はもうない。</p>'}
-    <p class="hint">停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います。</p>
+    <p class="hint">停戦・同盟・姉妹校の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います。</p>
+    <button class="btn plain" id="dp-log">外交の記録<small class="sub">${logN ? `${logN}件` : 'まだ何もない'}</small></button>
     <button class="btn plain" data-close>閉じる</button>`);
+  $('dp-log').onclick = () => { Sound.tap(); showDiploLog(); };
   modalBody.querySelectorAll('[data-act]').forEach((b) => {
     b.onclick = async () => {
       const k = b.dataset.clan, act = b.dataset.act;
@@ -789,15 +791,214 @@ function showDiplomacy(message) {
         msg = diploGift(S, k, envoyOf(S));
         Sound.tap();
       } else {
-        const r = act === 'truce' ? diploTruce(S, k, envoyOf(S)) : diploAlly(S, k, envoyOf(S));
-        msg = r.text;
-        if (r.ok) Sound.win(); else Sound.lose();
+        Sound.tap();
+        showProposals(k);
+        return;
       }
       save();
       render();
       showDiplomacy(msg);
     };
   });
+}
+
+// 会談で何を申し出るか選ぶ
+function showProposals(k) {
+  const envoy = envoyOf(S);
+  if (!envoy) return;
+  const list = Object.entries(PROPOSALS).map(([id, P]) => {
+    const av = P.avail(S, k);
+    const pct = av === true ? Math.round(P.chance(S, k, envoy) * 100) : 0;
+    return `<button class="scheme-row" data-prop="${id}" ${av === true ? '' : 'disabled'}>
+      <b>${P.icon} ${P.name}</b><span class="cost">${av === true ? `見込み ${pct}%` : ''}</span>
+      <small>${P.desc}</small>${av === true ? '' : `<em>${av}</em>`}</button>`;
+  }).join('');
+  openModal(`<h2>${CLANS[k].name}との会談</h2>
+    <p class="hint" style="text-align:center">使者：<b>${esc(envoy.name)}</b>（魅力${envoy.cha}・知略${envoy.int}）<br>見込みは、会談での話しぶりで上下します</p>
+    <div class="scheme-list">${list}</div>
+    <button class="btn plain" id="pp-back">もどる</button>`);
+  modalBody.querySelectorAll('[data-prop]').forEach((b) => {
+    b.onclick = () => { Sound.tap(); openMeeting(k, b.dataset.prop); };
+  });
+  $('pp-back').onclick = () => { Sound.tap(); showDiplomacy(); };
+}
+
+// 外交の記録（新しい順）
+function showDiploLog() {
+  const log = (S.diploLog || []).slice().reverse();
+  const icon = { good: '🤝', bad: '💢', ai: '📜', info: '・' };
+  let last = null;
+  const items = log.map((e) => {
+    const head = e.turn !== last ? `<li class="dl-date">${dateLabel(e.turn)}</li>` : '';
+    last = e.turn;
+    return `${head}<li class="dl-${e.kind || 'info'}"><span>${icon[e.kind] || '・'}</span>${esc(e.text)}</li>`;
+  }).join('');
+  openModal(`<h2>外交の記録</h2>
+    <ul class="diplo-log">${items || '<li>まだ記録はない。</li>'}</ul>
+    <button class="btn plain" id="dl-back">もどる</button>`);
+  $('dl-back').onclick = () => { Sound.tap(); showDiplomacy(); };
+}
+
+// ---------- 会談 ----------
+// 使者のセリフ（話題ごと）
+function envoyTopicLine(s, M, topic) {
+  const t = threatTo(s, M.clan);
+  return {
+    enemy: t ? `${CLANS[t].name}の勢い、捨ておけぬのではありませんか` : '近ごろ、どこも物騒になりましたな',
+    favor: s.rel[M.clan].friend >= 50 ? 'これまでのよしみ、お忘れではないでしょう' : '以前の件は、水に流していただきたい',
+    gift: 'つまらぬものですが、お納めください',
+    might: `わが${pShort()}はいまや${castlesOf(s, PLAYER).length}城。その意味はおわかりでしょう`,
+    praise: 'ご当主の采配、かねがね感服しております',
+  }[topic];
+}
+
+function openMeeting(clan, proposal) {
+  const envoy = envoyOf(S);
+  if (!envoy) return;
+  const M = startMeeting(S, clan, proposal, envoy);
+  M.say = { who: 'host', text: hostLine(S, M, 'greet') };
+  Sound.bgmStart('meeting');
+  drawMeeting(M);
+}
+
+function drawMeeting(M) {
+  const envoy = S.gens[M.envoy];
+  const host = S.gens[M.host];
+  const hostSchool = host && host.loc ? MAP.byId[host.loc].name : CLANS[M.clan].name;
+  const phase = M.over ? 'over' : M.condition ? 'condition' : M.rounds >= M.maxRounds || M.toMain ? 'propose' : 'talk';
+  const imp = M.impression;
+  const impLabel = imp >= 70 ? '上々' : imp >= 50 ? 'まずまず' : imp >= 30 ? '渋い' : '険悪';
+  const hints = meetingHints(S, M);
+  let actions = '';
+  if (phase === 'talk') {
+    actions = `<p class="mt-q">どの話題を切り出す？<small>あと ${M.maxRounds - M.rounds} 回</small></p>
+      <div class="mt-choices">${Object.entries(TOPICS).map(([k, t]) => `<button class="btn plain" data-topic="${k}"
+        ${M.used[k] || (t.cost && S.gold[PLAYER] < t.cost) ? 'disabled' : ''}>${t.name}<small>${t.desc}</small></button>`).join('')}</div>
+      <button class="btn" id="mt-main">本題に入る</button>`;
+  } else if (phase === 'propose') {
+    actions = `<p class="mt-q">いよいよ本題。「${PROPOSALS[M.proposal].name}」をどう切り出す？</p>
+      <div class="mt-choices">${Object.entries(STANCES).map(([k, t]) => `<button class="btn ${k === 'equal' ? 'red' : 'plain'}" data-stance="${k}">${t.name}
+        <small>${t.desc}・見込み ${Math.round(meetingChance(S, M, k) * 100)}%</small></button>`).join('')}</div>`;
+  } else if (phase === 'condition') {
+    const g = M.condition.gold;
+    actions = `<p class="mt-q">条件：<b>金 ${g}</b>（所持金 ${fmt(S.gold[PLAYER])}）</p>
+      <div class="mt-choices">
+        <button class="btn red" data-ans="accept" ${S.gold[PLAYER] < g ? 'disabled' : ''}>条件を飲む<small>金${g}を払って${PROPOSALS[M.proposal].name}を結ぶ</small></button>
+        ${M.haggled ? '' : `<button class="btn plain" data-ans="haggle">値切る<small>魅力しだい。失敗すると話は流れる</small></button>`}
+        <button class="btn plain" data-ans="refuse">断る<small>会談は決裂する</small></button>
+      </div>`;
+  } else {
+    actions = `${M.result ? `<p class="result">${esc(M.result)}</p>` : ''}<button class="btn red" id="mt-end">外交に戻る</button>`;
+  }
+  const bubble = M.say
+    ? `<div class="mt-say ${M.say.who}">${M.say.envoy ? `<p class="mt-envoy">${esc(envoy.name)}「${esc(M.say.envoy)}」</p>` : ''}<p>${M.say.who === 'host' && host ? `<b>${esc(host.name)}</b>` : ''}「${esc(M.say.text)}」</p></div>`
+    : '';
+  openModal(`<div class="meeting" data-lock>
+      <p class="mt-place">${esc(hostSchool)} 生徒会室 ・ ${PROPOSALS[M.proposal].name}の会談</p>
+      <div class="mt-stage">
+        ${meetingRoom(M.clan)}
+        <div class="mt-p left">${portrait(envoy, 84, M.over === 'deal' ? 'happy' : M.over ? 'think' : null)}<span>${esc(envoy.name)}<small>${pName()}の使者</small></span></div>
+        ${host ? `<div class="mt-p right">${portrait(host, 84, M.mood)}<span>${esc(host.name)}<small>${CLANS[M.clan].name}・${personaOf(M.clan).name}</small></span></div>` : ''}
+        ${M.over ? `<div class="mt-stamp ${M.over}">${M.over === 'deal' ? '締 結' : '決 裂'}</div>` : ''}
+        ${M.delta ? `<div class="mt-delta ${M.delta > 0 ? 'up' : 'down'}">${M.delta > 0 ? '+' : ''}${M.delta}</div>` : ''}
+      </div>
+      ${bubble}
+      <div class="mt-gauge"><span>心証</span><i><b style="width:${imp}%"></b></i><em>${impLabel}</em></div>
+      ${hints.length && phase !== 'over' ? `<p class="mt-hint">📜 使者の見立て：${hints.map(esc).join('／')}</p>` : ''}
+    </div>
+    ${actions}
+    ${phase === 'talk' || phase === 'propose' ? '<button class="btn plain" id="mt-leave">席を立つ<small>何も決めずに帰る</small></button>' : ''}`);
+  M.delta = 0;
+  const redraw = () => { save(); render(); drawMeeting(M); };
+  modalBody.querySelectorAll('[data-topic]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      const topic = b.dataset.topic;
+      const r = useTopic(S, M, topic);
+      M.delta = r.v;
+      M.say = { who: 'host', envoy: envoyTopicLine(S, M, topic), text: r.line };
+      if (r.v >= 10) Sound.taiko(0, 0.35);
+      redraw();
+    };
+  });
+  const main = $('mt-main');
+  if (main) main.onclick = () => { Sound.tap(); M.toMain = true; M.say = { who: 'host', text: 'して、本題は何だ？' }; redraw(); };
+  modalBody.querySelectorAll('[data-stance]').forEach((b) => {
+    b.onclick = () => {
+      const res = propose(S, M, b.dataset.stance);
+      M.say = { who: 'host', envoy: stanceLine(M), text: M.lines[M.lines.length - 1] };
+      meetingSound(res);
+      redraw();
+    };
+  });
+  modalBody.querySelectorAll('[data-ans]').forEach((b) => {
+    b.onclick = () => {
+      const ans = b.dataset.ans;
+      const res = answerCondition(S, M, ans);
+      M.say = {
+        who: 'host',
+        envoy: ans === 'accept' ? '承知しました。お納めください' : ans === 'haggle' ? 'もう少し、手心を加えていただけませんか' : 'その条件は飲めません',
+        text: M.lines[M.lines.length - 1],
+      };
+      meetingSound(res);
+      redraw();
+    };
+  });
+  const leave = $('mt-leave');
+  if (leave) leave.onclick = () => {
+    Sound.tap();
+    S.acted[M.envoy] = true;
+    save(); render();
+    Sound.bgmStart('map');
+    showDiplomacy(`${esc(envoy.name)}は何も決めずに帰ってきた`);
+  };
+  const end = $('mt-end');
+  if (end) end.onclick = () => {
+    Sound.tap();
+    Sound.bgmStart('map');
+    showDiplomacy(M.over === 'deal'
+      ? M.result || `${CLANS[M.clan].name}と${PROPOSALS[M.proposal].name}を結んだ！`
+      : `${CLANS[M.clan].name}との会談は決裂した…`);
+  };
+}
+
+// 他家の使者が、こちらの生徒会室にやって来る場面
+function envoyScene(ev, title, mood, line, stamp = null) {
+  const p = ev.p;
+  const lord = lordOf(S);
+  const g = p.gid && S.gens[p.gid] && S.gens[p.gid].clan === p.clan ? S.gens[p.gid] : null;
+  const place = lord && lord.loc ? MAP.byId[lord.loc].name : pName();
+  return `<div class="meeting" data-lock>
+      <p class="mt-place">${esc(place)} 生徒会室 ・ ${esc(title)}</p>
+      <div class="mt-stage">
+        ${meetingRoom(PLAYER)}
+        ${lord ? `<div class="mt-p left">${portrait(lord, 84, stamp === 'deal' ? 'happy' : null)}<span>${esc(lord.name)}<small>${pName()}当主</small></span></div>` : ''}
+        ${g ? `<div class="mt-p right">${portrait(g, 84, mood)}<span>${esc(g.name)}<small>${CLANS[p.clan].name}の使者</small></span></div>` : ''}
+        ${stamp ? `<div class="mt-stamp ${stamp}">${stamp === 'deal' ? '締 結' : p.kind === 'tribute' ? '拒 絶' : '謝 絶'}</div>` : ''}
+      </div>
+      <div class="mt-say"><p>${g ? `<b>${esc(g.name)}</b>` : `<b>${CLANS[p.clan].name}の使者</b>`}「${esc(line)}」</p></div>
+      <div class="mt-gauge"><span>${CLANS[p.clan].name}との友好度</span><i><b style="width:${S.rel[p.clan].friend}%"></b></i><em>${S.rel[p.clan].friend}</em></div>
+    </div>`;
+}
+
+function stanceLine(M) {
+  const obj = { truce: '停戦を', ally: '同盟を', trade: '通商協定を', sister: '姉妹校の契りを', aid: '援軍を', joint: '共同での出兵を' }[M.proposal];
+  const equal = {
+    truce: 'おたがいのために、停戦を結びませんか', ally: 'おたがいのために、同盟を結びませんか',
+    trade: '通商協定を結びませんか。互いに潤うはずです', sister: '我らの絆を、姉妹校の契りとしませんか',
+    aid: '盟友として、援軍をお願いしたい', joint: '盟友として、ともに兵を挙げませんか',
+  }[M.proposal];
+  return {
+    humble: `どうか、${obj}お願いできないでしょうか`,
+    equal,
+    bold: `${obj}受けていただこう。断ればどうなるか、おわかりでしょう`,
+  }[M.stance];
+}
+
+function meetingSound(res) {
+  if (res === 'deal') { Sound.win(); }
+  else if (res === 'fail') { Sound.lose(); }
+  else Sound.taiko(0, 0.5);
 }
 
 // ---------- イベント ----------
@@ -810,13 +1011,19 @@ function runEvents(done) {
     // 後継者選びなど：武将のカードをそのまま選択肢にする
     ? v.choices.map((c, i) => `<button class="choice-gen" data-ci="${i}">${genCard(S.gens[v.choiceGens[i]])}<small>${c.sub}</small></button>`).join('')
     : v.choices.map((c, i) => `<button class="btn ${i === 0 ? 'red' : 'plain'}" data-ci="${i}" ${c.disabled ? 'disabled' : ''}>${c.label}${c.sub ? `<small class="sub">${c.sub}</small>` : ''}</button>`).join('');
-  openModal(`<div class="event" data-lock>
+  if (v.scene) {
+    // 使者の来訪：こちらの生徒会室で会う
+    Sound.bgmStart('meeting');
+    openModal(`${envoyScene(ev, v.title, ev.p.kind === 'tribute' ? 'angry' : ev.p.kind === 'plea' ? 'think' : null, v.text)}${choiceHtml}`);
+  } else {
+    openModal(`<div class="event" data-lock>
       <div class="ev-icon">${v.icon}</div>
       <h2>${v.title}</h2>
       ${v.gid ? `<div class="glist pick">${genCard(S.gens[v.gid])}</div>` : ''}
       <p class="ev-text">${esc(v.text)}</p>
     </div>
     ${choiceHtml}`);
+  }
   modalBody.querySelectorAll('[data-ci]').forEach((b) => {
     b.onclick = () => {
       Sound.tap();
@@ -828,9 +1035,23 @@ function runEvents(done) {
       if (ev.id === 'succession') Sound.win();
       achievementToast(checkAchievements(S));
       if (!result) { runEvents(done); return; }
-      openModal(`<div class="event" data-lock><div class="ev-icon">${v.icon}</div><p class="ev-text">${esc(result)}</p></div>
+      if (v.scene) {
+        const yes = +b.dataset.ci === 0;
+        const reply = yes ? pick(['かたじけない。主にしかと伝えます', 'ありがたき幸せ。これで話がまとまりました'])
+          : ev.p.kind === 'tribute' ? '……後悔なさいますな' : pick(['……さようですか。残念です', '主にはそのように伝えましょう']);
+        openModal(`${envoyScene(ev, v.title, yes ? 'happy' : ev.p.kind === 'tribute' ? 'angry' : 'think', reply, yes ? 'deal' : 'fail')}
+          <p class="result">${esc(result)}</p>
+          <button class="btn red" id="ev-next">承 知</button>`);
+        if (yes) Sound.win(); else Sound.lose();
+      } else {
+        openModal(`<div class="event" data-lock><div class="ev-icon">${v.icon}</div><p class="ev-text">${esc(result)}</p></div>
         <button class="btn red" id="ev-next">承 知</button>`);
-      $('ev-next').onclick = () => { Sound.tap(); runEvents(done); };
+      }
+      $('ev-next').onclick = () => {
+        Sound.tap();
+        if (v.scene && !(S.pending[0] && S.pending[0].id === 'envoy')) Sound.bgmStart('map');
+        runEvents(done);
+      };
     };
   });
 }

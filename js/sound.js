@@ -360,7 +360,51 @@ const Sound = (() => {
   const LOSE_SHO = [[50, 57, 62], [55, 62, 70], [51, 58, 63], [50, 57, 62]];
   const LOSE_BASS = [50, 50, 55, 57, 50, 55, 51, 50];
 
+  // ---------- 会談BGM ----------
+  // 静かな座敷：鼓の「ポン」と、間をたっぷり取った琴の旋律（都節音階）
+  const MEET_STEP = 60 / 60 / 4;
+  const MEET_KOTO = melodyAt([
+    [69, 3], [70, 1], [74, 4], [0, 4], [74, 2], [75, 2], [74, 4], [0, 4],
+    [70, 2], [69, 2], [67, 4], [0, 4], [62, 2], [63, 2], [67, 4], [0, 4],
+    [69, 3], [70, 1], [74, 4], [0, 4], [79, 2], [75, 2], [74, 4], [0, 4],
+    [70, 2], [69, 2], [67, 2], [63, 2], [62, 8], [0, 8],
+  ]);
+  // 鼓の打ち方（1小節16歩）P=ポン（高く澄んだ音） p=小さく o=低いドン
+  const TSUZUMI = ['P.......p.....o.', '........P...p...'];
+  const MEET_SHO = [[62, 69, 74], [58, 65, 70], [55, 62, 67], [57, 62, 69]];
+
+  // 鼓：皮を打った瞬間に音程が上がって、すっと下がる
+  function bgmTsuzumi(c, out, t, kind) {
+    const o = c.createOscillator(), g = c.createGain();
+    const f = kind === 'o' ? 180 : 420;
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f * 1.5, t);
+    o.frequency.exponentialRampToValueAtTime(f, t + 0.03);
+    o.frequency.exponentialRampToValueAtTime(f * 0.85, t + 0.4);
+    env(c, g, t, kind === 'P' ? 0.22 : kind === 'p' ? 0.1 : 0.16, 0.002, kind === 'o' ? 0.3 : 0.45);
+    o.connect(g).connect(out);
+    o.start(t); o.stop(t + 0.5);
+    noise = noise || noiseBuffer(c);
+    const n = c.createBufferSource(), nf = c.createBiquadFilter(), ng = c.createGain();
+    n.buffer = noise;
+    nf.type = 'bandpass'; nf.frequency.value = 2500; nf.Q.value = 0.8;
+    env(c, ng, t, 0.06, 0.001, 0.04);
+    n.connect(nf).connect(ng).connect(out);
+    n.start(t); n.stop(t + 0.06);
+  }
+
   const TRACKS = {
+    meeting: {
+      step: MEET_STEP, loop: 16 * 8, vol: 0.45,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
+        const k = TSUZUMI[bar % 2][b];
+        if (k !== '.') bgmTsuzumi(c, out, t, k);
+        if (b === 0 && bar % 2 === 0) bgmSho(c, out, t, MEET_SHO[(bar / 2) % 4], MEET_STEP * 32);
+        if (b === 0) bgmKoto(c, out, t, [50, 46, 43, 45][Math.floor(bar / 2) % 4], 0.1);
+        if (MEET_KOTO[s]) bgmKoto(c, out, t, MEET_KOTO[s][0], 0.12);
+      },
+    },
     win: {
       step: WIN_STEP, loop: 16 * 8, vol: 0.5,
       play(c, out, s, t) {

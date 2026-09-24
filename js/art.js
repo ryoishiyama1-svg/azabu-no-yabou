@@ -35,6 +35,47 @@ function crestBadge(clan, size = 20) {
     <circle r="30" fill="${c.color}"/>${crestInner(c.crest, '#fff')}</svg>`;
 }
 
+// ---------- 会談の部屋（相手の生徒会室。床の間に相手の家紋の掛け軸） ----------
+function meetingRoom(clan) {
+  const c = CLANS[clan];
+  const shoji = (x) => `<rect x="${x}" y="12" width="78" height="98" fill="#fbf6e6"/>
+    ${[1, 2, 3].map((i) => `<line x1="${x + i * 19.5}" y1="12" x2="${x + i * 19.5}" y2="110" stroke="#8a6a44" stroke-width="1"/>`).join('')}
+    ${[1, 2, 3, 4, 5].map((i) => `<line x1="${x}" y1="${12 + i * 16.3}" x2="${x + 78}" y2="${12 + i * 16.3}" stroke="#8a6a44" stroke-width="1"/>`).join('')}
+    <rect x="${x}" y="12" width="78" height="98" fill="none" stroke="#5b3f22" stroke-width="3"/>`;
+  return `<svg class="mt-room" viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="mt-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9dbb8"/><stop offset="1" stop-color="#d9c79d"/></linearGradient>
+      <linearGradient id="mt-light" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6d8" stop-opacity="0.55"/><stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></linearGradient>
+    </defs>
+    <rect width="320" height="160" fill="url(#mt-wall)"/>
+    ${shoji(2)}${shoji(240)}
+    <rect x="0" y="0" width="320" height="12" fill="#4a3220"/>
+    <rect x="0" y="108" width="320" height="4" fill="#4a3220"/>
+    <rect x="98" y="16" width="124" height="92" fill="#cbb488"/>
+    <rect x="98" y="16" width="124" height="92" fill="none" stroke="#4a3220" stroke-width="3"/>
+    <rect x="96" y="100" width="128" height="8" fill="#6b4a2c"/>
+    <!-- 掛け軸 -->
+    <rect x="140" y="20" width="40" height="3" rx="1.5" fill="#3a2a1a"/>
+    <rect x="143" y="23" width="34" height="70" fill="#f3ead2" stroke="#9a7a4a" stroke-width="0.8"/>
+    <rect x="143" y="23" width="34" height="8" fill="${c.color}" opacity="0.8"/>
+    <g transform="translate(160,55) scale(0.42)"><circle r="30" fill="${c.color}"/>${crestInner(c.crest, '#fff')}</g>
+    <rect x="140" y="92" width="40" height="3" rx="1.5" fill="#3a2a1a"/>
+    <!-- 生け花 -->
+    <path d="M198,100 Q196,92 200,88 L206,88 Q210,92 208,100 Z" fill="#5a6f86"/>
+    <path d="M203,88 Q200,70 188,62 M203,88 Q210,74 214,70 M203,88 Q204,78 198,74" stroke="#5b4630" stroke-width="1.2" fill="none"/>
+    <g fill="#e89aac"><circle cx="188" cy="62" r="2.4"/><circle cx="214" cy="70" r="2.2"/><circle cx="198" cy="74" r="2"/><circle cx="193" cy="66" r="1.6"/></g>
+    <!-- 畳 -->
+    <rect x="0" y="112" width="320" height="48" fill="#c9bf86"/>
+    <g stroke="#9f9660" stroke-width="0.6" opacity="0.6">${Array.from({ length: 9 }, (_, i) => `<line x1="0" y1="${116 + i * 5}" x2="320" y2="${116 + i * 5}"/>`).join('')}</g>
+    <path d="M0,136 L320,136 M106,112 L106,160 M214,112 L214,160" stroke="#3c4a2e" stroke-width="2.4"/>
+    <!-- 座卓と茶 -->
+    <path d="M112,128 L208,128 L216,138 L104,138 Z" fill="#5a3a22"/>
+    <rect x="104" y="138" width="112" height="4" fill="#3e2716"/>
+    <path d="M140,124 L148,124 L147,129 L141,129 Z M172,124 L180,124 L179,129 L173,129 Z" fill="#6f8a6a"/>
+    <rect width="320" height="160" fill="url(#mt-light)"/>
+  </svg>`;
+}
+
 // ---------- 天守閣 ----------
 function castleMarkup(capital) {
   const shachi = capital
