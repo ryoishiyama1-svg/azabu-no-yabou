@@ -155,14 +155,14 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
     if (n.clan === PLAYER) {
       const lord = makeGeneral(s, n.id, PLAYER, { strong: true, title: '当主', grade: 2 });
       Object.assign(lord, { name: lordName, str: 72, pol: 68, cha: 84, int: 70, skill: 'jinbou', lord: true });
-      // 家臣は1・2年生（最初の春にいきなり全員卒業しないように）
+      // 家臣は1・2年生中心（最初の春にいきなり大勢卒業しないように）
       // 麻布家以外は地図の真ん中で四方から攻められやすいので、家臣を1人多くする
-      const grades = PLAYER === 'azabu' ? [1, 2, 1] : [1, 2, 1, 2];
+      const grades = PLAYER === 'azabu' ? [1, 2, 1, 2] : [1, 2, 1, 2, 1];
       grades.forEach((grade, i) => makeGeneral(s, n.id, PLAYER, { strong: true, grade, title: i === 0 ? '生徒会長' : undefined }));
     } else if (capital) {
-      for (let i = 0; i < 3; i++) makeGeneral(s, n.id, n.clan, { strong: true, title: i === 0 ? '生徒会長' : undefined });
+      for (let i = 0; i < 5; i++) makeGeneral(s, n.id, n.clan, { strong: i < 3, title: i === 0 ? '生徒会長' : undefined });
     } else {
-      const count = Math.random() < 0.45 ? 2 : 1;
+      const count = Math.random() < 0.6 ? 2 : 3;
       for (let i = 0; i < count; i++) makeGeneral(s, n.id, 'none', { title: i === 0 ? '生徒会長' : undefined });
     }
   });
@@ -797,13 +797,21 @@ const genPower = (g) => g.str + g.pol + g.cha + g.int;
 // 春：3年生は卒業、ほかは進級。各校に新入生が入る
 function graduation(s) {
   const info = { left: [], joined: [], lordLeft: null };
+  // 卒業して2年以上たった武将は、もう出てこないのでデータから消す（セーブを軽くするため）
   Object.values(s.gens).forEach((g) => {
-    if (['graduated', 'ronin', 'captive'].includes(g.clan) && g.grade >= 3) { g.clan = 'graduated'; return; }
-    if (g.clan === 'graduated') return;
+    if (g.clan === 'graduated' && g.gradTurn !== undefined && g.gradTurn < s.turn - 4) {
+      delete s.usedNames[g.name]; // 名前は新入生に使えるように空ける
+      delete s.gens[g.id];
+    }
+  });
+  Object.values(s.gens).forEach((g) => {
+    if (['ronin', 'captive'].includes(g.clan) && g.grade >= 3) { g.clan = 'graduated'; g.gradTurn = s.turn; return; }
+    if (g.clan === 'graduated') { if (g.gradTurn === undefined) g.gradTurn = s.turn; return; }
     if (g.grade >= 3) {
       if (g.clan === PLAYER) info.left.push(g.name);
       if (g.lord && g.clan === PLAYER) info.lordLeft = g.id;
       g.clan = 'graduated';
+      g.gradTurn = s.turn;
       g.loc = null;
       g.lord = false;
     } else {
@@ -813,11 +821,13 @@ function graduation(s) {
       g[k] = Math.min(100, g[k] + randInt(1, 3));
     }
   });
-  // 新入生：各城に一定の確率で加わる（どの家でも同じ）
+  // 新入生：各校に1人くらい（ときどき2人）入る。武将のいない城には必ず1人
+  // 卒業で毎年3分の1が抜けるので、1城あたり約2.5人で落ち着く
   Object.keys(s.castles).forEach((id) => {
     const owner = s.castles[id].owner;
     const need = gensAt(s, id).length === 0;
-    if (Math.random() < (need ? 0.6 : 0.3)) {
+    const count = (need || Math.random() < 0.6 ? 1 : 0) + (Math.random() < 0.25 ? 1 : 0);
+    for (let i = 0; i < count; i++) {
       const g = makeGeneral(s, id, owner, { grade: 1, title: '新入生', strong: Math.random() < 0.15 });
       if (owner === PLAYER) info.joined.push(g.name);
     }

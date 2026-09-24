@@ -36,8 +36,10 @@ const EVENTS = {
     icon: '桜', title: '卒業式と入学式',
     text: (s) => {
       const g = s.grad || { left: [], joined: [] };
-      const left = g.left.length ? `卒業：${g.left.join('、')}` : '卒業した家臣はいない';
-      const joined = g.joined.length ? `入学：${g.joined.join('、')}` : '';
+      // 人数が多いときは、最初の数人だけ名前を出す
+      const names = (list) => (list.length > 6 ? `${list.slice(0, 6).join('、')} ほか${list.length - 6}人` : list.join('、'));
+      const left = g.left.length ? `卒業（${g.left.length}人）：${names(g.left)}` : '卒業した家臣はいない';
+      const joined = g.joined.length ? `入学（${g.joined.length}人）：${names(g.joined)}` : '';
       return `桜の季節。三年生が巣立ち、新入生がやってきた。すべての学校で兵が1割増えた。\n${left}\n${joined}`;
     },
     choices: () => [{ label: 'めでたい' }],

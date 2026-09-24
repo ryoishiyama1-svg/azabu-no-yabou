@@ -646,6 +646,10 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
   padding: 6px 8px; font-size: 13px; margin: 6px 0;
 }
 
+.glabel { margin: 2px 0 4px; font-size: 12px; font-weight: 700; color: var(--muted); display: flex; justify-content: space-between; }
+.scroll-hint { color: var(--red); }
+@media (orientation: landscape) and (min-width: 640px), (min-width: 1000px) { .scroll-hint { display: none; } }
+
 /* ---------- 学年・家訓 ---------- */
 .grade {
   display: inline-block; font-size: 10px; font-weight: 800; color: #fff;

@@ -574,6 +574,7 @@ function renderPanel() {
       <div class="stat"><span class="n">${c.def.toFixed(1)}</span><span class="l">防 御</span></div>
       <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span></div>
     </div>
+    ${gens.length ? `<p class="glabel">武将 ${gens.length}人${own ? `（命令できる ${gens.filter((g) => !S.acted[g.id]).length}人）` : ''}<span class="scroll-hint">${gens.length > 2 ? '横にスクロール →' : ''}</span></p>` : ''}
     <div class="glist">${gens.length ? gens.map((g) => genCard(g, { acted: own && !!S.acted[g.id] })).join('') : '<p class="hint">この城に武将はいない</p>'}</div>`;
 
   let body;
