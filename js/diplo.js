@@ -322,4 +322,5 @@ function addDiploLog(s, text, kind = 'info') {
   s.diploLog = s.diploLog || [];
   s.diploLog.push({ turn: s.turn, text, kind });
   if (s.diploLog.length > 80) s.diploLog.shift();
+  if (kind !== 'info') addNews(s, text, '', kind === 'ai' ? 25 : 30);
 }

@@ -292,10 +292,124 @@ function battleScene(r, season) {
     <g class="army" id="army-a">${armyMarkup('a', na, ca)}</g>
     <g class="army" id="army-d">${armyMarkup('d', nd, cd)}</g>
     <g id="bf-arrows"></g>
+    <g id="bf-weather">${weatherMarkup(r.weather)}</g>
+    <g id="bf-fx"></g>
     <g class="dust" id="bf-dust"><circle cx="190" cy="185" r="16"/><circle cx="205" cy="178" r="12"/><circle cx="178" cy="176" r="10"/></g>
     </g>
     <rect x="1.5" y="1.5" width="397" height="217" rx="9" fill="none" stroke="#d4a93c" stroke-width="3"/>
   </svg>`;
+}
+
+// ---------- 合戦の命令・戦法の演出（合戦の舞台と同じ 400×220 の座標） ----------
+// side：'a'（攻め・左）/ 'd'（守り・右）。軍の中心と、相手の軍の中心
+const BF_POS = { a: { x: 105, y: 180 }, d: { x: 280, y: 180 } };
+function battleFx(kind, side) {
+  const me = BF_POS[side], foe = BF_POS[side === 'a' ? 'd' : 'a'];
+  const dir = side === 'a' ? 1 : -1;
+  const horse = (x, y, s, delay) => `<g class="bfx-ride" style="animation-delay:${delay}s; --dx:${120 * dir}px">
+    <g transform="translate(${x},${y}) scale(${s * dir},${s})">
+      <path d="M-14,-10 Q-4,-16 8,-12 L16,-20 L20,-18 L15,-9 Q12,-2 6,-2 L-10,-2 Q-16,-4 -14,-10 Z" fill="#3a2a20"/>
+      <g stroke="#3a2a20" stroke-width="2.2" stroke-linecap="round"><path d="M-10,-3 L-14,6"/><path d="M-5,-3 L-2,6"/><path d="M4,-3 L0,6"/><path d="M9,-3 L13,6"/></g>
+      <path d="M-15,-9 L-22,-4" stroke="#3a2a20" stroke-width="2"/>
+      <path d="M-3,-14 L-2,-26 L3,-26 L4,-14 Z" fill="#553b2a"/><circle cx="0.5" cy="-29" r="3" fill="#e9c19e"/>
+      <path d="M-4,-30 L0.5,-34 L5,-30 Z" fill="#222"/>
+      <line x1="2" y1="-20" x2="24" y2="-32" stroke="#6b5a40" stroke-width="1.4"/><path d="M23,-33 L28,-35 L25,-30 Z" fill="#dfe6ea"/>
+    </g></g>`;
+  const smoke = (cx, cy, n, color, cls = 'bfx-smoke') => Array.from({ length: n }, (_, i) =>
+    `<circle class="${cls}" style="animation-delay:${(i % 5) * 0.08}s" cx="${cx + ((i * 23) % 70) - 35}" cy="${cy - ((i * 13) % 30)}" r="${12 + (i % 3) * 5}" fill="${color}"/>`).join('');
+  const stakes = (x0, n, h, color) => Array.from({ length: n }, (_, i) =>
+    `<path d="M${x0 + i * 9 * dir},${198} l-2.5,-${h} l2.5,-5 l2.5,5 l-2.5,${h}" fill="${color}" stroke="#3a2412" stroke-width="0.6"/>`).join('');
+  switch (kind) {
+    case 'charge': // 騎馬の突撃
+      return `<g class="bfx">
+        ${smoke(me.x + 30 * dir, 196, 6, 'rgba(160,130,90,0.55)', 'bfx-dust')}
+        ${horse(me.x + 10 * dir, 178, 1.3, 0.15)}${horse(me.x - 10 * dir, 194, 1.6, 0)}${horse(me.x - 44 * dir, 208, 1.8, 0.08)}
+      </g>`;
+    case 'guard': // 馬防柵がせり上がる
+      return `<g class="bfx"><g class="bfx-rise">
+        ${stakes(me.x + 52 * dir - 36 * dir, 9, 26, '#9a6b3c')}
+        <path d="M${me.x + 16 * dir},180 L${me.x + 90 * dir},180 M${me.x + 16 * dir},190 L${me.x + 90 * dir},190" stroke="#6b4a26" stroke-width="2.2"/>
+      </g></g>`;
+    case 'scheme': // 敵陣に煙
+      return `<g class="bfx">${smoke(foe.x, 176, 10, 'rgba(150,140,170,0.6)')}</g>`;
+    case 'confused': // 混乱：頭上をまわる星
+      return `<g class="bfx"><g class="bfx-spin" style="transform-origin:${me.x}px 140px">
+        ${[0, 1, 2, 3].map((i) => `<text x="${me.x + Math.cos(i * 1.57) * 30}" y="${140 + Math.sin(i * 1.57) * 8}" font-size="14" fill="#ffe27a" text-anchor="middle">★</text>`).join('')}
+      </g></g>`;
+    case 'totsugeki': // 一番槍：戦場を貫く大槍
+      return `<g class="bfx">
+        <g stroke="#fff" stroke-width="1.6" opacity="0.8">${Array.from({ length: 10 }, (_, i) => {
+          const y = 120 + i * 9;
+          return `<line class="bfx-speed" style="animation-delay:${(i % 4) * 0.04}s" x1="${side === 'a' ? 0 : 400}" y1="${y}" x2="${side === 'a' ? 180 + (i % 3) * 30 : 220 - (i % 3) * 30}" y2="${y}"/>`;
+        }).join('')}</g>
+        <line class="bfx-draw bfx-glow" pathLength="100" x1="${me.x - 40 * dir}" y1="172" x2="${foe.x + 10 * dir}" y2="172" stroke="#fff4c8" stroke-width="12" stroke-linecap="round" opacity="0.8"/>
+        <line class="bfx-draw" pathLength="100" x1="${me.x - 40 * dir}" y1="172" x2="${foe.x + 10 * dir}" y2="172" stroke="#6b3f1d" stroke-width="4"/>
+        <path class="bfx-pop" d="M${foe.x + 6 * dir},160 L${foe.x + 50 * dir},172 L${foe.x + 6 * dir},184 L${foe.x + 16 * dir},172 Z" fill="#f4f7ff" stroke="#9aa6b8"/>
+      </g>`;
+    case 'teppeki': // 鉄壁の陣：盾の壁と金の結界
+      return `<g class="bfx">
+        <path class="bfx-dome" d="M${me.x - 70},205 Q${me.x},90 ${me.x + 70},205" fill="rgba(255,215,120,0.2)" stroke="#ffd774" stroke-width="3"/>
+        <g class="bfx-rise">${Array.from({ length: 6 }, (_, i) => `<rect x="${me.x + 30 * dir + i * 10 * dir - 5}" y="172" width="11" height="24" rx="2" fill="#7b6a58" stroke="#e8d9a8" stroke-width="1"/>`).join('')}</g>
+        <text class="bfx-kanji" x="${me.x}" y="130" text-anchor="middle" font-size="34" fill="#ffd774" stroke="#6b4a10" stroke-width="1" font-family="Yuji Syuku, serif">鉄壁</text>
+      </g>`;
+    case 'shinsan': // 火計：火矢と炎上
+      return `<g class="bfx">
+        ${[0, 1, 2, 3, 4].map((i) => `<path class="bfx-draw" style="animation-delay:${i * 0.06}s" pathLength="100" d="M${me.x},${150} Q${(me.x + foe.x) / 2},${60 + i * 8} ${foe.x - 30 + i * 15},${178}" stroke="#ff9a3a" stroke-width="2" fill="none"/>`).join('')}
+        <g class="bfx-fire">${[0, 1, 2, 3, 4, 5].map((i) => {
+          const x = foe.x - 45 + i * 18;
+          return `<path style="animation-delay:${0.3 + (i % 3) * 0.08}s" d="M${x - 9},200 Q${x - 7},178 ${x},186 Q${x + 2},168 ${x + 7},184 Q${x + 11},176 ${x + 10},200 Z" fill="#ff7a22"/>
+            <path style="animation-delay:${0.35 + (i % 3) * 0.08}s" d="M${x - 5},200 Q${x - 3},186 ${x + 1},192 Q${x + 4},182 ${x + 6},200 Z" fill="#ffd34a"/>`;
+        }).join('')}</g>
+        ${smoke(foe.x, 150, 6, 'rgba(60,50,50,0.45)')}
+      </g>`;
+    case 'jinbou': // 鼓舞：大太鼓と光の輪
+      return `<g class="bfx">
+        <g transform="translate(${me.x},122)"><g class="bfx-pop">
+          <ellipse cx="0" cy="0" rx="20" ry="16" fill="#8a3a22" stroke="#3a1a10" stroke-width="1.5"/>
+          <ellipse cx="0" cy="-3" rx="16" ry="11" fill="#f1e2c4" stroke="#6b4a26"/>
+          <line x1="-26" y1="-24" x2="-8" y2="-6" stroke="#5a3a1a" stroke-width="2.4"/><line x1="26" y1="-24" x2="8" y2="-6" stroke="#5a3a1a" stroke-width="2.4"/>
+        </g></g>
+        ${[0, 1, 2].map((i) => `<ellipse class="bfx-ring" style="animation-delay:${i * 0.18}s" cx="${me.x}" cy="186" rx="70" ry="18" fill="none" stroke="#ffd774" stroke-width="3"/>`).join('')}
+        ${[0, 1, 2, 3, 4].map((i) => `<text class="bfx-up" style="animation-delay:${i * 0.1}s" x="${me.x - 50 + i * 25}" y="196" font-size="16" fill="#ffe27a" text-anchor="middle">↑</text>`).join('')}
+      </g>`;
+    case 'shousai': // 兵糧攻め：崩れる米俵と暗い雲
+      return `<g class="bfx">
+        ${smoke(foe.x, 130, 7, 'rgba(40,40,60,0.45)')}
+        ${[0, 1, 2].map((i) => `<g transform="translate(${foe.x - 30 + i * 30},150)"><g class="bfx-fall" style="animation-delay:${i * 0.12}s">
+          <ellipse cx="0" cy="0" rx="12" ry="8" fill="#d9c28a" stroke="#7a6130"/><path d="M-6,-7 L-6,7 M6,-7 L6,7" stroke="#7a6130" stroke-width="1.5"/>
+          <path d="M-10,-8 L10,8 M10,-8 L-10,8" stroke="#c0392b" stroke-width="2.4"/></g></g>`).join('')}
+      </g>`;
+    case 'chikujou': // 築陣：土塁と柵
+      return `<g class="bfx"><g class="bfx-rise">
+        <path d="M${me.x + 5 * dir},204 Q${me.x + 50 * dir},178 ${me.x + 100 * dir},204 Z" fill="#8a6a3a" stroke="#4a3418" stroke-width="1"/>
+        ${stakes(me.x + 20 * dir, 9, 22, '#b08050')}
+      </g></g>`;
+    default:
+      return '';
+  }
+}
+
+// 合戦の舞台に重ねる天気（雨・雪・霧・強風）
+function weatherMarkup(w) {
+  if (w === 'rain') {
+    return `<rect width="400" height="220" fill="rgba(40,50,70,0.25)"/>
+      <g class="wx-rain" stroke="rgba(220,235,255,0.7)" stroke-width="1">${Array.from({ length: 40 }, (_, i) =>
+      `<line x1="${(i * 41) % 410}" y1="${(i * 29) % 220}" x2="${(i * 41) % 410 - 5}" y2="${(i * 29) % 220 + 14}" style="animation-delay:-${(i % 7) * 0.1}s"/>`).join('')}</g>`;
+  }
+  if (w === 'snow') {
+    return `<g class="wx-snow" fill="#fff">${Array.from({ length: 34 }, (_, i) =>
+      `<circle cx="${(i * 47) % 400}" cy="${(i * 31) % 220}" r="${1.2 + (i % 3) * 0.7}" style="animation-delay:-${(i % 9) * 0.4}s"/>`).join('')}</g>`;
+  }
+  if (w === 'fog') {
+    return `<g class="wx-fog">${[70, 120, 170].map((y, i) =>
+      `<ellipse cx="${120 + i * 90}" cy="${y}" rx="190" ry="26" fill="rgba(240,240,245,0.45)" style="animation-delay:-${i * 2}s"/>`).join('')}</g>`;
+  }
+  if (w === 'wind') {
+    return `<g class="wx-wind" stroke="rgba(255,255,255,0.65)" stroke-width="1.4" fill="none" stroke-linecap="round">${Array.from({ length: 8 }, (_, i) =>
+      `<path d="M${-40 + (i * 53) % 200},${30 + i * 22} q30,-8 60,0 t60,0" style="animation-delay:-${i * 0.3}s"/>`).join('')}
+      ${Array.from({ length: 8 }, (_, i) => `<ellipse class="wx-leaf" cx="${(i * 61) % 400}" cy="${20 + (i * 37) % 180}" rx="3" ry="1.6" fill="#8fb35a" stroke="none" style="animation-delay:-${i * 0.4}s"/>`).join('')}</g>`;
+  }
+  return '';
 }
 
 // 矢の一斉射撃（左→右 か 右→左）

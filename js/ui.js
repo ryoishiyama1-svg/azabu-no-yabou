@@ -545,7 +545,9 @@ $('zoom-home').onclick = () => {
 function render() {
   const mine = castlesOf(S, PLAYER);
   $('hud-crest').innerHTML = crestBadge(PLAYER, 30);
-  $('hud-date').textContent = dateLabel(S.turn);
+  const wx = WEATHER[S.weather] || WEATHER.sun;
+  $('hud-date').innerHTML = `${dateLabel(S.turn)}<button class="hud-wx" id="hud-wx" aria-label="天気：${wx.name}">${wx.icon}</button>`;
+  $('hud-wx').onclick = () => { Sound.tap(); toast(`${wx.icon} 今季の天気は「${wx.name}」<br><b>${wx.desc}</b>`); };
   $('hud-gold').textContent = fmt(S.gold[PLAYER]);
   $('hud-castles').textContent = `${mine.length}/${MAP.nodes.length}`;
   $('btn-sound').textContent = Sound.on ? '♪' : '✕';
@@ -1515,10 +1517,12 @@ function runBattle(B, { auto = false, onClose } = {}) {
     </div>`;
   };
   box.innerHTML = `
-    <div class="b-head"><div class="b-title">${defense ? '籠 城 戦' : '合 戦'}</div>
-      <div class="b-sub">${MAP.byId[B.to].name}の戦い${defense ? `（${pShort()}の守り）` : ''}</div>${tac}</div>
+    <div class="b-head"><div class="b-title ${B.decisive ? 'decisive' : ''}">${B.decisive ? '決 戦' : defense ? '籠 城 戦' : '合 戦'}</div>
+      <div class="b-sub">${MAP.byId[B.to].name}の戦い${defense ? `（${pShort()}の守り）` : ''}
+        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}</div>
     <div class="b-field">
       ${battleScene(B, S.turn)}
+      <div class="b-cut" id="b-cut"></div>
       <div class="spark" id="spark"></div>
       <div class="stamp" id="stamp"></div>
     </div>
@@ -1571,12 +1575,27 @@ function runBattle(B, { auto = false, onClose } = {}) {
     setTimeout(updateBars, 180);
   };
   updateBars();
-  report([defense
+  const openLines = [defense
     ? `${CLANS[B.attacker].name}の${g.name}が攻めてきた！ 城を守り抜け！`
-    : `${g.name}が${fmt(B.a.start)}兵を率いて出陣！`]);
+    : `${g.name}が${fmt(B.a.start)}兵を率いて出陣！`];
+  if (B.weather !== 'sun') openLines.push(`${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}：${WEATHER[B.weather].desc}`);
+  if (B.decisive) {
+    // 決戦：本拠を守る大将の名乗り
+    const lordD = dg ? dg.name : '城兵';
+    openLines.unshift(`${lordD}「ここは${CLANS[B.defender].name}の本拠・${MAP.byId[B.to].short}！ 一歩たりとも通さぬ！」`);
+    setTimeout(() => {
+      const cut = $('b-cut');
+      cut.textContent = '天下分け目の決戦';
+      cut.className = 'b-cut go decisive';
+      Sound.horagai();
+      setTimeout(() => Sound.horagai(), 900);
+    }, 300);
+  }
+  report(openLines);
 
   let busy = false;
   let timer = null;
+  let fxSeq = 0;
   let carry = []; // 決着の直前に出た文（一騎打ちの結果など）を、決着の画面にも残す
 
   // 命令のボタン
@@ -1615,9 +1634,51 @@ function runBattle(B, { auto = false, onClose } = {}) {
     cmds[foe] = aiCommand(S, B, foe);
     const rep = stepBattle(S, B, cmds);
     $('round').textContent = `第 ${'一二三四五六七八'[B.round - 1] || B.round} 合`;
-    report(rep.lines);
-    animate();
-    timer = setTimeout(afterRound, wait(1100));
+    const lead = playBattleFx(rep.act || {});
+    setTimeout(() => { report(rep.lines); animate(); }, lead);
+    timer = setTimeout(afterRound, wait(1100) + lead);
+  }
+
+  // 命令・戦法ごとの演出。戦法は名前を大きく出してから。演出が始まるまでの時間を返す
+  function playBattleFx(act) {
+    const fx = $('bf-fx');
+    if (!fx || B.over === 'retreat') return 0;
+    const kindOf = (sd) => {
+      const c = act[sd];
+      if (!c) return null;
+      if (c === 'confused') return 'confused';
+      if (c.startsWith('art:')) return S.gens[c.slice(4)].skill;
+      return c;
+    };
+    const arts = ['a', 'd'].filter((sd) => act[sd] && act[sd].startsWith('art:'));
+    let lead = 0;
+    const seq = ++fxSeq;
+    if (arts.length) {
+      const cut = $('b-cut');
+      cut.textContent = arts.map((sd) => `${ARTS[S.gens[act[sd].slice(4)].skill].name}`).join('　×　');
+      cut.className = `b-cut go ${arts.includes(me) ? 'me' : 'foe'}`;
+      Sound.kiai();
+      lead = fast ? 450 : 800;
+    }
+    setTimeout(() => {
+      if (seq !== fxSeq) return;
+      fx.innerHTML = '';
+      ['a', 'd'].forEach((sd) => {
+        const k = kindOf(sd);
+        if (!k) return;
+        fx.insertAdjacentHTML('beforeend', battleFx(k, sd));
+        if (k === 'charge') Sound.hooves();
+        if (k === 'guard' || k === 'chikujou') { Sound.taiko(0, 0.5); Sound.taiko(0.15, 0.5); }
+        if (k === 'scheme') Sound.charge();
+        if (k === 'totsugeki') Sound.slash(0, true);
+        if (k === 'teppeki') { Sound.clash(0); Sound.taiko(0.1, 0.8); }
+        if (k === 'shinsan') Sound.fire();
+        if (k === 'jinbou') Sound.season();
+        if (k === 'shousai') Sound.taiko(0, 0.6);
+      });
+      setTimeout(() => { if (seq === fxSeq && fx.isConnected) fx.innerHTML = ''; }, 1500);
+    }, lead);
+    return lead;
   }
 
   // ---------- 一騎打ち ----------
@@ -2047,17 +2108,53 @@ function onEndTurn() {
   save();
   render();
   const gain = S.gold[PLAYER] - before;
+  const news = (S.news || []).slice();
+  S.news = [];
+  save();
   showSeason(S.turn, () => {
-    openModal(`<h2 data-lock>諸国の動き</h2>
-      <ul class="log">${log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li>諸国に大きな動きはなかった。</li>'}</ul>
-      <p>💰 ${pName()}の収支：<b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
-      <button class="btn red" id="ok">承 知</button>`);
+    showNewspaper(news, log, gain);
     $('ok').onclick = () => {
       Sound.tap();
       closeModal();
       afterDefenses();
     };
   });
+}
+
+// ---------- 学園新聞 ----------
+// その季の出来事を、新聞の一面のように見せる
+const NEWS_FILLER = [
+  ['春の陽気、各校に活気', '新入生を迎え、どの家も力をたくわえる'],
+  ['夏の日差し、嵐の前の静けさ', '各家は合宿で力を磨く'],
+  ['秋風立つ、決戦の気配', '文化祭の裏で、諸家の思惑が交錯する'],
+  ['冬ざれの学び舎、静かな攻防', '受験を前に、各家は守りを固める'],
+];
+function showNewspaper(news, log, gain) {
+  const sorted = news.slice().sort((a, b) => b.weight - a.weight);
+  const [top, ...rest] = sorted;
+  const head = top || { head: NEWS_FILLER[S.turn % 4][0], sub: NEWS_FILLER[S.turn % 4][1] };
+  const wx = WEATHER[S.weather] || WEATHER.sun;
+  const ranks = Object.keys(CLANS).filter((k) => k !== 'none' && castlesOf(S, k).length)
+    .sort((a, b) => castlesOf(S, b).length - castlesOf(S, a).length);
+  const maxN = Math.max(1, ...ranks.map((k) => castlesOf(S, k).length));
+  const paper = '東京学園新聞';
+  openModal(`<div class="paper" data-lock>
+      <div class="np-mast"><span class="np-no">第${S.turn}号</span><b>${paper}</b><span class="np-date">${dateLabel(S.turn)}</span></div>
+      <div class="np-top">
+        <h2 class="np-head">${esc(head.head)}</h2>
+        ${head.sub ? `<p class="np-sub">${esc(head.sub)}</p>` : ''}
+      </div>
+      ${rest.length ? `<div class="np-cols">${rest.slice(0, 3).map((n) => `<div class="np-art"><b>${esc(n.head)}</b>${n.sub ? `<small>${esc(n.sub)}</small>` : ''}</div>`).join('')}</div>` : ''}
+      <div class="np-row">
+        <div class="np-box np-wx"><em>天気予報</em><span class="np-wxi">${wx.icon}</span><b>${wx.name}</b><small>${wx.desc}</small></div>
+        <div class="np-box np-rank"><em>勢力番付</em>${ranks.slice(0, 6).map((k, i) => `<div class="np-r ${k === PLAYER ? 'me' : ''}">
+          <span>${i + 1}</span>${crestBadge(k, 14)}<i style="width:${(castlesOf(S, k).length / maxN) * 100}%;background:${CLANS[k].color}"></i><b>${castlesOf(S, k).length}</b></div>`).join('')}</div>
+      </div>
+      <p class="np-gold">💰 ${pName()}の収支 <b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
+      <details class="np-log"><summary>諸国の動きをすべて見る（${log.length}件）</summary>
+        <ul class="log">${log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li>諸国に大きな動きはなかった。</li>'}</ul></details>
+    </div>
+    <button class="btn red" id="ok">承 知</button>`);
 }
 
 // 敵襲の合戦をすべて終えてから、勝ち負けを調べて季節の出来事へ

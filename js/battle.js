@@ -38,10 +38,13 @@ function startBattle(s, o) {
   const ratio = n / Math.max(1, dst.troops * def);
   const ratioBonus = clamp(Math.round((ratio - 1) * 10), -10, 10);
   const kakunBonus = (clan) => (clan === PLAYER && s.kakun === 'cha' ? 5 : 0);
+  // 決戦：家の本拠（家の名のもとになった城）をめぐる合戦。守る側は士気が高く、大将どうしの一騎打ちが必ず起こる
+  const decisive = isCapital(to, defender);
   return {
+    decisive,
     from, to, attacker, defender, gid, dgid: dg ? dg.id : null, support, tactic, tr,
     parts: [{ from, n: n - support.reduce((a, sp) => a + sp.n, 0) }, ...support],
-    playerSide, def,
+    playerSide, def, weather: s.weather || 'sun',
     a: {
       clan: attacker, troops: n, start: n, confused: 0, wall: 0, wallRate: 1, starve: 0, last: null,
       morale: clamp(BATTLE.baseMorale + tr * 15 + ratioBonus + kakunBonus(attacker), 15, 100),
@@ -49,7 +52,7 @@ function startBattle(s, o) {
     },
     d: {
       clan: defender, troops: dst.troops, start: Math.max(1, dst.troops), confused: 0, wall: 0, wallRate: 1, starve: 0, last: null,
-      morale: clamp(BATTLE.baseMorale + 5 - tr * 15 - ratioBonus + kakunBonus(defender) - (dg ? 0 : 10), 15, 100),
+      morale: clamp(BATTLE.baseMorale + 5 - tr * 15 - ratioBonus + kakunBonus(defender) - (dg ? 0 : 10) + (decisive ? 10 : 0), 15, 100),
       arts: artUsers(s, gensAt(s, to).map((g) => g.id)), used: {},
     },
     round: 0, over: null, duel: null, duelDone: false, duelCapture: null,
@@ -121,7 +124,13 @@ function stepBattle(s, B, cmds) {
       lines.push(`${name[sd]}・${g.name}の戦法「${ARTS[art].name}」！`);
       if (art === 'totsugeki') { e.out = 2; e.foeMorale -= 12; }
       if (art === 'teppeki') { me.wall = 2; me.wallRate = 0.5; e.out = 0.6; }
-      if (art === 'shinsan') { e.extra = foe.troops * 0.12; e.foeMorale -= 18; e.out = 0.8; }
+      if (art === 'shinsan') {
+        // 火計は雨で湿り、強風で燃え広がる
+        const f = B.weather === 'rain' ? 0.4 : B.weather === 'wind' ? 1.5 : 1;
+        e.extra = foe.troops * 0.12 * f; e.foeMorale -= Math.round(18 * Math.min(f, 1.2)); e.out = 0.8;
+        if (f < 1) lines.push('しかし雨で火の勢いが弱い…');
+        if (f > 1) lines.push('強風にあおられ、炎が燃え広がる！');
+      }
       if (art === 'jinbou') { e.morale += 25; }
       if (art === 'shousai') { foe.starve = 2; }
       if (art === 'chikujou') { me.wall = 3; me.wallRate = 0.7; e.out = 0.8; }
@@ -129,7 +138,7 @@ function stepBattle(s, B, cmds) {
       return;
     }
     baseCmd[sd] = c;
-    if (c === 'charge') { e.out = 1.5; e.in = 1.3; }
+    if (c === 'charge') { e.out = B.weather === 'snow' ? 1.25 : 1.5; e.in = 1.3; }
     if (c === 'guard') { e.out = 0.5; e.in = 0.6; e.morale += 6; }
     if (c === 'scheme') { e.out = 0.6; }
   });
@@ -156,7 +165,7 @@ function stepBattle(s, B, cmds) {
     ['a', 'd'].forEach((sd) => {
       if (baseCmd[sd] !== 'scheme') return;
       const mine = leader[sd] ? leader[sd].int : 40, theirs = leader[other(sd)] ? leader[other(sd)].int : 40;
-      if (Math.random() < clamp(0.45 + (mine - theirs) / 100, 0.15, 0.85)) {
+      if (Math.random() < clamp(0.45 + (mine - theirs) / 100 + (B.weather === 'fog' ? 0.2 : 0), 0.15, 0.9)) {
         B[other(sd)].confused = 1; eff[other(sd)].morale -= 10;
         lines.push(`${name[sd]}の計略が決まった！ ${name[other(sd)]}は混乱している`);
       } else {
@@ -173,13 +182,14 @@ function stepBattle(s, B, cmds) {
   ['a', 'd'].forEach((sd) => {
     const me = B[sd];
     if (me.wall > 0) { eff[sd].in *= me.wallRate; me.wall--; }
-    if (me.starve > 0) { eff[sd].morale -= 8; me.starve--; lines.push(`${name[sd]}は兵糧が乏しく、士気が下がっている`); }
+    if (me.starve > 0) { eff[sd].morale -= B.weather === 'snow' ? 12 : 8; me.starve--; lines.push(`${name[sd]}は兵糧が乏しく、士気が下がっている`); }
   });
 
   // 損害
   const am = atkMult(leader.a) * atkKakun(s, B.attacker);
   const dm = defMult(leader.d) * defKakun(s, B.defender);
-  const r1 = rand(0.85, 1.15), r2 = rand(0.85, 1.15);
+  // 雨の日は攻め手の勢いが鈍る
+  const r1 = rand(0.85, 1.15) * (B.weather === 'rain' ? 0.9 : 1), r2 = rand(0.85, 1.15);
   let toD = (B.a.troops * BATTLE.atkRate * am * eff.a.out * eff.d.in * moraleF(B.a.morale) * r1) / B.def + eff.a.extra;
   let toA = B.d.troops * BATTLE.defRate * dm * eff.d.out * eff.a.in * moraleF(B.d.morale) * r2 + eff.d.extra;
   toD = Math.min(B.d.troops, Math.round(toD));
@@ -198,7 +208,7 @@ function stepBattle(s, B, cmds) {
   B.rounds.push({ a: B.a.troops, d: B.d.troops, ma: B.a.morale, md: B.d.morale });
 
   // 一騎打ち：2合目以降、大将どうしがいるとときどき起こる
-  if (!B.over && !B.duelDone && B.round >= 2 && leader.a && leader.d && Math.random() < 0.07) {
+  if (!B.over && !B.duelDone && B.round >= 2 && leader.a && leader.d && (B.decisive || Math.random() < 0.07)) {
     B.duelDone = true;
     B.duel = { challenger: leader.a.str >= leader.d.str ? 'a' : 'd' };
   }
@@ -377,6 +387,10 @@ function endDuel(s, B) {
   grow(s.gens[w === 'a' ? B.gid : B.dgid], 'str');
   const lines = [`一騎打ちは${s.gens[w === 'a' ? B.gid : B.dgid].name}の勝ち！ ${shortName(B[l].clan)}の士気が大きく下がった`];
   if (B.duelCapture) lines.push(`${loserGen.name}は捕らえられた！`);
+  const winGen = s.gens[w === 'a' ? B.gid : B.dgid];
+  if (B[w].clan === PLAYER || B[l].clan === PLAYER) {
+    addNews(s, `一騎打ち！ ${winGen.name}、${loserGen.name}を破る`, `${MAP.byId[B.to].name}の戦いにて${B.duelCapture ? '。敗れた将は捕縛' : ''}`, 45);
+  }
   B.duel = null;
   const name = { a: shortName(B.attacker), d: shortName(B.defender) };
   checkBattleEnd(B, lines, name);
@@ -446,6 +460,7 @@ function endBattle(s, B, log) {
     result.captured.push(...scatterGenerals(s, B.to, B.defender, B.attacker, log));
     result.grew = g.clan === B.attacker ? grow(g, 'str') : null;
     if (B.attacker === PLAYER) { s.stats.battlesWon++; changeLoyal(g, 3); }
+    result.surrendered = capitalFallen(s, B.to, B.defender, B.attacker, log);
   } else {
     if (B.attacker === PLAYER) changeLoyal(g, -3);
     if (B.defender === PLAYER && dg) changeLoyal(dg, 4);
@@ -457,5 +472,6 @@ function endBattle(s, B, log) {
     });
     if (dg && dg.clan === B.defender) grow(dg, 'int');
   }
+  battleNews(s, result);
   return result;
 }

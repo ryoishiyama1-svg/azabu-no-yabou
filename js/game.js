@@ -256,6 +256,7 @@ function migrate(s) {
   s.aiRel = s.aiRel || {};
   s.underAttack = s.underAttack || {};
   s.diploLog = s.diploLog || [];
+  if (!WEATHER[s.weather]) s.weather = s.turn === 0 ? 'sun' : rollWeather(s.turn);
   // 当主が家を離れてしまったセーブ（家督相続の前の合戦で候補が捕らわれた不具合）を直す
   if (castlesOf(s, PLAYER).length && !lordOf(s) && !(s.pending || []).some((ev) => ev.id === 'succession')) {
     Object.values(s.gens).forEach((g) => { if (g.lord && g.clan !== PLAYER) g.lord = false; });
@@ -484,6 +485,7 @@ function tickDiplomacy(s, log) {
     log.push(`🔥 ${pName()}の台頭を恐れた諸家が「${pShort()}包囲網」を結成！ 同盟・停戦はすべて破棄された`);
     if (sisters.length) log.push(`🌸 姉妹校の${sisters.map((k) => CLANS[k].name).join('・')}は包囲網に加わらなかった`);
     addDiploLog(s, `諸家が「${pShort()}包囲網」を結成した`, 'bad');
+    addNews(s, `諸家、「${pShort()}包囲網」を結成`, `${pName()}の台頭に危機感`, 92);
   }
   // 共同出兵の期限
   if (s.joint && --s.joint.turns <= 0) {
@@ -496,6 +498,13 @@ function tickDiplomacy(s, log) {
 function hostileNeighbors(s, id) {
   const owner = s.castles[id].owner;
   return MAP.adj[id].filter((n) => !atPeace(s, owner, s.castles[n].owner));
+}
+
+// その季節の天気を決める
+function rollWeather(turn) {
+  const odds = WEATHER_ODDS[turn % 4];
+  let r = Math.random() * Object.values(odds).reduce((a, b) => a + b, 0);
+  return Object.keys(odds).find((k) => (r -= odds[k]) <= 0) || 'sun';
 }
 
 function diffOf(s) { return DIFFICULTY[s.diff] || DIFFICULTY.normal; }
@@ -774,6 +783,7 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
     result.captured = scatterGenerals(s, to, defender, attacker, log);
     result.grew = grow(g, 'str');
     if (attacker === PLAYER) { s.stats.battlesWon++; changeLoyal(g, 3); }
+    result.surrendered = capitalFallen(s, to, defender, attacker, log);
   } else {
     if (attacker === PLAYER) changeLoyal(g, -3);
     if (defender === PLAYER && dg) changeLoyal(dg, 4);
@@ -783,6 +793,7 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
     parts.forEach((p) => { s.castles[p.from].troops += Math.round((r.left * p.n) / n); });
     if (dg) grow(dg, 'int');
   }
+  battleNews(s, result);
   return result;
 }
 
@@ -854,6 +865,57 @@ function battleLine(s, r) {
     return r.won ? `🏯 委任：${g.name}が ${t}${d}を攻略！` : `💨 委任：${g.name}が ${t} を攻めたが失敗`;
   }
   return `⚔️ ${a}が ${t}${d}を攻略`;
+}
+
+// 家の本拠か（家の名のもとになった城）
+function isCapital(id, clan) {
+  return id === clan && !!CLANS[clan] && clan !== 'none';
+}
+// 本拠を落とされた家は動揺し、残る城がそれぞれ降伏することがある（プレイヤーが落としたときだけ）
+function capitalFallen(s, id, loser, winner, log) {
+  if (winner !== PLAYER || !isCapital(id, loser)) return [];
+  const gave = [];
+  castlesOf(s, loser).forEach((cid) => {
+    if (Math.random() >= 0.4) return;
+    const c = s.castles[cid];
+    c.owner = PLAYER;
+    c.troops = Math.round(c.troops * 0.6);
+    s.delegate[cid] = true; // 降った城は、ひとまず委任しておく
+    Object.values(s.gens).filter((g) => g.loc === cid && g.clan === loser).forEach((g) => {
+      if (g.lord) { const rest = castlesOf(s, loser); if (rest.length) g.loc = rest[0]; else { g.clan = 'ronin'; g.loc = null; } return; }
+      g.clan = PLAYER;
+      g.loyal = randInt(40, 55); // 降将はまだ心を許していない
+    });
+    gave.push(cid);
+  });
+  if (log) {
+    log.push(`🏯 本拠を失った${CLANS[loser].name}は大きく動揺した！`);
+    if (gave.length) log.push(`🏳️ ${gave.map((c) => MAP.byId[c].short).join('・')}が${pName()}に降伏した！`);
+    if (!castlesOf(s, loser).length) log.push(`☠️ ${CLANS[loser].name}は滅亡した`);
+  }
+  addNews(s, `${pName()}、${CLANS[loser].name}の本拠・${MAP.byId[id].name}を攻略！`,
+    gave.length ? `${gave.length}城が相次いで降伏` : `${CLANS[loser].name}に激震走る`, 95);
+  return gave;
+}
+
+// ---------- 学園新聞の記事 ----------
+// 季節のあいだの出来事を集めておき、ターン終了のときに新聞にする。weight が大きいほど大きな見出しになる
+function addNews(s, head, sub = '', weight = 50) {
+  s.news = s.news || [];
+  s.news.push({ head, sub, weight });
+  if (s.news.length > 60) s.news.shift();
+}
+// 合戦の結果を記事にする（attack() と endBattle() の結果に共通）
+function battleNews(s, r) {
+  const to = MAP.byId[r.to].name;
+  const an = CLANS[r.attacker].name, dn = CLANS[r.defender].name;
+  if (r.attacker === PLAYER && r.won && !isCapital(r.to, r.defender)) addNews(s, `${an}、${to}を攻略`, r.defender === 'none' ? '独立校がまた一つ' : `${dn}は後退`, 40);
+  else if (r.defender === PLAYER && r.won) addNews(s, `${an}、${pName()}の${to}を奪う`, '守りの見直しが急務か', 60);
+  else if (r.defender === PLAYER && !r.won) addNews(s, `${pName()}、${to}で${an}を撃退`, '守将の奮戦光る', 35);
+  else if (r.attacker !== PLAYER && r.defender !== PLAYER && r.won) addNews(s, `${an}、${to}を攻略`, '', 15);
+  if (r.won && r.defender !== 'none' && CLANS[r.defender] && !castlesOf(s, r.defender).length) {
+    addNews(s, `${dn}、滅亡`, `${an}に敗れ、その歴史に幕を下ろす`, 90);
+  }
 }
 
 // 共同出兵中の他家にとって、その城が標的の家のものか
@@ -1151,6 +1213,7 @@ function succeed(s, gid) {
   gensOf(s, PLAYER).forEach((g) => { if (!g.lord) changeLoyal(g, passed.includes(g) ? -15 : -3); });
   s.kakun = kakunOf(heir);
   s.lords.push({ name: heir.name, from: s.turn, kakun: s.kakun });
+  addNews(s, `${pName()}に新当主・${heir.name}`, `${s.lords.length}代目、家訓は「${KAKUN[s.kakun].name}」`, 70);
   let text = `${heir.name}が${s.lords.length}代目当主となった。家訓は「${KAKUN[s.kakun].name}」（${KAKUN[s.kakun].desc}）。`;
   const rival = passed.find((g) => genPower(g) > genPower(heir) + 15);
   if (rival && Math.random() < 0.5) {
@@ -1175,6 +1238,7 @@ function endTurn(s) {
   });
   s.acted = {};
   s.arrived = {};
+  s.weather = rollWeather(s.turn);
   s.rewarded = {};
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
   tickDiplomacy(s, log);

@@ -103,6 +103,42 @@ const Sound = (() => {
     n.start(t); n.stop(t + 0.45);
   }
 
+  // 騎馬のひづめ：パカラッ、パカラッ
+  function hooves() {
+    const c = ensure(); if (!c) return;
+    noise = noise || noiseBuffer(c);
+    [0, 0.07, 0.14, 0.32, 0.39, 0.46, 0.64, 0.71, 0.78].forEach((d, i) => {
+      const t = c.currentTime + d;
+      const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      n.buffer = noise; f.type = 'bandpass'; f.frequency.value = 500 + (i % 3) * 120; f.Q.value = 2;
+      env(c, g, t, 0.35 - i * 0.02, 0.002, 0.05);
+      n.connect(f).connect(g).connect(c.destination);
+      n.start(t); n.stop(t + 0.07);
+    });
+  }
+
+  // 炎：ぱちぱちと燃える音
+  function fire() {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime;
+    noise = noise || noiseBuffer(c);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    n.buffer = noise; n.loop = true; f.type = 'lowpass'; f.frequency.value = 1200;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.25, t + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    n.connect(f).connect(g).connect(c.destination);
+    n.start(t); n.stop(t + 1.25);
+    for (let i = 0; i < 10; i++) {
+      const tt = t + 0.2 + Math.random() * 0.9;
+      const p = c.createBufferSource(), pf = c.createBiquadFilter(), pg = c.createGain();
+      p.buffer = noise; pf.type = 'highpass'; pf.frequency.value = 3000;
+      env(c, pg, tt, 0.18, 0.001, 0.02);
+      p.connect(pf).connect(pg).connect(c.destination);
+      p.start(tt); p.stop(tt + 0.03);
+    }
+  }
+
   // 気を溜める：きらめきながらせり上がる音
   function charge() {
     const c = ensure(); if (!c) return;
@@ -619,6 +655,8 @@ const Sound = (() => {
     slash,
     kiai,
     charge,
+    hooves,
+    fire,
     horagai,
     win() { koto([587, 659, 784, 880, 1175], 0.11); },   // 陽音階で上る
     lose() { koto([440, 392, 330, 294, 220], 0.2); },

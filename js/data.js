@@ -141,6 +141,22 @@ const TACTICS = {
   siege: { name: '籠城', atkName: '持久戦', beats: 'charge', desc: '守りを固めて相手の消耗を待つ' },
 };
 
+// 天気：季節ごとに出やすさが変わり、合戦に影響する
+const WEATHER = {
+  sun: { name: '晴れ', icon: '☀️', desc: '合戦への影響はない' },
+  rain: { name: '雨', icon: '☔', desc: '火計が弱まり、攻め手の勢いも鈍る' },
+  snow: { name: '雪', icon: '❄️', desc: '突撃が鈍り、兵糧攻めがよく効く' },
+  fog: { name: '霧', icon: '🌫️', desc: '計略が決まりやすい' },
+  wind: { name: '強風', icon: '🍃', desc: '火計がよく燃え広がる' },
+};
+// 季節（春夏秋冬）ごとの天気の出やすさ
+const WEATHER_ODDS = [
+  { sun: 50, rain: 25, fog: 15, wind: 10 },
+  { sun: 55, rain: 35, wind: 10 },
+  { sun: 45, rain: 20, fog: 15, wind: 20 },
+  { sun: 45, snow: 40, fog: 15 },
+];
+
 // 合戦の采配（命令）。突撃は計略に、計略は守りに、守りは突撃に強い
 const COMMANDS = {
   attack: { name: '攻撃', desc: 'ふつうに戦う' },
