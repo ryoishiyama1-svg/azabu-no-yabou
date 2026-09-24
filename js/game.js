@@ -612,6 +612,13 @@ function moveTroops(s, from, to, n) {
   s.castles[from].troops -= n;
   s.castles[to].troops = Math.min(RULES.troopCap, s.castles[to].troops + n);
 }
+// 輸送で届いたばかりの兵は、その季節のうちは出陣・輸送に使えない（守りには加わる）
+function arrivedTroops(s, id) {
+  return Math.min(s.castles[id].troops, (s.arrived && s.arrived[id]) || 0);
+}
+function readyTroops(s, id) {
+  return s.castles[id].troops - arrivedTroops(s, id);
+}
 function moveGeneral(s, gid, to) {
   s.gens[gid].loc = to;
 }
@@ -718,7 +725,7 @@ function gensAtRaw(s, id, clan) {
 // 援軍を出せる城（攻め先のとなりで、命令できる武将と兵がいる自分の城）
 function supportCastles(s, clan, to, except) {
   return MAP.adj[to].filter((id) => id !== except && s.castles[id].owner === clan &&
-    s.castles[id].troops > 0 && idleGensAt(s, id).length > 0);
+    readyTroops(s, id) > 0 && idleGensAt(s, id).length > 0);
 }
 
 // 攻撃を実行して結果を返す
@@ -1167,6 +1174,7 @@ function endTurn(s) {
     if (k !== 'none') s.gold[k] += income(s, k);
   });
   s.acted = {};
+  s.arrived = {};
   s.rewarded = {};
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
   tickDiplomacy(s, log);

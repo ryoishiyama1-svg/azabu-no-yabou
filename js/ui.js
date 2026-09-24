@@ -611,7 +611,7 @@ function modeTargets() {
 function attackSources(target) {
   if (atPeace(S, PLAYER, S.castles[target].owner)) return [];
   return MAP.adj[target].filter((id) => S.castles[id].owner === PLAYER && !S.delegate[id] &&
-    S.castles[id].troops > 0 && idleGensAt(S, id).length > 0);
+    readyTroops(S, id) > 0 && idleGensAt(S, id).length > 0);
 }
 
 function relIcon(k) {
@@ -645,13 +645,15 @@ function renderPanel() {
     const idle = idleGensAt(S, selected);
     const can = idle.length > 0 && !deleg;
     const dis = (ok) => (!can || !ok ? 'disabled' : '');
-    const hint = deleg ? '委任中：ターン終了時に自動で命令します。'
+    const arrived = arrivedTroops(S, selected);
+    const hint = [deleg ? '委任中：ターン終了時に自動で命令します。'
       : !gens.length ? '武将がいないため命令できません。「移動」で武将を送りましょう。'
-      : !idle.length ? 'この城の武将は、今季の命令を終えました。' : '';
+      : !idle.length ? 'この城の武将は、今季の命令を終えました。' : '',
+    arrived ? `🚚 到着したばかりの兵 ${fmt(arrived)}：今季は出陣・輸送に使えません（守りには加わります）` : ''].filter(Boolean).join('<br>');
     body = `${hint ? `<p class="hint">${hint}</p>` : ''}
       <div class="cmds">
-        <button class="btn red" id="c-attack" ${dis(hostileNeighbors(S, selected).length && c.troops > 0)}><span class="k">攻</span>出陣<small>敵城を攻める</small></button>
-        <button class="btn" id="c-move" ${dis(ownNeighbors(S, selected).length && c.troops > 0)}><span class="k">送</span>輸送<small>兵を送る</small></button>
+        <button class="btn red" id="c-attack" ${dis(hostileNeighbors(S, selected).length && readyTroops(S, selected) > 0)}><span class="k">攻</span>出陣<small>敵城を攻める</small></button>
+        <button class="btn" id="c-move" ${dis(ownNeighbors(S, selected).length && readyTroops(S, selected) > 0)}><span class="k">送</span>輸送<small>兵を送る</small></button>
         <button class="btn" id="c-gen" ${dis(ownNeighbors(S, selected).length)}><span class="k">移</span>移動<small>武将を移す</small></button>
         <button class="btn" id="c-recruit" ${dis(canRecruit(S, selected))}><span class="k">兵</span>徴兵<small>金${RULES.recruitCost}</small></button>
         <button class="btn" id="c-develop" ${dis(canDevelop(S, selected))}><span class="k">商</span>開発<small>金${RULES.developCost}</small></button>
@@ -1352,7 +1354,7 @@ function doMoveGeneral(gid, to) {
 function openAttack(from, to) {
   tutAdvance(4);
   const srcs = from ? [from] : attackSources(to);
-  let src = srcs.reduce((a, b) => (S.castles[a].troops >= S.castles[b].troops ? a : b));
+  let src = srcs.reduce((a, b) => (readyTroops(S, a) >= readyTroops(S, b) ? a : b));
   let gid = null;
   let amount = 0;
   let support = {}; // 援軍 { castleId: true }
@@ -1370,7 +1372,7 @@ function openAttack(from, to) {
   }
   function supportParts() {
     return supportList().filter((id) => support[id]).map((id) => ({
-      from: id, n: Math.floor(S.castles[id].troops * 0.8), gid: bestBy(idleGensAt(S, id), 'str').id,
+      from: id, n: Math.floor(readyTroops(S, id) * 0.8), gid: bestBy(idleGensAt(S, id), 'str').id,
     }));
   }
 
@@ -1386,7 +1388,7 @@ function openAttack(from, to) {
   }
 
   function draw() {
-    const max = S.castles[src].troops;
+    const max = readyTroops(S, src);
     amount = Math.min(max, Math.round((max * 0.8) / 10) * 10 || max);
     const gens = idleGensAt(S, src).sort((a, b) => b.str - a.str);
     if (!gens.find((g) => g.id === gid)) gid = gens[0].id;
@@ -1395,14 +1397,15 @@ function openAttack(from, to) {
       <p style="text-align:center;margin:0 0 6px">${clanChip(t.owner)}<br>守備 <b>${fmt(t.troops)}</b> 兵 × 防御 <b>${t.def.toFixed(1)}</b><br>
       守将：${dg ? `<b>${esc(dg.name)}</b>（統${dg.str} 知${dg.int}${dg.skill ? '・' + SKILLS[dg.skill].name : ''}）` : 'なし'}</p>
       ${srcs.length > 1 ? `<h3>出陣する城</h3><div class="src-list">${srcs.map((id) =>
-        `<button data-src="${id}" class="${id === src ? 'on' : ''}"><span>${MAP.byId[id].name}</span><span>兵 ${fmt(S.castles[id].troops)}</span></button>`).join('')}</div>` : ''}
+        `<button data-src="${id}" class="${id === src ? 'on' : ''}"><span>${MAP.byId[id].name}</span><span>兵 ${fmt(readyTroops(S, id))}</span></button>`).join('')}</div>` : ''}
+      ${arrivedTroops(S, src) ? `<p class="hint">🚚 ${MAP.byId[src].short}に到着したばかりの ${fmt(arrivedTroops(S, src))} 兵は、今季は出陣できません</p>` : ''}
       <h3>大将</h3>
       <div class="glist pick">${gens.map((g) => genCard(g, { extra: g.id === gid ? '<span class="check">✔</span>' : '' })).join('')}</div>
       <h3>出陣する兵（${MAP.byId[src].short}）</h3>
       <div class="slider-row"><input type="range" id="amt" min="10" max="${max}" step="10" value="${amount}"><b id="amt-v"></b></div>
       ${sup.length ? `<h3>援軍</h3><div class="src-list">${sup.map((id) => {
         const bg = bestBy(idleGensAt(S, id), 'str');
-        return `<button data-sup="${id}" class="${support[id] ? 'on' : ''}"><span>${support[id] ? '☑' : '☐'} ${MAP.byId[id].short}（${esc(bg.name)}）</span><span>兵 ${fmt(Math.floor(S.castles[id].troops * 0.8))}</span></button>`;
+        return `<button data-sup="${id}" class="${support[id] ? 'on' : ''}"><span>${support[id] ? '☑' : '☐'} ${MAP.byId[id].short}（${esc(bg.name)}）</span><span>兵 ${fmt(Math.floor(readyTroops(S, id) * 0.8))}</span></button>`;
       }).join('')}</div>` : ''}
       <h3>作戦</h3>
       <div class="tactics">${[...Object.keys(TACTICS), 'auto'].map((k) => `<button data-tac="${k}" class="${k === tactic ? 'on' : ''}">
@@ -1825,18 +1828,21 @@ function handleCaptives(list, done) {
 
 // ---------- 輸送 ----------
 function openMove(from, to) {
-  const max = S.castles[from].troops;
+  const max = readyTroops(S, from);
   let amount = Math.round(max / 2 / 10) * 10 || max;
   const g = idleGensAt(S, from).sort((a, b) => a.str - b.str)[0];
   openModal(`<h2>輸 送</h2>
     <p style="text-align:center">${MAP.byId[from].name} → ${MAP.byId[to].name}<br><span class="hint">担当：${esc(g.name)}</span></p>
     <div class="slider-row"><input type="range" id="amt" min="10" max="${max}" step="10" value="${amount}"><b id="amt-v">${fmt(amount)}</b></div>
+    <p class="hint">送った兵は、着いた季節のうちは出陣・輸送に使えません（守りには加わります）</p>
     <button class="btn red" id="go">送 る</button>
     <button class="btn plain" data-close>やめる</button>`);
   $('amt').oninput = (e) => { amount = +e.target.value; $('amt-v').textContent = fmt(amount); };
   $('go').onclick = () => {
     Sound.tap();
     moveTroops(S, from, to, amount);
+    S.arrived = S.arrived || {};
+    S.arrived[to] = (S.arrived[to] || 0) + amount;
     S.acted[g.id] = true;
     mode = null;
     selected = to;
