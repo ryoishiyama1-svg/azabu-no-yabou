@@ -1686,8 +1686,9 @@ function runBattle(B, { auto = false, onClose } = {}) {
       <div class="du-title">一 騎 打 ち${started ? `<small>${roundName}／${DUEL.maxTurns}合</small>` : ''}</div>
       <div class="du-stage" id="du-stage">
         ${duelScene(B[my].clan, B[fo].clan)}
-        <div class="du-p left">${portrait(myGen, 84, du.mood[my] || null)}</div>
-        <div class="du-p right">${portrait(foeGen, 84, du.mood[fo] || null)}</div>
+        <div class="du-p left ${du.entered ? '' : 'enter'}" id="du-pL">${portrait(myGen, 84, du.mood[my] || null)}</div>
+        <div class="du-p right ${du.entered ? '' : 'enter'}" id="du-pR">${portrait(foeGen, 84, du.mood[fo] || null)}</div>
+        <svg class="du-fx" id="du-fx" viewBox="0 0 320 160" preserveAspectRatio="none" aria-hidden="true"></svg>
         <div class="du-flash" id="du-flash"></div>
         <div class="du-cut" id="du-cut"></div>
         ${du.dmg ? ['a', 'd'].filter((sd) => du.dmg[sd]).map((sd) => `<div class="du-dmg ${sd === my ? 'left' : 'right'}">−${du.dmg[sd]}</div>`).join('') : ''}
@@ -1697,6 +1698,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
       ${body}
     </div>`;
     du.dmg = null;
+    du.entered = true;
     if (!started) {
       $('du-yes').onclick = () => {
         Sound.tap();
@@ -1739,20 +1741,8 @@ function runBattle(B, { auto = false, onClose } = {}) {
         moves[foe] = D.next[foe];
         const r = duelStep(S, B, moves);
         const spName = (sd) => DUEL_SPECIALS[duelSpecialOf(sd === me ? myGen : foeGen)].name;
-        // 必殺技は名前を大きく出してから斬る
-        const lead = r.specials.length ? 750 : 0;
-        if (r.specials.length) {
-          const cut = $('du-cut');
-          cut.textContent = r.specials.map(spName).join('　×　');
-          cut.className = `du-cut go ${r.specials.includes(me) ? 'me' : 'foe'}`;
-          Sound.kiai();
-        } else {
-          Sound.slash();
-          Sound.clash(0.12);
-        }
+        const fxTime = playDuelFx(r, myGen, foeGen);
         setTimeout(() => {
-          replay($('du-flash'), 'go');
-          replay(d.querySelector('.duel-box'), 'hit');
           du.dmg = r.dmg;
           ['a', 'd'].forEach((sd) => {
             du.mood[sd] = r.dmg[sd] ? 'angry' : r.dmg[other(sd)] ? 'happy' : 'think';
@@ -1768,9 +1758,64 @@ function runBattle(B, { auto = false, onClose } = {}) {
           } else prepareDuelTurn();
           du.busy = false;
           drawDuel(du);
-        }, lead + 150);
+        }, fxTime);
       };
     });
+  }
+
+  // 技ごとの演出を再生し、終わるまでの時間（ミリ秒）を返す
+  function playDuelFx(r, myGen, foeGen) {
+    const fx = $('du-fx');
+    const sideOf = (sd) => (sd === me ? 'L' : 'R');
+    const pEl = (sd) => $(sideOf(sd) === 'L' ? 'du-pL' : 'du-pR');
+    const genOf = (sd) => (sd === me ? myGen : foeGen);
+    const kindOf = (sd) => (r.moves[sd] === 'special' ? duelSpecialOf(genOf(sd)) : r.moves[sd]);
+    const attacking = (k) => ['slash', 'sweep', 'totsugeki', 'shinsan', 'konshin'].includes(k);
+    const add = (svg) => fx.insertAdjacentHTML('beforeend', svg);
+    const box = $('duel').querySelector('.duel-box');
+    let t = 0;
+    // ① 必殺技は、名前を大きく出してから
+    if (r.specials.length) {
+      const cut = $('du-cut');
+      cut.textContent = r.specials.map((sd) => DUEL_SPECIALS[duelSpecialOf(genOf(sd))].name).join('　×　');
+      cut.className = `du-cut go ${r.specials.includes(me) ? 'me' : 'foe'}`;
+      Sound.kiai();
+      t = 800;
+    }
+    // ② 両者の技
+    setTimeout(() => {
+      ['a', 'd'].forEach((sd) => {
+        const k = kindOf(sd);
+        add(duelFx(k, sideOf(sd)));
+        const el = pEl(sd);
+        if (attacking(k)) replay(el, sideOf(sd) === 'L' ? 'atk-l' : 'atk-r');
+        if (k === 'charge') replay(el, 'charging');
+      });
+      const kinds = ['a', 'd'].map(kindOf);
+      if (kinds.includes('konshin')) { Sound.taiko(0, 1.2); Sound.slash(0.05, true); }
+      if (kinds.includes('totsugeki')) Sound.slash(0, true);
+      if (kinds.includes('shinsan')) { Sound.slash(0.35); Sound.slash(0.5); }
+      if (kinds.includes('teppeki')) { Sound.taiko(0, 0.9); Sound.clash(0.1); }
+      if (kinds.includes('slash') || kinds.includes('sweep')) Sound.slash();
+      if (kinds.includes('block')) Sound.clash(0.18);
+      if (kinds.includes('charge')) Sound.charge();
+    }, t);
+    t += r.specials.length ? 650 : 330;
+    // ③ 当たった側に火花とのけぞり。どちらも無傷なら鍔ぜりの火花
+    setTimeout(() => {
+      const hurt = ['a', 'd'].filter((sd) => r.dmg[sd] > 0);
+      if (!hurt.length && !['a', 'd'].every((sd) => r.moves[sd] === 'charge')) { add(duelClashFx()); Sound.clash(0); }
+      hurt.forEach((sd) => {
+        add(duelImpact(sideOf(sd), r.dmg[sd] >= 2));
+        replay(pEl(sd), sideOf(sd) === 'L' ? 'hurt-l' : 'hurt-r');
+      });
+      if (hurt.length) {
+        replay($('du-flash'), 'go');
+        replay(box, ['a', 'd'].some((sd) => kindOf(sd) === 'konshin') || hurt.some((sd) => r.dmg[sd] >= 2) ? 'hit-big' : 'hit');
+        Sound.taiko(0, hurt.some((sd) => r.dmg[sd] >= 2) ? 1 : 0.6);
+      }
+    }, t);
+    return t + 420;
   }
 
   // 次の合の、相手の手（先に決めておくので「読み」が本当の手を指す）

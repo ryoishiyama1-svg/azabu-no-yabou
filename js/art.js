@@ -66,6 +66,96 @@ function duelScene(clanA, clanD) {
   </svg>`;
 }
 
+// ---------- 一騎打ちの技の演出（舞台と同じ 320×160 の座標） ----------
+// side：技を出した側 'L'（左）/'R'（右）。相手は反対側
+const DU_POS = { L: { x: 94, y: 106 }, R: { x: 226, y: 106 } };
+function duelFx(kind, side) {
+  const me = DU_POS[side], to = DU_POS[side === 'L' ? 'R' : 'L'];
+  const dir = side === 'L' ? 1 : -1;
+  const { x, y } = to;
+  switch (kind) {
+    case 'slash': // 斜めの斬撃
+      return `<g class="fx">
+        <path class="fx-draw fx-glow" pathLength="100" d="M${x - 34 * dir},${y - 44} Q${x + 6 * dir},${y - 18} ${x + 30 * dir},${y + 26}" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <path class="fx-draw" pathLength="100" d="M${x - 40 * dir},${y - 40} Q${x},${y - 12} ${x + 24 * dir},${y + 32}" stroke="#ffe6a8" stroke-width="2" fill="none"/>
+      </g>`;
+    case 'sweep': // 横なぎ
+      return `<g class="fx">
+        <path class="fx-draw fx-glow" pathLength="100" d="M${x - 58 * dir},${y + 4} Q${x},${y + 34} ${x + 56 * dir},${y - 6}" stroke="#bff3ff" stroke-width="9" fill="none" stroke-linecap="round" opacity="0.55"/>
+        <path class="fx-draw" pathLength="100" d="M${x - 58 * dir},${y + 4} Q${x},${y + 34} ${x + 56 * dir},${y - 6}" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </g>`;
+    case 'block': // 刀を交差させた受けと、金の盾
+      return `<g class="fx">
+        <circle class="fx-ring" cx="${me.x + 30 * dir}" cy="${me.y - 8}" r="34" fill="rgba(255,215,120,0.18)" stroke="#ffd774" stroke-width="3"/>
+        <g class="fx-pop" stroke="#f3f3f3" stroke-width="4" stroke-linecap="round">
+          <line x1="${me.x + 14 * dir}" y1="${me.y - 34}" x2="${me.x + 46 * dir}" y2="${me.y + 12}"/>
+          <line x1="${me.x + 46 * dir}" y1="${me.y - 34}" x2="${me.x + 14 * dir}" y2="${me.y + 12}"/>
+        </g>
+      </g>`;
+    case 'charge': // 気を溜める：立ちのぼる炎の気
+      return `<g class="fx">
+        <ellipse class="fx-aura" cx="${me.x}" cy="${me.y + 6}" rx="50" ry="56" fill="rgba(255,140,40,0.28)" stroke="#ffb347" stroke-width="2"/>
+        ${[-30, -14, 2, 18, 32].map((dx, i) => `<path class="fx-flame" style="animation-delay:${i * 0.07}s" d="M${me.x + dx},${me.y + 44} q-6,-16 0,-30 q6,14 0,30 Z" fill="#ffcf5a"/>`).join('')}
+      </g>`;
+    case 'totsugeki': // 一番槍：集中線と一直線の突き
+      return `<g class="fx">
+        <g class="fx-speed" stroke="#fff" stroke-width="1.5" opacity="0.8">${Array.from({ length: 9 }, (_, i) => {
+          const yy = 30 + i * 13;
+          return `<line x1="${side === 'L' ? 0 : 320}" y1="${yy}" x2="${side === 'L' ? 120 + (i % 3) * 40 : 200 - (i % 3) * 40}" y2="${yy}" style="animation-delay:${(i % 4) * 0.04}s"/>`;
+        }).join('')}</g>
+        <line class="fx-draw fx-glow" pathLength="100" x1="${me.x}" y1="${me.y - 10}" x2="${x + 6 * dir}" y2="${y - 10}" stroke="#fff4c8" stroke-width="14" stroke-linecap="round" opacity="0.7"/>
+        <line class="fx-draw" pathLength="100" x1="${me.x}" y1="${me.y - 10}" x2="${x + 6 * dir}" y2="${y - 10}" stroke="#6b3f1d" stroke-width="4" stroke-linecap="round"/>
+        <path class="fx-pop fx-glow" d="M${x + 2 * dir},${y - 20} L${x + 46 * dir},${y - 10} L${x + 2 * dir},${y} L${x + 10 * dir},${y - 10} Z" fill="#f4f7ff" stroke="#9aa6b8" stroke-width="1"/>
+      </g>`;
+    case 'teppeki': // 不動の構え：背後に大きな文字と、金色の結界
+      return `<g class="fx">
+        <text class="fx-kanji" x="${me.x}" y="${me.y - 30}" text-anchor="middle" font-size="58" fill="#ffd774" stroke="#7a4d10" stroke-width="1.5" font-family="Yuji Syuku, serif">不動</text>
+        <circle class="fx-ring slow" cx="${me.x}" cy="${me.y}" r="58" fill="rgba(255,215,120,0.2)" stroke="#ffd774" stroke-width="4"/>
+        <circle class="fx-ring slow" style="animation-delay:.15s" cx="${me.x}" cy="${me.y}" r="46" fill="none" stroke="#fff3c4" stroke-width="2"/>
+      </g>`;
+    case 'shinsan': // 読み切り：暗転、目の光、×字の斬撃
+      return `<g class="fx">
+        <rect class="fx-dark" width="320" height="160" fill="#0b1030"/>
+        <g class="fx-pop fx-glow"><path d="M${me.x - 26},${me.y - 6} L${me.x + 26},${me.y - 6}" stroke="#8fe3ff" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="${me.x - 7}" cy="${me.y - 6}" r="3.5" fill="#dff8ff"/><circle cx="${me.x + 7}" cy="${me.y - 6}" r="3.5" fill="#dff8ff"/></g>
+        <text class="fx-pop" x="160" y="46" text-anchor="middle" font-size="26" fill="#bfefff" font-family="Yuji Syuku, serif">見切った</text>
+        <path class="fx-draw late fx-glow" pathLength="100" d="M${x - 34},${y - 40} L${x + 34},${y + 28}" stroke="#e8fbff" stroke-width="6" stroke-linecap="round"/>
+        <path class="fx-draw later fx-glow" pathLength="100" d="M${x + 34},${y - 40} L${x - 34},${y + 28}" stroke="#e8fbff" stroke-width="6" stroke-linecap="round"/>
+      </g>`;
+    case 'konshin': // 渾身の一撃：真上からの振り下ろしと地割れ
+      return `<g class="fx">
+        <path class="fx-draw fx-glow" pathLength="100" d="M${x - 10 * dir},0 Q${x + 26 * dir},${y - 50} ${x + 4 * dir},${y + 40}" stroke="#fff" stroke-width="12" fill="none" stroke-linecap="round"/>
+        <g class="fx-crack late" stroke="#1a0d08" stroke-width="2.5" fill="none">
+          <path d="M${x},${146} l-14,6 l-10,-4 l-16,8"/><path d="M${x},${146} l12,5 l8,-5 l18,7"/><path d="M${x},${146} l-2,10"/>
+        </g>
+      </g>`;
+    default:
+      return '';
+  }
+}
+// 当たったところの火花
+function duelImpact(side, big) {
+  const { x, y } = DU_POS[side];
+  const n = big ? 12 : 8, r0 = big ? 16 : 10, r1 = big ? 46 : 30;
+  return `<g class="fx fx-impact">
+    <circle class="fx-ring fast" cx="${x}" cy="${y - 6}" r="${big ? 30 : 20}" fill="rgba(255,255,255,0.5)"/>
+    <g stroke="#ffe27a" stroke-width="${big ? 3.5 : 2.5}" stroke-linecap="round">${Array.from({ length: n }, (_, i) => {
+      const a = (i / n) * Math.PI * 2;
+      return `<line x1="${x + Math.cos(a) * r0}" y1="${y - 6 + Math.sin(a) * r0}" x2="${x + Math.cos(a) * r1}" y2="${y - 6 + Math.sin(a) * r1}"/>`;
+    }).join('')}</g>
+  </g>`;
+}
+// 相打ち・受け止めたときの鍔ぜりの火花（真ん中）
+function duelClashFx() {
+  return `<g class="fx fx-impact">
+    <g stroke="#fff" stroke-width="4" stroke-linecap="round"><line x1="138" y1="80" x2="182" y2="112"/><line x1="182" y1="80" x2="138" y2="112"/></g>
+    <g stroke="#ffd24a" stroke-width="2" stroke-linecap="round">${Array.from({ length: 10 }, (_, i) => {
+      const a = (i / 10) * Math.PI * 2;
+      return `<line x1="${160 + Math.cos(a) * 8}" y1="${96 + Math.sin(a) * 8}" x2="${160 + Math.cos(a) * 34}" y2="${96 + Math.sin(a) * 30}"/>`;
+    }).join('')}</g>
+  </g>`;
+}
+
 // ---------- 会談の部屋（相手の生徒会室。床の間に相手の家紋の掛け軸） ----------
 function meetingRoom(clan) {
   const c = CLANS[clan];

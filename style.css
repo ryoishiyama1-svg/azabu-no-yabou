@@ -986,8 +986,50 @@ svg.bf {
 .du-scene .du-flag path { transform-origin: 0 62px; animation: du-wave 1.6s ease-in-out infinite alternate; }
 @keyframes du-wave { to { transform: skewY(6deg) scaleX(0.92); } }
 .du-p { position: absolute; bottom: 7%; width: 27%; }
-.du-p.left { left: 16%; animation: du-in-l 0.5s ease-out both; }
-.du-p.right { right: 16%; animation: du-in-r 0.5s ease-out both; }
+.du-p.left { left: 16%; }
+.du-p.right { right: 16%; }
+.du-p.left.enter { animation: du-in-l 0.5s ease-out both; }
+.du-p.right.enter { animation: du-in-r 0.5s ease-out both; }
+/* 踏み込み・のけぞり・気を溜める */
+.du-p.atk-l { animation: du-atk-l 0.45s ease-out; }
+.du-p.atk-r { animation: du-atk-r 0.45s ease-out; }
+@keyframes du-atk-l { 40% { transform: translateX(55%) scale(1.08); } }
+@keyframes du-atk-r { 40% { transform: translateX(-55%) scale(1.08); } }
+.du-p.hurt-l { animation: du-hurt-l 0.5s ease-out; }
+.du-p.hurt-r { animation: du-hurt-r 0.5s ease-out; }
+@keyframes du-hurt-l { 20% { transform: translateX(-18%) rotate(-10deg); filter: brightness(1.6) sepia(1) hue-rotate(-40deg) saturate(4); } }
+@keyframes du-hurt-r { 20% { transform: translateX(18%) rotate(10deg); filter: brightness(1.6) sepia(1) hue-rotate(-40deg) saturate(4); } }
+.du-p.charging { animation: du-charge 0.7s ease-in-out; }
+@keyframes du-charge { 30%, 70% { transform: translateY(-6%) scale(1.06); filter: drop-shadow(0 0 10px #ffb347); } }
+/* 技の演出 */
+.du-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.du-fx .fx { animation: fx-out 0.35s ease-in 0.55s forwards; }
+.du-fx .fx-impact { animation-delay: 0.3s; }
+@keyframes fx-out { to { opacity: 0; } }
+.du-fx .fx-glow { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px #ffd98a); }
+.du-fx .fx-draw { stroke-dasharray: 100; stroke-dashoffset: 100; animation: fx-draw 0.22s ease-out forwards; }
+.du-fx .fx-draw.late { animation-delay: 0.3s; }
+.du-fx .fx-draw.later { animation-delay: 0.45s; }
+@keyframes fx-draw { to { stroke-dashoffset: 0; } }
+.du-fx .fx-ring { transform-box: fill-box; transform-origin: center; animation: fx-ring 0.4s ease-out both; }
+.du-fx .fx-ring.slow { animation-duration: 0.7s; }
+.du-fx .fx-ring.fast { animation-duration: 0.25s; }
+@keyframes fx-ring { from { transform: scale(0.2); opacity: 0; } 40% { opacity: 1; } }
+.du-fx .fx-pop { transform-box: fill-box; transform-origin: center; animation: fx-pop 0.25s cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+@keyframes fx-pop { from { transform: scale(0); } }
+.du-fx .fx-aura { transform-box: fill-box; transform-origin: center bottom; animation: fx-aura 0.8s ease-out both; }
+@keyframes fx-aura { from { transform: scaleY(0.2); opacity: 0; } 50% { opacity: 1; } }
+.du-fx .fx-flame { transform-box: fill-box; transform-origin: center bottom; animation: fx-flame 0.7s ease-out both; }
+@keyframes fx-flame { from { transform: translateY(0) scale(0.4); opacity: 0; } 40% { opacity: 1; } to { transform: translateY(-40px) scale(1.1); opacity: 0; } }
+.du-fx .fx-speed line { stroke-dasharray: 30 200; animation: fx-speed 0.3s linear both; }
+@keyframes fx-speed { from { stroke-dashoffset: 60; opacity: 0; } 30% { opacity: 1; } to { stroke-dashoffset: -160; opacity: 0; } }
+.du-fx .fx-kanji { opacity: 0; transform-box: fill-box; transform-origin: center; animation: fx-kanji 0.9s ease-out both; }
+@keyframes fx-kanji { from { transform: scale(1.8); opacity: 0; } 30% { transform: scale(1); opacity: 0.85; } to { opacity: 0.6; } }
+.du-fx .fx-dark { opacity: 0; animation: fx-dark 0.9s ease-out both; }
+@keyframes fx-dark { 20%, 70% { opacity: 0.6; } to { opacity: 0; } }
+.du-fx .fx-crack path { stroke-dasharray: 60; stroke-dashoffset: 60; animation: fx-draw 0.2s ease-out 0.25s forwards; }
+.duel-box.hit-big { animation: du-shake-big 0.45s; }
+@keyframes du-shake-big { 10%, 50% { transform: translate(-6px, 4px); } 30%, 70% { transform: translate(6px, -4px); } 90% { transform: translate(-2px, 1px); } }
 .du-p .portrait { width: 100%; height: auto; border-radius: 50%; border: 3px solid var(--gold); background: #fff; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
 .du-p.right .portrait { transform: scaleX(-1); border-color: #c9b2d6; }
 @keyframes du-in-l { from { transform: translateX(-60px); opacity: 0; } }

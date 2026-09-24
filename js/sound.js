@@ -103,6 +103,21 @@ const Sound = (() => {
     n.start(t); n.stop(t + 0.45);
   }
 
+  // 気を溜める：きらめきながらせり上がる音
+  function charge() {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime;
+    [0, 0.08, 0.16].forEach((d, i) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(300 + i * 90, t + d);
+      o.frequency.exponentialRampToValueAtTime(900 + i * 200, t + d + 0.4);
+      env(c, g, t + d, 0.07, 0.05, 0.4);
+      o.connect(g).connect(c.destination);
+      o.start(t + d); o.stop(t + d + 0.5);
+    });
+  }
+
   // 必殺技：気合の高まり（せり上がる音）から大太鼓の一撃
   function kiai() {
     const c = ensure(); if (!c) return;
@@ -603,6 +618,7 @@ const Sound = (() => {
     clash,
     slash,
     kiai,
+    charge,
     horagai,
     win() { koto([587, 659, 784, 880, 1175], 0.11); },   // 陽音階で上る
     lose() { koto([440, 392, 330, 294, 220], 0.2); },
