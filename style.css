@@ -609,6 +609,9 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .dr-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 6px; }
 .dr-btns .btn { margin: 0; padding: 7px 4px; font-size: 14px; line-height: 1.2; }
 .dr-btns .btn small { display: block; font-size: 10.5px; font-family: var(--gothic); font-weight: 600; letter-spacing: 0; }
+.persona { margin: 4px 0 2px; font-size: 12px; line-height: 1.5; }
+.persona b { font-family: var(--mincho); color: var(--red); margin-right: 6px; }
+.persona.rel { color: #2f6b3f; font-weight: 700; }
 .warn { background: #3a1216; color: #ffd9c8; border-radius: 6px; padding: 6px 10px; font-size: 13px; font-weight: 700; }
 .result { background: #fff3cf; border: 1px solid var(--gold); border-radius: 6px; padding: 6px 10px; font-weight: 700; text-align: center; }
 .bulk { grid-template-columns: 1fr 1fr 1fr; }

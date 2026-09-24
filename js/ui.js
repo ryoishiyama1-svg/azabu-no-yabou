@@ -419,6 +419,8 @@ function showHelp() {
       <li>各家との<b>友好度</b>を「贈答」で上げ、<b>停戦</b>や<b>同盟</b>を申し込めます（使者＝魅力の高い武将が1人行動します）</li>
       <li>停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います</li>
       <li>城の${Math.round(DIPLO.encircleShare * 100)}%以上を持つと、諸家が<b>包囲網</b>を結成して一斉に攻めてきます</li>
+      <li>各家には<b>性格</b>があります（${Object.entries(CLAN_PERSONA).filter(([k]) => k !== PLAYER).map(([k, p]) => `${CLANS[k].name.replace('家', '')}＝${PERSONAS[p].name}`).join('、')}）。停戦・同盟の結びやすさや、攻め方が変わります</li>
+      <li>他家どうしも停戦・同盟を結び、ときには裏切ります。外交の画面で、他家どうしの関係も見られます</li>
     </ul>
     <h3>イベント</h3>
     <p>季節ごとに卒業式・入学式・夏合宿・文化祭・受験シーズンが訪れ、転校生や寝返りの誘いなどの出来事も起こります。</p>
@@ -664,7 +666,7 @@ function renderPanel() {
     const peace = atPeace(S, PLAYER, c.owner);
     const why = peace ? `${CLANS[c.owner].name}とは${relLabel(S, c.owner)}のため攻められません`
       : srcs.length ? 'となりの城から出陣できます' : `となりに命令できる${pName()}の城と武将がいません`;
-    body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}</p>` : ''}
+    body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}・性格「${personaOf(c.owner).name}」</p>` : ''}
       <div class="cmds">
         <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
         <button class="btn plain wide" id="c-close">閉じる</button>
@@ -750,6 +752,15 @@ function showDiplomacy(message) {
     const ac = envoy ? Math.round(allyChance(S, k, envoy) * 100) : 0;
     return `<div class="diplo-row">
       <div class="dr-head">${clanChip(k)}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
+      <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
+      ${(() => {
+        const rs = aiRelations(S, k);
+        const allies = rs.filter((x) => x.ally).map((x) => CLANS[x.clan].name);
+        const truces = rs.filter((x) => x.truce && !x.ally).map((x) => CLANS[x.clan].name);
+        return allies.length || truces.length
+          ? `<p class="persona rel">${allies.length ? `🤝 同盟：${allies.join('・')}` : ''}${allies.length && truces.length ? '　' : ''}${truces.length ? `🕊️ 停戦：${truces.join('・')}` : ''}</p>`
+          : '';
+      })()}
       <div class="friend"><span>友好度</span><i><b style="width:${r.friend}%"></b></i><em>${r.friend}</em></div>
       <div class="dr-btns">
         <button class="btn plain" data-act="gift" data-clan="${k}" ${off || S.gold[PLAYER] < DIPLO.giftCost ? 'disabled' : ''}>贈答<small>金${DIPLO.giftCost}</small></button>

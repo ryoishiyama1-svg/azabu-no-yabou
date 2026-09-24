@@ -184,6 +184,21 @@ const FACILITIES = {
 };
 const FAC_SLOTS = 2;
 
+// 他家の性格（架空の設定）
+// ratio = 攻める目安（小さいほど好戦的）、scheme = 計略の多さ、build = 建設の多さ、
+// diplo = 停戦・同盟の結びやすさ、betray = 同盟を破りやすさ、neutral = 独立校を優先して攻めるか
+const PERSONAS = {
+  aggressive: { name: '好戦', desc: '少しでも有利なら攻める。停戦を嫌い、同盟を破ることも', ratio: 0.94, scheme: 1, build: 0.8, diplo: 0.6, betray: 0.06 },
+  cunning: { name: '智謀', desc: '計略を好み、武将の引き抜きを得意とする', ratio: 1, scheme: 2, build: 1, diplo: 1, betray: 0.02 },
+  diplomatic: { name: '外交', desc: '停戦や同盟に応じやすく、攻めは控えめ', ratio: 1.12, scheme: 0.8, build: 1, diplo: 1.6, betray: 0 },
+  expansive: { name: '拡張', desc: '独立校を次々と取り込み、施設をよく建てる', ratio: 1, scheme: 1, build: 1.8, diplo: 1, betray: 0.02, neutral: true },
+  cautious: { name: '慎重', desc: '大きく有利なときしか攻めず、守りを固める', ratio: 1.25, scheme: 0.8, build: 1.3, diplo: 1.2, betray: 0 },
+  balanced: { name: '均衡', desc: '攻めも守りもほどほど', ratio: 1, scheme: 1, build: 1, diplo: 1, betray: 0.02 },
+};
+const CLAN_PERSONA = {
+  kaisei: 'aggressive', tsukukoma: 'cunning', hibiya: 'diplomatic', waseda: 'expansive', nishi: 'cautious', azabu: 'balanced',
+};
+
 // 難易度
 const DIFFICULTY = {
   easy: { name: '初級', desc: '資金が多く、敵はおとなしい', gold: 1200, aiGold: 0.7, aiRatio: 1.6, aiIncome: 0.8, neutralGrowth: 10 },

@@ -253,6 +253,7 @@ function migrate(s) {
   s.encircle = !!s.encircle;
   s.pending = s.pending || [];
   s.pendingDefense = s.pendingDefense || [];
+  s.aiRel = s.aiRel || {};
   s.underAttack = s.underAttack || {};
   return s;
 }
@@ -269,6 +270,71 @@ const DIPLO = {
   encircleShare: 0.45,
 };
 
+// ---------- 他家の性格と、他家どうしの外交 ----------
+function personaOf(clan) {
+  return PERSONAS[CLAN_PERSONA[clan]] || PERSONAS.balanced;
+}
+const aiRelKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+function aiRel(s, a, b) {
+  s.aiRel = s.aiRel || {};
+  const k = aiRelKey(a, b);
+  if (!s.aiRel[k]) s.aiRel[k] = { friend: 40, truce: 0, ally: 0 };
+  return s.aiRel[k];
+}
+function aiBorder(s, a, b) {
+  return castlesOf(s, a).some((id) => MAP.adj[id].some((n) => s.castles[n].owner === b));
+}
+
+// 毎ターン：他家どうしが停戦・同盟を結んだり、破ったりする
+function tickAiDiplomacy(s, log) {
+  const alive = aiClans().filter((k) => castlesOf(s, k).length);
+  const share = castlesOf(s, PLAYER).length / MAP.nodes.length;
+  for (let i = 0; i < alive.length; i++) {
+    for (let j = i + 1; j < alive.length; j++) {
+      const a = alive[i], b = alive[j];
+      const r = aiRel(s, a, b);
+      const pa = personaOf(a), pb = personaOf(b);
+      const na = CLANS[a].name, nb = CLANS[b].name;
+      if (r.truce > 0 && --r.truce === 0) log.push(`🕊️ ${na}と${nb}の停戦が終わった`);
+      if (r.ally > 0 && --r.ally === 0) log.push(`🤝 ${na}と${nb}の同盟が期限を迎えた`);
+      const border = aiBorder(s, a, b);
+      // 国境を接していると仲が悪くなるが、プレイヤーが強くなると共通の敵として手を組みやすい
+      const bothFacePlayer = aiBorder(s, a, PLAYER) && aiBorder(s, b, PLAYER);
+      let d = r.ally || r.truce ? 1 : border ? -1 : 0;
+      if (share >= 0.3 && bothFacePlayer) d += 2;
+      r.friend = clamp(r.friend + d, 0, 100);
+      if (s.encircle) continue; // 包囲網の間は、すでに手を組んでいる
+      // 裏切り：好戦的な家は、弱った同盟相手を攻める
+      if (r.ally > 0) {
+        [[a, b, pa], [b, a, pb]].forEach(([x, y, px]) => {
+          if (r.ally > 0 && castlesOf(s, y).length * 2 < castlesOf(s, x).length && Math.random() < px.betray) {
+            r.ally = 0; r.truce = 0; r.friend = clamp(r.friend - 40, 0, 100);
+            log.push(`💢 ${CLANS[x].name}が${CLANS[y].name}との同盟を破った！`);
+          }
+        });
+        continue;
+      }
+      if (!border) continue;
+      const mood = pa.diplo * pb.diplo;
+      if (r.friend >= 60 && Math.random() < 0.025 * mood) {
+        r.ally = DIPLO.allyTurns; r.truce = 0;
+        log.push(`🤝 ${na}と${nb}が同盟を結んだ`);
+      } else if (!r.truce && Math.random() < 0.015 * mood * (r.friend >= 45 ? 2 : 1)) {
+        r.truce = DIPLO.truceTurns;
+        log.push(`🕊️ ${na}と${nb}が停戦した`);
+      }
+    }
+  }
+}
+
+// 他家どうしの関係（外交の画面で表示する）
+function aiRelations(s, clan) {
+  return aiClans().filter((k) => k !== clan && castlesOf(s, k).length).map((k) => {
+    const r = aiRel(s, clan, k);
+    return { clan: k, ally: r.ally > 0, truce: r.truce > 0, friend: r.friend };
+  });
+}
+
 // 2つの勢力が戦わない関係か
 function atPeace(s, a, b) {
   if (a === b) return true;
@@ -277,7 +343,9 @@ function atPeace(s, a, b) {
     const r = s.rel[a === PLAYER ? b : a];
     return !!r && (r.truce > 0 || r.ally > 0);
   }
-  return s.encircle; // 包囲網の間、他家どうしは争わない
+  if (s.encircle) return true; // 包囲網の間、他家どうしは争わない
+  const r = s.aiRel && s.aiRel[aiRelKey(a, b)];
+  return !!r && (r.truce > 0 || r.ally > 0);
 }
 
 function relLabel(s, clan) {
@@ -301,11 +369,11 @@ function envoyOf(s) {
 function truceChance(s, clan, g) {
   const r = s.rel[clan];
   const size = (castlesOf(s, PLAYER).length - castlesOf(s, clan).length) / 60;
-  return clamp((r.friend - 30) / 60 + g.cha / 400 + size, 0.03, 0.95);
+  return clamp(((r.friend - 30) / 60 + g.cha / 400 + size) * personaOf(clan).diplo, 0.03, 0.95);
 }
 function allyChance(s, clan, g) {
   const r = s.rel[clan];
-  return clamp((r.friend - 50) / 45 + g.cha / 300, 0, 0.9);
+  return clamp(((r.friend - 50) / 45 + g.cha / 300) * personaOf(clan).diplo, 0, 0.9);
 }
 
 function diploGift(s, clan, g) {
@@ -616,6 +684,11 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
   // 攻められた家はプレイヤーの家を恨む
   if (attacker === PLAYER && s.rel[defender]) changeFriend(s, defender, -15);
   if (defender === PLAYER && s.rel[attacker]) changeFriend(s, attacker, -3);
+  // 他家どうしの戦いも、仲を悪くする
+  if (attacker !== PLAYER && defender !== PLAYER && defender !== 'none') {
+    const r = aiRel(s, attacker, defender);
+    r.friend = clamp(r.friend - 8, 0, 100);
+  }
   support.forEach((sp) => {
     s.castles[sp.from].troops -= sp.n;
     s.acted[sp.gid] = true;
@@ -760,7 +833,9 @@ function autoCastle(s, clan, id, cfg, dist, log) {
   const leader = bestBy(idle(), 'str');
   if (leader && c.troops > 0) {
     // 包囲網の間は麻布家の城を優先して狙う
-    const aim = (t) => defensePower(s, t) * (s.encircle && clan !== PLAYER && s.castles[t].owner === PLAYER ? 0.6 : 1);
+    const aim = (t) => defensePower(s, t) *
+      (s.encircle && clan !== PLAYER && s.castles[t].owner === PLAYER ? 0.6 : 1) *
+      (clan !== PLAYER && personaOf(clan).neutral && s.castles[t].owner === 'none' ? 0.7 : 1); // 拡張型は独立校を優先
     const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
     const need = defensePower(s, target) * cfg.ratio + 100;
@@ -819,9 +894,9 @@ function aiTurn(s, log) {
     // 前線の城から先に動く（攻めたあとで後方から兵を補充できるように）
     mine
       .sort((a, b) => (dist[a] ?? 99) - (dist[b] ?? 99) || Math.random() - 0.5)
-      .forEach((id) => autoCastle(s, clan, id, { ratio: D.aiRatio, reserve: 0, noGeneral: true }, dist, log));
-    // ときどき施設を建てる
-    if (Math.random() < 0.15) {
+      .forEach((id) => autoCastle(s, clan, id, { ratio: D.aiRatio * personaOf(clan).ratio, reserve: 0, noGeneral: true }, dist, log));
+    // ときどき施設を建てる（性格で頻度が変わる）
+    if (Math.random() < 0.15 * personaOf(clan).build) {
       const id = pick(castlesOf(s, clan));
       if (id) autoBuild(s, clan, id, 500);
     }
@@ -1036,6 +1111,7 @@ function endTurn(s) {
   s.rewarded = {};
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
   tickDiplomacy(s, log);
+  tickAiDiplomacy(s, log);
   loyaltyTick(s, log);
   aiLoyaltyTick(s, log);
   traitTick(s);

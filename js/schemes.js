@@ -112,7 +112,7 @@ function runScheme(s, kind, g, to, target) {
 // ---------- 他家の計略（プレイヤーをねらう） ----------
 function aiSchemes(s, log) {
   aiClans().forEach((clan) => {
-    if (!castlesOf(s, clan).length || s.gold[clan] < 450 || Math.random() > 0.3) return;
+    if (!castlesOf(s, clan).length || s.gold[clan] < 450 || Math.random() > 0.3 * personaOf(clan).scheme) return;
     if (atPeace(s, clan, PLAYER)) return;
     // 麻布家（プレイヤー）の城に近い、知略の高い武将が仕掛ける
     const agents = gensOf(s, clan).filter((g) => g.loc && !s.acted[g.id] && g.int >= 55)
