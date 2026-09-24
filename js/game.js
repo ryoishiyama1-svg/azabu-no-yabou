@@ -965,6 +965,7 @@ function endTurn(s) {
   s.pendingDefense = [];
   s.underAttack = {};
   runDelegated(s, log);
+  if (!s.debugFreeze && s.turn >= graceTurns(s)) aiSchemes(s, log);
   if (!s.debugFreeze) aiTurn(s, log);
   s.turn++;
   Object.keys(CLANS).forEach((k) => {
@@ -975,6 +976,7 @@ function endTurn(s) {
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
   tickDiplomacy(s, log);
   loyaltyTick(s, log);
+  aiLoyaltyTick(s, log);
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);

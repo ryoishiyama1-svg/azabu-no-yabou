@@ -371,6 +371,14 @@ function showHelp() {
       <li><b>褒美</b>（金${LOYAL.rewardCost}）で忠誠が上がります。合戦で勝つ、合宿や文化祭の演劇でも上がります</li>
       <li>忠誠が${LOYAL.leaveBelow}未満だと<b>出奔</b>、${LOYAL.rebelBelow}未満だと城ごと<b>謀反</b>を起こすことがあります。捕虜から登用した武将は忠誠が低めです</li>
     </ul>
+    <h3>計略</h3>
+    <ul>
+      <li>城の命令「計略」で、道${SCHEME_RANGE}本先までの城に仕掛けられます</li>
+      <li><b>流言</b>：敵城の兵と守りを減らす ／ <b>離間</b>：敵の武将の忠誠を下げる</li>
+      <li><b>引き抜き</b>：敵の武将を寝返らせる。忠誠が低い相手ほど成功しやすい</li>
+      <li><b>調略</b>：独立校を戦わずに味方にする。魅力が高く、近くに大軍がいるほど成功しやすい</li>
+      <li>他家も計略を仕掛けてきます。忠誠の低い家臣は引き抜かれやすいので注意</li>
+    </ul>
     <h3>卒業と家督相続</h3>
     <ul>
       <li>武将には<b>学年</b>があります。毎年春、<b>3年生は卒業</b>していなくなり、各校に<b>新入生</b>が入ります</li>
@@ -556,7 +564,7 @@ function render() {
     badge.classList.toggle('none-left', idle === 0);
     badge.querySelector('text').textContent = idle;
     const ring = g.querySelector('.ring');
-    const kind = mode && (mode.kind === 'attack' ? 'target' : 'friend');
+    const kind = mode && (mode.kind === 'attack' || mode.kind === 'scheme' ? 'target' : 'friend');
     ring.setAttribute('class', 'ring ' + (targets.includes(id) ? kind : id === selected ? 'sel' : ''));
   });
 
@@ -571,6 +579,7 @@ function render() {
   if (mode) {
     const label = mode.kind === 'attack' ? '⚔ 攻める城を選べ'
       : mode.kind === 'move' ? '🐎 兵を送る城を選べ'
+      : mode.kind === 'scheme' ? `🎭 計略「${SCHEMES[mode.scheme].name}」の相手を選べ`
       : `🚶 ${esc(S.gens[mode.gid].name)}の移動先を選べ`;
     banner.hidden = false;
     banner.innerHTML = `<span>${label}</span><button id="mode-cancel">やめる</button>`;
@@ -584,6 +593,7 @@ function render() {
 
 function modeTargets() {
   if (!mode) return [];
+  if (mode.kind === 'scheme') return schemeTargets(S, mode.from, mode.scheme);
   return mode.kind === 'attack' ? hostileNeighbors(S, mode.from) : ownNeighbors(S, mode.from);
 }
 
@@ -634,7 +644,8 @@ function renderPanel() {
         <button class="btn" id="c-develop" ${dis(canDevelop(S, selected))}><span class="k">商</span>開発<small>金${RULES.developCost}</small></button>
         <button class="btn" id="c-fortify" ${dis(canFortify(S, selected))}><span class="k">城</span>築城<small>金${RULES.fortifyCost}</small></button>
         <button class="btn" id="c-reward" ${gens.some((g) => canReward(S, g)) ? '' : 'disabled'}><span class="k">賞</span>褒美<small>金${LOYAL.rewardCost}・忠誠+</small></button>
-        <button class="btn plain wide2" id="c-close">閉じる</button>
+        <button class="btn" id="c-scheme" ${dis(S.gold[PLAYER] >= 150)}><span class="k">謀</span>計略<small>流言・引き抜き…</small></button>
+        <button class="btn plain" id="c-close">閉じる</button>
       </div>`;
   } else {
     const srcs = attackSources(selected);
@@ -809,6 +820,89 @@ function bulk(kind) {
   toast(n ? `${n}城で${kind === 'recruit' ? '徴兵' : '開発'}しました` : '命令できる城がありません');
 }
 
+// ---------- 計略 ----------
+// 仕掛ける武将：その計略に向いた能力がいちばん高い、命令できる武将
+function schemeAgent(from, kind) {
+  return bestBy(idleGensAt(S, from), SCHEMES[kind].stat);
+}
+
+function showSchemeMenu(from) {
+  const rows = Object.entries(SCHEMES).map(([k, sc]) => {
+    const g = schemeAgent(from, k);
+    const targets = schemeTargets(S, from, k);
+    const ok = g && targets.length && S.gold[PLAYER] >= sc.cost;
+    const why = !g ? '命令できる武将がいない' : !targets.length ? '近くに相手がいない' : S.gold[PLAYER] < sc.cost ? '金が足りない' : `${esc(g.name)}（${STAT_NAMES[sc.stat]}${g[sc.stat]}）が仕掛ける・相手 ${targets.length}城`;
+    return `<button class="scheme-row" data-sch="${k}" ${ok ? '' : 'disabled'}>
+      <b>${sc.name}</b><span class="cost">金${sc.cost}</span><small>${sc.desc}</small><em>${why}</em></button>`;
+  }).join('');
+  openModal(`<h2>計 略</h2>
+    <p class="hint" style="text-align:center">${MAP.byId[from].name}から、道${SCHEME_RANGE}本先までの城に仕掛けられます</p>
+    <div class="scheme-list">${rows}</div>
+    <button class="btn plain" data-close>やめる</button>`);
+  modalBody.querySelectorAll('[data-sch]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      const kind = b.dataset.sch;
+      closeModal();
+      mode = { kind: 'scheme', scheme: kind, from, gid: schemeAgent(from, kind).id };
+      render();
+    };
+  });
+}
+
+// 相手の城を選んだあと
+function openSchemeTarget(to) {
+  const { scheme: kind, from, gid } = mode;
+  const g = S.gens[gid];
+  const sc = SCHEMES[kind];
+  const c = S.castles[to];
+  const head = `<h2>計略「${sc.name}」</h2>
+    <p style="text-align:center;margin:0 0 6px">${clanChip(c.owner)} <b>${MAP.byId[to].name}</b><br>兵 ${fmt(c.troops)} ・ 防御 ${c.def.toFixed(1)}</p>
+    <div class="glist pick">${genCard(g)}</div>`;
+  if (kind === 'lure') {
+    // 引き抜く武将を選ぶ
+    const cands = gensAt(S, to).filter((x) => !x.lord);
+    openModal(`${head}
+      <h3>誰を引き抜く？（金${sc.cost}）</h3>
+      <div class="glist pick">${cands.map((x) => genCard(x, {
+        extra: `<span class="lure-p"><small>忠${x.loyal}</small><b>${Math.round(schemeChance(S, kind, g, to, x) * 100)}%</b></span>`,
+      })).join('')}</div>
+      <p class="hint">忠誠が低い武将ほど、寝返りやすい。</p>
+      <button class="btn plain" id="sch-back">やめる</button>`);
+    modalBody.querySelectorAll('.glist.pick .gcard[data-gid]').forEach((el) => {
+      if (el.dataset.gid === gid) return;
+      el.onclick = () => doScheme(kind, g, to, S.gens[el.dataset.gid]);
+    });
+  } else {
+    const p = Math.round(schemeChance(S, kind, g, to) * 100);
+    openModal(`${head}
+      <p>${sc.desc}。</p>
+      <p class="odds">成功率 ${p}%</p>
+      <button class="btn red" id="sch-go">仕掛ける（金${sc.cost}）</button>
+      <button class="btn plain" id="sch-back">やめる</button>`);
+    $('sch-go').onclick = () => doScheme(kind, g, to);
+  }
+  $('sch-back').onclick = () => { Sound.tap(); closeModal(); mode = null; render(); };
+}
+
+function doScheme(kind, g, to, target) {
+  const r = runScheme(S, kind, g, to, target);
+  mode = null;
+  selected = kind === 'subvert' && r.ok ? to : g.loc;
+  checkWin(S);
+  save();
+  render();
+  if (r.ok) Sound.win(); else Sound.lose();
+  openModal(`<div class="event">
+      <div class="ev-icon">${r.ok ? '成' : '敗'}</div>
+      <h2>${SCHEMES[kind].name}${r.ok ? '成功' : '失敗'}</h2>
+      <p class="ev-text">${esc(r.text)}</p>
+    </div>
+    <button class="btn red" data-close>承 知</button>`);
+  achievementToast(checkAchievements(S));
+  if (S.result) showEnding();
+}
+
 // ---------- 褒美 ----------
 // gens の中から誰に褒美を与えるか選ぶ。忠誠の低い順に並べる
 function showReward(gens, title, back) {
@@ -861,6 +955,7 @@ function bindPanel() {
   on('c-develop', () => act(develop, 'pol', '開発'));
   on('c-fortify', () => act(fortify, 'int', '築城'));
   on('c-reward', () => { Sound.tap(); showReward(gensAt(S, selected), '褒美'); });
+  on('c-scheme', () => { Sound.tap(); showSchemeMenu(selected); });
   on('c-strike', () => { Sound.tap(); openAttack(null, selected); });
   const d = $('c-deleg');
   if (d) d.onchange = () => {
@@ -907,6 +1002,7 @@ function onCastleTap(id) {
   if (mode) {
     if (modeTargets().includes(id)) {
       if (mode.kind === 'attack') openAttack(mode.from, id);
+      else if (mode.kind === 'scheme') openSchemeTarget(id);
       else if (mode.kind === 'move') openMove(mode.from, id);
       else doMoveGeneral(mode.gid, id);
     } else {

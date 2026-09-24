@@ -669,6 +669,23 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .gstats i.loyal-bar { background: linear-gradient(90deg, #7fb070, #2f8a55); }
 .gstats i.loyal-bar.low { background: linear-gradient(90deg, #e0603a, #b8262f); }
 
+/* ---------- 計略 ---------- */
+.scheme-list { display: grid; gap: 8px; }
+.scheme-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; text-align: left;
+  padding: 10px 12px; border-radius: 8px;
+  border: 2px solid var(--line); background: linear-gradient(180deg, #fffaf0, #f1e6ca);
+}
+.scheme-row b { font-family: var(--mincho); font-size: 17px; }
+.scheme-row .cost { font-weight: 800; color: var(--red); align-self: center; }
+.scheme-row small { grid-column: 1 / -1; font-size: 12px; }
+.scheme-row em { grid-column: 1 / -1; font-style: normal; font-size: 11.5px; color: var(--muted); }
+.scheme-row:disabled { opacity: 0.45; }
+.scheme-row:not(:disabled):active { border-color: var(--red); }
+.lure-p { margin-left: auto; text-align: right; line-height: 1.1; }
+.lure-p small { display: block; font-size: 11px; color: var(--muted); }
+.lure-p b { font-size: 18px; color: var(--red); }
+
 /* ---------- 学年・家訓 ---------- */
 .grade {
   display: inline-block; font-size: 10px; font-weight: 800; color: #fff;
