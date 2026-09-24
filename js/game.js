@@ -256,6 +256,15 @@ function migrate(s) {
   s.aiRel = s.aiRel || {};
   s.underAttack = s.underAttack || {};
   s.diploLog = s.diploLog || [];
+  // 当主が家を離れてしまったセーブ（家督相続の前の合戦で候補が捕らわれた不具合）を直す
+  if (castlesOf(s, PLAYER).length && !lordOf(s) && !(s.pending || []).some((ev) => ev.id === 'succession')) {
+    Object.values(s.gens).forEach((g) => { if (g.lord && g.clan !== PLAYER) g.lord = false; });
+    const heir = successionCandidates(s)[0];
+    if (heir) {
+      heir.lord = true; heir.title = '当主'; heir.loyal = 100;
+      s.lords.push({ name: heir.name, from: s.turn, kakun: s.kakun });
+    }
+  }
   // 以前の「停戦・同盟の申し出」は、使者の来訪に置きかえる
   (s.pending || []).forEach((ev) => {
     if (ev.id === 'offerTruce' || ev.id === 'offerAlly') {

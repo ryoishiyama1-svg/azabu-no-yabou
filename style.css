@@ -621,6 +621,14 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .diplo-log .dl-bad { color: var(--red); font-weight: 700; }
 .diplo-log .dl-ai { color: var(--muted); }
 
+/* 使者の出どころ */
+.ev-origin { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding: 6px 8px; border-radius: 8px; background: linear-gradient(180deg, #fffaf0, #efe2c2); border: 1px solid var(--line); }
+.ev-origin .crest { flex: none; }
+.eo-text { flex: 1; min-width: 0; line-height: 1.35; }
+.eo-text b { display: block; font-family: var(--mincho); font-size: 15px; }
+.eo-text small { display: block; font-size: 11px; color: var(--muted); }
+.eo-map { flex: none; width: 112px; height: 84px; border-radius: 6px; border: 1px solid var(--line); }
+
 /* 会談 */
 .meeting { margin: -4px -4px 0; }
 .mt-place { text-align: center; font-family: var(--mincho); font-weight: 800; font-size: 13px; color: var(--muted); margin: 0 0 6px; letter-spacing: 0.1em; }

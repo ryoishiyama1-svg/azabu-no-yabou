@@ -617,7 +617,7 @@ function attackSources(target) {
 function relIcon(k) {
   const r = S.rel[k];
   if (!r) return '';
-  return r.ally > 0 ? '🤝' : r.truce > 0 ? '🕊️' : '';
+  return (r.sister ? '🌸' : r.ally > 0 ? '🤝' : r.truce > 0 ? '🕊️' : '') + (r.trade > 0 ? '💰' : '');
 }
 
 function renderPanel() {
@@ -962,14 +962,50 @@ function drawMeeting(M) {
   };
 }
 
+// 使者の道のりを示す小さな地図：相手の城とこちらの城を色分けし、出発地から本陣へ矢印
+function originMap(clan, from, home) {
+  const xs = MAP.nodes.map((n) => n.x), ys = MAP.nodes.map((n) => n.y);
+  const x0 = Math.min(...xs) - 30, y0 = Math.min(...ys) - 30;
+  const w = Math.max(...xs) + 30 - x0, h = Math.max(...ys) + 30 - y0;
+  const dots = MAP.nodes.map((n) => {
+    const o = S.castles[n.id].owner;
+    const c = o === clan ? CLANS[clan].color : o === PLAYER ? CLANS[PLAYER].color : '#d3c7a8';
+    const r = o === clan || o === PLAYER ? 34 : 14;
+    return `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${c}" ${o === clan || o === PLAYER ? 'stroke="#fff" stroke-width="6"' : ''}/>`;
+  }).join('');
+  const a = MAP.byId[from], b = MAP.byId[home];
+  return `<svg class="eo-map" viewBox="${x0} ${y0} ${w} ${h}" aria-hidden="true">
+    <defs><marker id="eo-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#b8262f"/></marker></defs>
+    <rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="#f6eed8"/>
+    ${dots}
+    <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#b8262f" stroke-width="18" stroke-dasharray="36 18" marker-end="url(#eo-arrow)"/>
+    <circle cx="${b.x}" cy="${b.y}" r="56" fill="none" stroke="#b8262f" stroke-width="12"/>
+  </svg>`;
+}
+
 // 他家の使者が、こちらの生徒会室にやって来る場面
 function envoyScene(ev, title, mood, line, stamp = null) {
   const p = ev.p;
   const lord = lordOf(S);
   const g = p.gid && S.gens[p.gid] && S.gens[p.gid].clan === p.clan ? S.gens[p.gid] : null;
-  const place = lord && lord.loc ? MAP.byId[lord.loc].name : pName();
+  const home = lord && lord.loc && S.castles[lord.loc].owner === PLAYER ? lord.loc : homeCastle(S);
+  // 使者の出発地：相手の城のうち、こちらの本陣にいちばん近い城
+  const theirs = castlesOf(S, p.clan);
+  const dist = (id) => Math.hypot(MAP.byId[id].x - MAP.byId[home].x, MAP.byId[id].y - MAP.byId[home].y);
+  const from = theirs.length ? theirs.reduce((a, b) => (dist(a) <= dist(b) ? a : b)) : null;
+  const capital = theirs.includes(p.clan) ? p.clan : from;
   return `<div class="meeting" data-lock>
-      <p class="mt-place">${esc(place)} 生徒会室 ・ ${esc(title)}</p>
+      <div class="ev-origin">
+        ${crestBadge(p.clan, 40)}
+        <div class="eo-text">
+          <b>${CLANS[p.clan].name}からの使者</b>
+          <small>${capital ? `本拠 ${esc(MAP.byId[capital].name)}（${esc(MAP.byId[capital].ward)}）` : ''}・城 ${theirs.length}</small>
+          <small>${from ? `${esc(MAP.byId[from].name)}から` : ''} → わが本陣 ${esc(MAP.byId[home].name)}へ</small>
+        </div>
+        ${from ? originMap(p.clan, from, home) : ''}
+      </div>
+      <p class="mt-place">${esc(MAP.byId[home].name)} 生徒会室にて ・ ${esc(title)}</p>
       <div class="mt-stage">
         ${meetingRoom(PLAYER)}
         ${lord ? `<div class="mt-p left">${portrait(lord, 84, stamp === 'deal' ? 'happy' : null)}<span>${esc(lord.name)}<small>${pName()}当主</small></span></div>` : ''}

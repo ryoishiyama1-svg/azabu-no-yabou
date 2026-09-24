@@ -17,6 +17,20 @@ function growAll(s, stat) {
   return n ? `${n}人の${STAT_NAMES[stat]}が上がった！` : `残念ながら、${STAT_NAMES[stat]}が上がった者はいなかった。`;
 }
 // 新しい武将を置く城（当主のいる城）
+// 後継者の候補。候補を決めたあとの合戦で捕らわれたり去ったりした者は外し、
+// 誰もいなければ選び直す。家臣が一人もいなければ、新入生を当主候補として迎える
+function heirsOf(s, p) {
+  p.cands = (p.cands || []).filter((id) => s.gens[id] && s.gens[id].clan === PLAYER && s.gens[id].loc);
+  if (!p.cands.length) p.cands = successionCandidates(s).map((g) => g.id);
+  const home = castlesOf(s, PLAYER)[0];
+  if (!p.cands.length && home) {
+    const g = makeGeneral(s, home, PLAYER, { strong: true, grade: 1 });
+    g.loyal = 90;
+    p.cands = [g.id];
+  }
+  return p.cands;
+}
+
 function homeCastle(s) {
   const lord = lordOf(s);
   return lord && lord.loc ? lord.loc : castlesOf(s, PLAYER)[0];
@@ -49,12 +63,15 @@ const EVENTS = {
     icon: '継', title: '家督相続',
     text: (s, p) => `当主${s.gens[p.old].name}が卒業の日を迎えた。\n「${p.words}」\n${pName()}を継ぐ者を選べ。選ばなかった実力者は、家を去るかもしれない。`,
     gen: (s, p) => p.old,
-    choiceGens: (s, p) => p.cands,
-    choices: (s, p) => p.cands.map((id) => {
+    choiceGens: (s, p) => heirsOf(s, p),
+    choices: (s, p) => heirsOf(s, p).map((id) => {
       const g = s.gens[id];
       return { label: `${g.name}（${g.grade}年）`, sub: `家訓「${KAKUN[kakunOf(g)].name}」：${KAKUN[kakunOf(g)].desc}` };
     }),
-    apply(s, p, ci) { return succeed(s, p.cands[ci]); },
+    apply(s, p, ci) {
+      const cands = heirsOf(s, p);
+      return succeed(s, cands[ci] || cands[0]);
+    },
   },
   summer: {
     icon: '夏', title: '夏合宿',
@@ -362,7 +379,7 @@ function rollEvents(s) {
   // 当主の卒業：後継者選びを最初に
   if (s.grad && s.grad.lordLeft) {
     const cands = successionCandidates(s).map((g) => g.id);
-    if (cands.length) list.push({ id: 'succession', p: { old: s.grad.lordLeft, cands, words: pick(FAREWELLS) } });
+    list.push({ id: 'succession', p: { old: s.grad.lordLeft, cands, words: pick(FAREWELLS) } });
   }
   const season = ['spring', 'summer', 'autumn', 'winter'][s.turn % 4];
   list.push({ id: season, p: {} });
