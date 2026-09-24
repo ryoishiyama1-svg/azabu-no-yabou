@@ -35,58 +35,6 @@ function crestBadge(clan, size = 20) {
     <circle r="30" fill="${c.color}"/>${crestInner(c.crest, '#fff')}</svg>`;
 }
 
-// ---------- 武将の顔 ----------
-// look（数値）から髪型や肌の色を決めて、制服姿の胸像を描く
-function portrait(g, size = 48) {
-  const r = seeded(g.look + 7);
-  const skin = ['#f6d7bd', '#efc9a6', '#e8bd97', '#f3d0b0'][Math.floor(r() * 4)];
-  const hair = ['#1d1a1a', '#2b211c', '#3d2b20', '#141414', '#4a3326'][Math.floor(r() * 5)];
-  const style = Math.floor(r() * 4);
-  const clan = CLANS[g.clan] ? g.clan : g.origin && CLANS[g.origin] ? g.origin : 'none';
-  const color = CLANS[clan].color;
-  const f = g.female;
-  let back = '', front = '', body, extra = '';
-
-  if (f) {
-    if (style === 0) back = `<path d="M-14,-2 Q-15,-19 0,-19 Q15,-19 14,-2 L15,22 L-15,22 Z" fill="${hair}"/>`;
-    if (style === 1) back = `<path d="M-14,-2 Q-15,-19 0,-19 Q15,-19 14,-2 L14,8 Q0,12 -14,8 Z" fill="${hair}"/>`;
-    if (style === 2) back = `<path d="M9,-12 Q22,-8 17,14 Q14,4 9,-2 Z" fill="${hair}"/>`;
-    if (style === 3) back = `<circle cx="0" cy="-17" r="5.5" fill="${hair}"/><path d="M-13,-2 Q-14,-18 0,-18 Q14,-18 13,-2 L13,4 L-13,4 Z" fill="${hair}"/>`;
-    front = `<path d="M-12,-2 Q-12,-17 0,-17 Q12,-17 12,-2 Q7,-10 1,-8 Q-5,-11 -12,-2 Z" fill="${hair}"/>`;
-    body = `<path d="M-27,32 Q-25,13 0,12 Q25,13 27,32 Z" fill="#26325c"/>
-      <path d="M-15,13 L0,25 L15,13" fill="none" stroke="#fff" stroke-width="2"/>
-      <path d="M-4,22 L4,22 L0,29 Z" fill="${color}"/>`;
-  } else {
-    if (style === 0) front = `<path d="M-12,-3 Q-13,-18 0,-18 Q13,-18 12,-3 Q9,-11 0,-11 Q-9,-11 -12,-3 Z" fill="${hair}"/>`;
-    if (style === 1) front = `<path d="M-12,-3 L-13,-14 L-9,-12 L-8,-19 L-4,-14 L0,-21 L4,-14 L8,-19 L9,-12 L13,-14 L12,-3 Q6,-10 0,-10 Q-6,-10 -12,-3 Z" fill="${hair}"/>`;
-    if (style === 2) front = `<path d="M-12,-2 Q-13,-18 1,-18 Q13,-17 12,-3 Q10,-9 3,-10 Q-6,-13 -12,-2 Z" fill="${hair}"/>`;
-    if (style === 3) front = `<path d="M-11.5,-5 Q-11,-15 0,-15.5 Q11,-15 11.5,-5 Q6,-9 0,-9 Q-6,-9 -11.5,-5 Z" fill="${hair}" opacity="0.85"/>`;
-    body = `<path d="M-27,32 Q-25,13 0,12 Q25,13 27,32 Z" fill="#1e2029"/>
-      <path d="M-6,12 L-6,17 L6,17 L6,12" fill="#1e2029" stroke="#3a3d4d" stroke-width="1"/>
-      <circle cx="0" cy="22" r="1.6" fill="#d4a93c"/><circle cx="0" cy="28" r="1.6" fill="#d4a93c"/>`;
-  }
-  if (g.str >= 75) {
-    extra += `<rect x="-12.5" y="-10.5" width="25" height="3.5" fill="${color}"/>
-      <path d="M11,-9 L17,-12 L16,-7 Z" fill="${color}"/>`;
-  }
-  const brow = g.str >= 70 ? 1.8 : 0;
-  const face = `
-    <path d="M-8.5,${-5 - brow} L-2.5,-4.5 M8.5,${-5 - brow} L2.5,-4.5" stroke="${hair}" stroke-width="1.4" stroke-linecap="round"/>
-    <ellipse cx="-4.5" cy="-1" rx="1.3" ry="1.7" fill="#222"/>
-    <ellipse cx="4.5" cy="-1" rx="1.3" ry="1.7" fill="#222"/>
-    <path d="M-2.5,6 Q0,${g.cha >= 70 ? 8 : 6.6} 2.5,6" stroke="#8a4a3a" stroke-width="1.1" fill="none" stroke-linecap="round"/>`;
-  const glasses = g.int >= 80
-    ? '<g fill="none" stroke="#333" stroke-width="1"><circle cx="-4.5" cy="-1" r="3.4"/><circle cx="4.5" cy="-1" r="3.4"/><path d="M-1.1,-1 L1.1,-1"/></g>'
-    : '';
-  return `<svg class="portrait" width="${size}" height="${size}" viewBox="-30 -30 60 60" aria-hidden="true">
-    <rect x="-30" y="-30" width="60" height="60" fill="${color}" opacity="0.28"/>
-    ${back}${body}
-    <rect x="-4" y="7" width="8" height="7" fill="${skin}"/>
-    <ellipse cx="0" cy="-2" rx="11" ry="13" fill="${skin}"/>
-    ${front}${extra}${face}${glasses}
-  </svg>`;
-}
-
 // ---------- 天守閣 ----------
 function castleMarkup(capital) {
   const shachi = capital
@@ -102,6 +50,98 @@ function castleMarkup(capital) {
     <rect class="window" x="-3" y="-13" width="6" height="3"/>
     <path class="roof" d="M-12,-13 Q-8,-15 -6,-22 L6,-22 Q8,-15 12,-13 Z"/>
     ${shachi}`;
+}
+
+// ---------- 合戦の絵 ----------
+// 季節の空・遠くの山・攻める城を背景に、足軽の隊列がぶつかり合う
+const BATTLE_SKY = [
+  ['#f3b9c6', '#fbe4d6', '#8d6a86'], // 春：桜色の夕空
+  ['#6fa5d8', '#f3d59e', '#4d6a8a'], // 夏：夏の夕方
+  ['#e07a4a', '#f6cf98', '#7a4a3a'], // 秋：夕焼け
+  ['#8497ad', '#dfe6ec', '#5a6878'], // 冬：雪空
+];
+
+// 足軽1人（右向き）。flip で左向き
+function soldier(color, flip) {
+  return `<g class="sol-art" transform="scale(${flip ? -1 : 1},1)">
+    <line x1="1" y1="-4" x2="1" y2="-30" stroke="#5a3a1a" stroke-width="0.9"/>
+    <rect x="1" y="-30" width="6" height="9" fill="${color}" stroke="#2a1a10" stroke-width="0.4"/>
+    <line x1="4" y1="-10" x2="17" y2="-24" stroke="#6b5a40" stroke-width="1"/>
+    <path d="M16,-25 L19,-27 L17.5,-23.5 Z" fill="#cfd6dc"/>
+    <path d="M-3.5,0 L-1.5,-6 L1.5,-6 L3.5,0" stroke="#2a2420" stroke-width="1.6" fill="none"/>
+    <path d="M-4,-6 L-3.5,-14 L3.5,-14 L4,-6 Z" fill="#3a2e28"/>
+    <rect x="-4" y="-10.5" width="8" height="2" fill="${color}"/>
+    <circle cx="0" cy="-16.5" r="2.6" fill="#e9c19e"/>
+    <path d="M-5.5,-17 L0,-21 L5.5,-17 Z" fill="#2b2b2b"/>
+  </g>`;
+}
+
+// side: 'a' = 攻める側（左）/ 'd' = 守る側（右）
+function armyMarkup(side, n, color) {
+  const out = [];
+  const perRow = Math.ceil(n / 3);
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / perRow), col = i % perRow;
+    const scale = 0.85 + row * 0.12;          // 手前ほど大きく
+    const y = 168 + row * 17;
+    const x = side === 'a' ? 150 - col * 17 - row * 6 : 232 + col * 15 + row * 6;
+    out.push(`<g transform="translate(${x},${y}) scale(${scale.toFixed(2)})"><g class="sol" data-i="${i}">${soldier(color, side === 'd')}</g></g>`);
+  }
+  return out.join('');
+}
+
+function battleScene(r, season) {
+  const [skyTop, skyBottom, mount] = BATTLE_SKY[season % 4];
+  const ca = CLANS[r.attacker].color, cd = CLANS[r.defender].color;
+  const na = clamp(Math.round(r.rounds[0].a / 180), 4, 18);
+  const nd = clamp(Math.round(r.rounds[0].d / 180), 3, 15);
+  const banner = (x, y, h, clan, flip) => `<g transform="translate(${x},${y})">
+      <line x1="0" y1="0" x2="0" y2="${-h}" stroke="#3a200c" stroke-width="1.6"/>
+      <rect x="${flip ? -12 : 0}" y="${-h}" width="12" height="${h * 0.62}" fill="${CLANS[clan].color}"/>
+      <svg x="${flip ? -11 : 1}" y="${-h + 2}" width="10" height="10" viewBox="-30 -30 60 60">${crestInner(CLANS[clan].crest, '#fff')}</svg>
+    </g>`;
+  const snow = season % 4 === 3
+    ? Array.from({ length: 24 }, (_, i) => `<circle cx="${(i * 37) % 400}" cy="${(i * 53) % 150}" r="${1 + (i % 3) * 0.5}" fill="#fff" opacity="0.8"/>`).join('')
+    : '';
+  const petalsBg = season % 4 === 0
+    ? Array.from({ length: 14 }, (_, i) => `<ellipse cx="${(i * 61) % 400}" cy="${(i * 29) % 140}" rx="2" ry="1.3" fill="#f6b9c8" opacity="0.9"/>`).join('')
+    : '';
+  return `<svg class="bf" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <linearGradient id="bf-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${skyTop}"/><stop offset="1" stop-color="${skyBottom}"/></linearGradient>
+      <linearGradient id="bf-ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c6a45"/><stop offset="1" stop-color="#4a3d28"/></linearGradient>
+      <clipPath id="bf-clip"><rect width="400" height="220" rx="10"/></clipPath>
+    </defs>
+    <g clip-path="url(#bf-clip)">
+    <rect width="400" height="220" fill="url(#bf-sky)"/>
+    <circle cx="80" cy="52" r="20" fill="#fff4d0" opacity="0.75"/>
+    ${snow}${petalsBg}
+    <path d="M0,130 L40,96 L70,112 L110,78 L150,110 L190,90 L230,118 L270,86 L320,114 L360,92 L400,118 L400,150 L0,150 Z" fill="${mount}" opacity="0.55"/>
+    <path d="M0,142 Q60,120 120,138 T240,134 T400,130 L400,160 L0,160 Z" fill="${mount}" opacity="0.8"/>
+    <g transform="translate(340,118) scale(2.1)" class="bf-castle" style="--c:${cd}">${castleMarkup(false)}</g>
+    <g class="bf-fire" id="bf-fire">
+      <path d="M322,96 Q326,80 331,92 Q334,74 340,90 Q345,78 348,95 Z" fill="#ff8a2a"/>
+      <path d="M328,98 Q331,88 335,95 Q338,84 342,96 Z" fill="#ffd34a"/>
+    </g>
+    <rect y="150" width="400" height="70" fill="url(#bf-ground)"/>
+    <path d="M0,158 L400,154 M0,176 L400,170 M0,198 L400,194" stroke="#8d7a52" stroke-width="0.6" opacity="0.5"/>
+    ${banner(30, 160, 58, r.attacker, false)}${banner(58, 164, 50, r.attacker, false)}
+    ${banner(372, 160, 50, r.defender, true)}
+    <g class="army" id="army-a">${armyMarkup('a', na, ca)}</g>
+    <g class="army" id="army-d">${armyMarkup('d', nd, cd)}</g>
+    <g id="bf-arrows"></g>
+    <g class="dust" id="bf-dust"><circle cx="190" cy="185" r="16"/><circle cx="205" cy="178" r="12"/><circle cx="178" cy="176" r="10"/></g>
+    </g>
+    <rect x="1.5" y="1.5" width="397" height="217" rx="9" fill="none" stroke="#d4a93c" stroke-width="3"/>
+  </svg>`;
+}
+
+// 矢の一斉射撃（左→右 か 右→左）
+function arrowVolley(fromLeft) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const y = 120 + (i % 4) * 9, x = fromLeft ? 110 + (i % 3) * 12 : 260 - (i % 3) * 12;
+    return `<line class="arrow ${fromLeft ? 'r' : 'l'}" style="animation-delay:${i * 0.04}s" x1="${x}" y1="${y}" x2="${x + (fromLeft ? 10 : -10)}" y2="${y - 3}" stroke="#2a1a10" stroke-width="1.1"/>`;
+  }).join('');
 }
 
 // ---------- 地図の風景 ----------

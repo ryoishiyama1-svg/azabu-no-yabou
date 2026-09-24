@@ -1,5 +1,4 @@
 // 画面の表示と操作
-const SAVE_KEY = 'azabu-save-v2';
 const SVGNS = 'http://www.w3.org/2000/svg';
 const SEASON_WORDS = ['桜 舞 う', '青 葉 茂 る', '紅 葉 燃 ゆ', '雪 降 り 積 む'];
 
@@ -16,10 +15,14 @@ let mode = null;       // null | { kind: 'attack' | 'move' | 'gen', from, gid }
 let scale = 1;
 let CELLS = null;
 
-// ---------- 保存 ----------
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
-function load() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } }
-function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+// ---------- 保存（今遊んでいる枠に自動で保存） ----------
+migrateOldSave();
+function save() { writeSlot(currentSlot, S); }
+function clearSave() { deleteSlot(currentSlot); }
+function anySave() {
+  for (let n = 1; n <= SLOT_COUNT; n++) if (slotSummary(n)) return true;
+  return false;
+}
 
 const fmt = (n) => Math.round(n).toLocaleString('ja-JP');
 const clanChip = (k) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name}</span>`;
@@ -97,27 +100,143 @@ function showTitle() {
   $('game').hidden = true;
   $('title').hidden = false;
   titleMusic();
-  const saved = load();
-  const canResume = saved && !saved.result;
+  const canResume = anySave();
   $('btn-resume').hidden = !canResume;
   $('btn-resume').className = 'btn fuda red';
   $('btn-new').className = canResume ? 'btn fuda' : 'btn fuda red';
 }
 
-$('btn-new').onclick = () => {
-  Sound.unlock();
-  Sound.tap();
-  const saved = load();
-  if (saved && !saved.result && !confirm('今の戦いを捨てて、最初からはじめますか？')) return;
-  showSetup();
-};
-$('btn-resume').onclick = () => {
-  Sound.unlock();
-  Sound.tap();
-  S = migrate(load());
+$('btn-new').onclick = () => { Sound.unlock(); Sound.tap(); showSlots('new'); };
+$('btn-resume').onclick = () => { Sound.unlock(); Sound.tap(); showSlots('load'); };
+
+function resumeSlot(n) {
+  const data = readSlot(n);
+  if (!data) return;
+  currentSlot = n;
+  S = migrate(data);
+  closeModal();
   startGame(false);
   if (S.pending.length) runEvents(() => {});
-};
+}
+
+// ---------- セーブ枠の一覧 ----------
+// mode: 'load' = つづきから / 'new' = どの枠で始めるか
+function showSlots(mode) {
+  const rows = Array.from({ length: SLOT_COUNT }, (_, i) => {
+    const n = i + 1;
+    const sm = slotSummary(n);
+    const info = sm
+      ? `<div class="slot-head">${crestBadge(sm.clan, 30)}<div><b>${CLANS[sm.clan].name}</b> <span class="p-sub">${sm.scenario}・${sm.diff}</span>
+          <small>${dateLabel(sm.turn)}・城 ${sm.owned}/${sm.total}・${sm.generation}代目 ${esc(sm.lord)}</small></div></div>`
+      : '<div class="slot-head empty">― 空き ―</div>';
+    const btns = mode === 'new'
+      ? `<button class="btn red" data-new="${n}">${sm ? 'この枠に上書きして始める' : 'この枠で始める'}</button>`
+      : sm
+        ? `<button class="btn red" data-load="${n}">続ける</button>
+           <div class="slot-sub"><button class="btn plain" data-export="${n}">書き出し</button><button class="btn plain" data-del="${n}">消す</button></div>`
+        : `<button class="btn plain" data-import="${n}">この枠に読み込む</button>`;
+    return `<div class="slot"><div class="slot-no">枠${n}</div>${info}${btns}</div>`;
+  }).join('');
+  openModal(`<h2>${mode === 'new' ? 'どの枠で始める？' : 'つづきから'}</h2>
+    ${rows}
+    ${mode === 'load' ? '<p class="hint">「書き出し」でセーブをコードにして、機種変更のときなどに持ち運べます。</p>' : ''}
+    <button class="btn plain" data-close>もどる</button>`);
+  modalBody.querySelectorAll('[data-load]').forEach((b) => { b.onclick = () => { Sound.tap(); resumeSlot(+b.dataset.load); }; });
+  modalBody.querySelectorAll('[data-new]').forEach((b) => {
+    b.onclick = () => {
+      const n = +b.dataset.new;
+      if (slotSummary(n) && !confirm(`枠${n}のデータは消えます。よろしいですか？`)) return;
+      Sound.tap();
+      currentSlot = n;
+      showSetup();
+    };
+  });
+  modalBody.querySelectorAll('[data-export]').forEach((b) => { b.onclick = () => { Sound.tap(); showExport(+b.dataset.export, () => showSlots(mode)); }; });
+  modalBody.querySelectorAll('[data-import]').forEach((b) => { b.onclick = () => { Sound.tap(); showImport(+b.dataset.import, () => showSlots(mode)); }; });
+  modalBody.querySelectorAll('[data-del]').forEach((b) => {
+    b.onclick = () => {
+      const n = +b.dataset.del;
+      if (!confirm(`枠${n}のセーブを消しますか？（元に戻せません）`)) return;
+      Sound.tap();
+      deleteSlot(n);
+      showTitle();
+      if (anySave()) showSlots(mode); else closeModal();
+    };
+  });
+}
+
+// ---------- 書き出し ----------
+async function showExport(n, back) {
+  openModal('<h2>書き出し</h2><p style="text-align:center">コードを作っています…</p>');
+  let code;
+  try { code = await encodeBundle(exportBundle(n)); } catch (e) {
+    openModal(`<h2>書き出し</h2><p>うまく作れませんでした：${esc(e.message)}</p><button class="btn plain" id="ex-back">もどる</button>`);
+    $('ex-back').onclick = back;
+    return;
+  }
+  const sm = slotSummary(n);
+  openModal(`<h2>書き出し</h2>
+    <p>枠${n}（${sm ? `${CLANS[sm.clan].name}・${dateLabel(sm.turn)}` : ''}）のセーブと、実績・戦績をコードにしました。<br>
+    別の端末の「つづきから」→ 空き枠の「この枠に読み込む」で貼り付けると、続きから遊べます。</p>
+    <textarea class="code" id="ex-code" readonly>${code}</textarea>
+    <p class="hint">${code.length.toLocaleString()}文字</p>
+    <div class="slot-sub">
+      <button class="btn red" id="ex-copy">コピー</button>
+      <button class="btn plain" id="ex-file">ファイルで保存</button>
+    </div>
+    ${navigator.share ? '<button class="btn plain" id="ex-share">共有（メモ・LINEなど）</button>' : ''}
+    <button class="btn plain" id="ex-back">もどる</button>`);
+  $('ex-copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(code); toast('コピーしました'); $('ex-copy').textContent = 'コピーしました ✔'; } catch (e) {
+      const ta = $('ex-code'); ta.focus(); ta.select(); document.execCommand('copy'); $('ex-copy').textContent = 'コピーしました ✔';
+    }
+  };
+  $('ex-file').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+    a.download = `azabu-save-${n}-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
+  if ($('ex-share')) $('ex-share').onclick = () => navigator.share({ title: '麻布の野望 セーブ', text: code }).catch(() => {});
+  $('ex-back').onclick = () => { Sound.tap(); back(); };
+}
+
+// ---------- 読み込み ----------
+function showImport(n, back) {
+  openModal(`<h2>読み込み</h2>
+    <p>書き出したコードを貼り付けるか、保存したファイルを選んでください。<b>枠${n}</b>に読み込みます。実績・戦績は今のものと合わせて残ります。</p>
+    <textarea class="code" id="im-code" placeholder="AZABU1:… で始まるコード"></textarea>
+    <label class="btn plain file-btn">ファイルを選ぶ<input type="file" id="im-file" accept=".txt,text/plain"></label>
+    <p class="warn" id="im-err" hidden></p>
+    <button class="btn red" id="im-go">読み込む</button>
+    <button class="btn plain" id="im-back">もどる</button>`);
+  $('im-file').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (f) $('im-code').value = (await f.text()).trim();
+  };
+  $('im-back').onclick = () => { Sound.tap(); back(); };
+  $('im-go').onclick = async () => {
+    const err = $('im-err');
+    try {
+      const bundle = await decodeBundle($('im-code').value);
+      if (bundle.save && readSlot(n) && !confirm(`枠${n}のデータは上書きされます。よろしいですか？`)) return;
+      if (bundle.save) writeSlot(n, bundle.save);
+      mergeRecords(bundle.records);
+      Sound.win();
+      showTitle();
+      openModal(`<h2>読み込み完了</h2>
+        <p>${bundle.save ? `枠${n}にセーブを読み込みました。` : 'セーブは入っていませんでした。'}実績・戦績も反映しました。</p>
+        ${bundle.save ? `<button class="btn red" id="im-play">このまま続ける</button>` : ''}
+        <button class="btn plain" data-close>閉じる</button>`);
+      if ($('im-play')) $('im-play').onclick = () => resumeSlot(n);
+    } catch (e) {
+      err.hidden = false;
+      err.textContent = `読み込めませんでした：${e.message}`;
+    }
+  };
+}
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
 $('btn-records').onclick = () => { Sound.unlock(); Sound.tap(); showRecords(); };
 
@@ -833,18 +952,9 @@ function openAttack(from, to) {
   draw();
 }
 
-function noboriFlags(clan, n) {
-  const c = CLANS[clan];
-  const ch = c.name.replace('家', '').slice(0, 3);
-  return Array.from({ length: n }, () =>
-    `<div class="nobori" style="--c:${c.color}">${crestBadge(clan, 26)}<span>${ch}</span></div>`).join('');
-}
-
 function playBattle(r, log = []) {
   const box = $('battle');
   const a0 = r.rounds[0].a, d0 = r.rounds[0].d;
-  const atkN = a0 > 2000 ? 3 : a0 > 800 ? 2 : 1;
-  const defN = d0 > 2000 ? 2 : 1;
   const g = S.gens[r.gid], dg = r.dgid ? S.gens[r.dgid] : null;
   const supNames = (r.support || []).map((p) => S.gens[p.gid].name);
   const tac = r.tactic
@@ -854,12 +964,8 @@ function playBattle(r, log = []) {
   box.innerHTML = `
     <div class="b-head"><div class="b-title">合 戦</div><div class="b-sub">${MAP.byId[r.to].name}の戦い</div>${tac}</div>
     <div class="b-field">
-      <div class="army left" id="army-a">${noboriFlags(r.attacker, atkN)}</div>
+      ${battleScene(r, S.turn)}
       <div class="spark" id="spark"></div>
-      <div class="army right" id="army-d">
-        <div class="b-castle" style="--c:${CLANS[r.defender].color}"><svg viewBox="-30 -30 60 50">${castleMarkup(false)}</svg></div>
-        ${noboriFlags(r.defender, defN)}
-      </div>
       <div class="stamp" id="stamp"></div>
     </div>
     <div class="b-bars">
@@ -881,28 +987,40 @@ function playBattle(r, log = []) {
   Sound.horagai();
   Sound.bgmStart('battle');
 
+  // 兵が減った分だけ、足軽が倒れていく
+  const fall = (id, ratio) => {
+    const sols = [...document.querySelectorAll(`#${id} .sol`)];
+    const alive = Math.ceil(sols.length * ratio);
+    sols.forEach((el, k) => el.classList.toggle('down', k >= alive));
+  };
   const show = (i) => {
     const { a, d } = r.rounds[i];
     $('bar-a').style.width = `${(a / a0) * 100}%`;
     $('bar-d').style.width = `${(d / Math.max(1, d0)) * 100}%`;
     $('num-a').textContent = fmt(a);
     $('num-d').textContent = fmt(d);
+    fall('army-a', a / a0);
+    fall('army-d', d / Math.max(1, d0));
   };
+  const replay = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
 
   let i = 0;
   let timer;
   const step = () => {
     i++;
     if (i >= r.rounds.length) return finish();
-    const A = $('army-a'), D = $('army-d'), sp = $('spark');
+    const A = $('army-a'), D = $('army-d');
+    // 矢を射かけてから、ぶつかり合う
+    $('bf-arrows').innerHTML = arrowVolley(i % 2 === 1);
     [A, D].forEach((x) => x.classList.add('lunge'));
-    sp.classList.remove('go'); void sp.offsetWidth; sp.classList.add('go');
-    box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+    replay($('spark'), 'go');
+    replay($('bf-dust'), 'go');
+    replay(box, 'shake');
     Sound.clash(0.02);
-    setTimeout(() => [A, D].forEach((x) => x.classList.remove('lunge')), 200);
-    show(i);
+    setTimeout(() => [A, D].forEach((x) => x.classList.remove('lunge')), 260);
+    setTimeout(() => show(i), 180);
     $('round').textContent = `第 ${'一二三四五六'[i - 1]} 合`;
-    timer = setTimeout(step, 900);
+    timer = setTimeout(step, 950);
   };
   timer = setTimeout(step, 1600);
 
@@ -913,7 +1031,13 @@ function playBattle(r, log = []) {
     const stamp = $('stamp');
     stamp.textContent = r.won ? '落城' : '撤退';
     stamp.className = 'stamp go ' + (r.won ? 'win' : 'lose');
-    $(r.won ? 'army-d' : 'army-a').classList.add('fallen');
+    if (r.won) {
+      fall('army-d', 0);
+      $('bf-fire').classList.add('on');                       // 城に火の手
+      document.querySelector('.bf-castle').style.setProperty('--c', CLANS[r.attacker].color);
+    } else {
+      $('army-a').classList.add('retreat');                  // 退却
+    }
     $('round').textContent = r.won ? `${MAP.byId[r.to].short}、落城！` : '攻略ならず…';
     let msg = r.won ? `残った ${fmt(r.left)} 兵が入城した` : `残った ${fmt(r.left)} 兵は退いた`;
     if (r.won && r.defender !== 'none' && castlesOf(S, r.defender).length === 0) msg += `。${CLANS[r.defender].name}は滅亡した！`;
@@ -1221,6 +1345,7 @@ $('btn-menu').onclick = () => {
     <button class="btn plain" id="m-roster">家臣団（武将一覧・歴代当主）</button>
     <button class="btn plain" id="m-diplo">外交</button>
     <button class="btn plain" id="m-records">戦績・実績</button>
+    <button class="btn plain" id="m-export">セーブの書き出し（枠${currentSlot}）</button>
     <button class="btn plain" id="m-help">遊び方</button>
     ${debugOn() ? '<button class="btn plain" id="m-debug">🛠 デバッグ</button>' : ''}
     <button class="btn plain" id="m-title">タイトルへ（自動で保存されます）</button>
@@ -1228,6 +1353,7 @@ $('btn-menu').onclick = () => {
   $('m-roster').onclick = () => { Sound.tap(); showRoster(); };
   $('m-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
   $('m-records').onclick = () => { Sound.tap(); showRecords(); };
+  $('m-export').onclick = () => { Sound.tap(); save(); showExport(currentSlot, closeModal); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };
   if ($('m-debug')) $('m-debug').onclick = () => { Sound.tap(); showDebug(); };
   $('m-title').onclick = () => { closeModal(); showTitle(); };
