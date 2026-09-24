@@ -31,6 +31,22 @@ const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 function openModal(html) { modalBody.innerHTML = html; modal.hidden = false; modalBody.scrollTop = 0; }
 function closeModal() { modal.hidden = true; }
 
+// ゲーム内の確認画面。ブラウザ標準の confirm / alert は、ホーム画面から起動したアプリなどで
+// 表示されずに「いいえ」扱いになることがあるため使わない
+function askConfirm(message, { ok = 'はい', cancel = 'やめる', danger = true } = {}) {
+  return new Promise((resolve) => {
+    const box = $('confirm');
+    $('confirm-body').innerHTML = `<p class="confirm-msg">${esc(message).replace(/\n/g, '<br>')}</p>
+      <button class="btn ${danger ? 'red' : 'plain'}" id="cf-ok">${ok}</button>
+      ${cancel ? `<button class="btn plain" id="cf-no">${cancel}</button>` : ''}`;
+    box.hidden = false;
+    const done = (v) => { box.hidden = true; resolve(v); };
+    $('cf-ok').onclick = () => { Sound.tap(); done(true); };
+    if ($('cf-no')) $('cf-no').onclick = () => { Sound.tap(); done(false); };
+  });
+}
+const askAlert = (message) => askConfirm(message, { ok: 'OK', cancel: null, danger: false });
+
 let toastTimer;
 function toast(html) {
   const t = $('toast');
@@ -143,9 +159,9 @@ function showSlots(mode) {
     <button class="btn plain" data-close>もどる</button>`);
   modalBody.querySelectorAll('[data-load]').forEach((b) => { b.onclick = () => { Sound.tap(); resumeSlot(+b.dataset.load); }; });
   modalBody.querySelectorAll('[data-new]').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const n = +b.dataset.new;
-      if (slotSummary(n) && !confirm(`枠${n}のデータは消えます。よろしいですか？`)) return;
+      if (slotSummary(n) && !(await askConfirm(`枠${n}のセーブは消えて、新しいゲームになります。\nよろしいですか？`, { ok: '上書きして始める' }))) return;
       Sound.tap();
       currentSlot = n;
       showSetup();
@@ -154,9 +170,9 @@ function showSlots(mode) {
   modalBody.querySelectorAll('[data-export]').forEach((b) => { b.onclick = () => { Sound.tap(); showExport(+b.dataset.export, () => showSlots(mode)); }; });
   modalBody.querySelectorAll('[data-import]').forEach((b) => { b.onclick = () => { Sound.tap(); showImport(+b.dataset.import, () => showSlots(mode)); }; });
   modalBody.querySelectorAll('[data-del]').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const n = +b.dataset.del;
-      if (!confirm(`枠${n}のセーブを消しますか？（元に戻せません）`)) return;
+      if (!(await askConfirm(`枠${n}のセーブを消しますか？\n（元に戻せません）`, { ok: '消す' }))) return;
       Sound.tap();
       deleteSlot(n);
       showTitle();
@@ -221,7 +237,7 @@ function showImport(n, back) {
     const err = $('im-err');
     try {
       const bundle = await decodeBundle($('im-code').value);
-      if (bundle.save && readSlot(n) && !confirm(`枠${n}のデータは上書きされます。よろしいですか？`)) return;
+      if (bundle.save && readSlot(n) && !(await askConfirm(`枠${n}のセーブは上書きされます。\nよろしいですか？`, { ok: '上書きして読み込む' }))) return;
       if (bundle.save) writeSlot(n, bundle.save);
       mergeRecords(bundle.records);
       Sound.win();
@@ -699,11 +715,11 @@ function showDiplomacy(message) {
     <p class="hint">停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います。</p>
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('[data-act]').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
       const k = b.dataset.clan, act = b.dataset.act;
       let msg;
       if (act === 'break') {
-        if (!confirm(`${CLANS[k].name}との約束を破棄しますか？`)) return;
+        if (!(await askConfirm(`${CLANS[k].name}との約束を破棄しますか？\n他の家からの信用も失います。`, { ok: '破棄する' }))) return;
         msg = diploBreak(S, k);
         Sound.lose();
       } else if (act === 'gift') {
@@ -1278,7 +1294,7 @@ $('title-crest').addEventListener('click', () => {
     const on = !debugOn();
     try { localStorage.setItem(DEBUG_KEY, on ? '1' : '0'); } catch (e) {}
     Sound.tap();
-    alert(on ? 'デバッグモード：ON\n（ゲーム中の目録に「デバッグ」が出ます）' : 'デバッグモード：OFF');
+    askAlert(on ? 'デバッグモード：ON\n（ゲーム中の目録に「デバッグ」が出ます）' : 'デバッグモード：OFF');
   }
 });
 
@@ -1301,9 +1317,10 @@ function showDebug() {
     <p class="hint">当主：${lord ? `${esc(lord.name)}（${lord.grade}年）` : 'なし'} ／ ${dateLabel(S.turn)}</p>
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('[data-dbg]').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
       Sound.tap();
       const k = b.dataset.dbg;
+      if (k === 'reset' && !(await askConfirm('戦績・実績・家の解放をすべて消しますか？', { ok: '消す' }))) return;
       S.debugUsed = true;
       S.debug = true;
       if (k === 'gold') S.gold[PLAYER] += 5000;
@@ -1312,7 +1329,7 @@ function showDebug() {
       if (k === 'senior' && lord) lord.grade = 3;
       if (k === 'freeze') S.debugFreeze = !S.debugFreeze;
       if (k === 'unlock') { const r = loadRecords(); r.unlocked = Object.keys(CLANS).filter((c) => c !== 'none'); saveRecords(r); }
-      if (k === 'reset') { if (!confirm('戦績・実績・家の解放をすべて消しますか？')) return; try { localStorage.removeItem(RECORD_KEY); } catch (e) {} }
+      if (k === 'reset') { try { localStorage.removeItem(RECORD_KEY); } catch (e) {} }
       if (k === 'win' || k === 'lose') {
         S.result = k;
         save();
