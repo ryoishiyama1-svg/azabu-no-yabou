@@ -141,6 +141,32 @@ const TACTICS = {
   siege: { name: '籠城', atkName: '持久戦', beats: 'charge', desc: '守りを固めて相手の消耗を待つ' },
 };
 
+// 合戦の采配（命令）。突撃は計略に、計略は守りに、守りは突撃に強い
+const COMMANDS = {
+  attack: { name: '攻撃', desc: 'ふつうに戦う' },
+  charge: { name: '突撃', desc: '大打撃。守りに受け止められる' },
+  guard: { name: '守り', desc: '損害を減らし士気回復。計略に弱い' },
+  scheme: { name: '計略', desc: '知略で混乱を狙う。突撃に弱い' },
+  retreat: { name: '退却', desc: '兵を失う前に引き上げる' },
+};
+
+// 戦法：特技を持つ武将が、1回の合戦で1度だけ使える技
+const ARTS = {
+  totsugeki: { name: '一番槍', desc: '敵に大打撃を与え、士気も下げる' },
+  teppeki: { name: '鉄壁の陣', desc: '2合のあいだ損害を半分にする' },
+  shinsan: { name: '火計', desc: '敵の兵と士気を大きく削る' },
+  jinbou: { name: '鼓舞', desc: '味方の士気を大きく回復する' },
+  shousai: { name: '兵糧攻め', desc: '2合続けて敵の士気を削る' },
+  chikujou: { name: '築陣', desc: '3合のあいだ損害を減らす' },
+};
+
+// 一騎打ちの手：斬るは払うに、払うは受けるに、受けるは斬るに強い
+const DUEL_MOVES = {
+  slash: { name: '斬る', beats: 'sweep' },
+  sweep: { name: '払う', beats: 'block' },
+  block: { name: '受ける', beats: 'slash' },
+};
+
 // 難易度
 const DIFFICULTY = {
   easy: { name: '初級', desc: '資金が多く、敵はおとなしい', gold: 1200, aiGold: 0.7, aiRatio: 1.6, aiIncome: 0.8, neutralGrowth: 10 },

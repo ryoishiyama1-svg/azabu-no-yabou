@@ -132,7 +132,8 @@ function resumeSlot(n) {
   S = migrate(data);
   closeModal();
   startGame(false);
-  if (S.pending.length) runEvents(() => {});
+  if (S.pendingDefense.length) afterDefenses();
+  else if (S.pending.length) runEvents(() => {});
 }
 
 // ---------- セーブ枠の一覧 ----------
@@ -365,7 +366,17 @@ function showHelp() {
       <li>選ばれなかった実力者は、不満を抱いて家を去ることもあります</li>
     </ul>
     <h3>合戦の作戦</h3>
-    <p>出陣のとき<b>作戦</b>を選べます。突撃は奇襲に、奇襲は籠城に、籠城（持久戦）は突撃に強い、じゃんけんの関係です。読み勝つと大きく有利に。知略の高い大将は、敵の作戦を読めることがあります。</p>
+    <p>出陣のとき<b>作戦</b>を選べます。突撃は奇襲に、奇襲は籠城に、籠城（持久戦）は突撃に強い、じゃんけんの関係です。読み勝つと最初の士気が上がります。知略の高い大将は、敵の作戦を読めることがあります。</p>
+    <h3>合戦の采配</h3>
+    <ul>
+      <li>合戦は1合ずつ進み、毎回<b>攻撃・突撃・守り・計略・退却</b>から命令を選びます（最大8合）</li>
+      <li><b>突撃は計略に、計略は守りに、守りは突撃に強い</b>。計略が決まると敵は混乱して1合動けません</li>
+      <li>兵が残っていても<b>士気が0になると総崩れ</b>。敵の兵か士気を0にすれば落城です</li>
+      <li>特技を持つ武将は<b>戦法</b>（一番槍・火計・鼓舞など）を1度だけ使えます</li>
+      <li>ときどき<b>一騎打ち</b>が起こります。斬るは払うに、払うは受けるに、受けるは斬るに強い</li>
+      <li>「おまかせで決着」「結果まで飛ばす」で省略もできます。目録の「設定」で、いつもおまかせにもできます</li>
+      <li>敵に攻められると<b>敵襲</b>の知らせが出て、守りの合戦も采配できます</li>
+    </ul>
     <h3>命令</h3>
     <ul>
       <li><b>出陣</b>：道でつながった敵城を攻める。攻め先のとなりにある城から<b>援軍</b>も出せます</li>
@@ -954,128 +965,357 @@ function openAttack(from, to) {
     $('amt').oninput = (e) => { amount = +e.target.value; update(); };
     update();
     $('go').onclick = () => {
-      const log = [];
       const a = tactic === 'auto' ? pick(Object.keys(TACTICS)) : tactic;
-      const r = attack(S, src, to, amount, gid, log, supportParts(), { a, d: enemyTactic });
+      const B = startBattle(S, { from: src, to, n: amount, gid, support: supportParts(), tactic: { a, d: enemyTactic }, playerSide: 'a' });
       mode = null;
-      selected = r.won ? to : src;
-      checkWin(S);
-      save();
       closeModal();
-      render();
-      playBattle(r, log);
+      runBattle(B, {
+        auto: getSettings().attackMode === 'auto',
+        onClose: (r) => {
+          selected = r.won ? to : src;
+          render();
+          tutAdvance(5);
+          achievementToast(checkAchievements(S));
+          if (S.result) showEnding();
+        },
+      });
     };
   }
   draw();
 }
 
-function playBattle(r, log = []) {
+// ---------- 設定 ----------
+const SETTINGS_KEY = 'azabu-settings';
+function getSettings() {
+  let v = {};
+  try { v = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) {}
+  return Object.assign({ attackMode: 'command', defenseMode: 'command', speed: 'normal' }, v);
+}
+function setSetting(k, v) {
+  const s = getSettings();
+  s[k] = v;
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+function showSettings() {
+  const st = getSettings();
+  const row = (key, label, opts, note) => `<h3>${label}</h3>
+    <div class="seg-row">${opts.map(([v, t]) => `<button data-set="${key}" data-v="${v}" class="${st[key] === v ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <p class="hint">${note}</p>`;
+  openModal(`<h2>設 定</h2>
+    ${row('attackMode', '攻める合戦', [['command', '采配する'], ['auto', 'おまかせ']], '「おまかせ」にすると、出陣したあとは自動で決着します。')}
+    ${row('defenseMode', '守りの合戦', [['command', '采配する'], ['auto', 'おまかせ']], '「采配する」にすると、敵に攻められたとき「敵襲！」として迎え撃てます。委任中の城は自動で守ります。')}
+    ${row('speed', '合戦の演出', [['normal', 'ふつう'], ['fast', '速い']], '')}
+    <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-set]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      setSetting(b.dataset.set, b.dataset.v);
+      modalBody.querySelectorAll(`[data-set="${b.dataset.set}"]`).forEach((x) => x.classList.toggle('on', x === b));
+    };
+  });
+}
+
+// ---------- 合戦（1合ずつ采配する） ----------
+// B = startBattle() で作った合戦。auto = おまかせで進める
+function runBattle(B, { auto = false, onClose } = {}) {
   const box = $('battle');
-  const a0 = r.rounds[0].a, d0 = r.rounds[0].d;
-  const g = S.gens[r.gid], dg = r.dgid ? S.gens[r.dgid] : null;
-  const supNames = (r.support || []).map((p) => S.gens[p.gid].name);
-  const tac = r.tactic
-    ? `<div class="b-tactic" id="b-tactic">${CLANS[r.attacker].name.replace('家', '')}「${TACTICS[r.tactic.a].atkName || TACTICS[r.tactic.a].name}」 対 ${CLANS[r.defender].name.replace('家', '')}「${TACTICS[r.tactic.d].name}」
-       <b class="${r.tr > 0 ? 'good' : r.tr < 0 ? 'bad' : ''}">${r.tr > 0 ? '── 読み勝った！' : r.tr < 0 ? '── 読まれていた…' : '── 互角'}</b></div>`
+  const me = B.playerSide, foe = me === 'a' ? 'd' : 'a';
+  const fast = getSettings().speed === 'fast';
+  const wait = (ms) => (fast ? ms * 0.45 : ms);
+  const g = S.gens[B.gid], dg = B.dgid ? S.gens[B.dgid] : null;
+  const defense = me === 'd';
+  const supNames = (B.support || []).map((p) => S.gens[p.gid].name);
+  const tac = B.tactic
+    ? `<div class="b-tactic">${shortName(B.attacker)}「${TACTICS[B.tactic.a].atkName || TACTICS[B.tactic.a].name}」 対 ${shortName(B.defender)}「${TACTICS[B.tactic.d].name}」
+       <b class="${B.tr > 0 ? 'good' : B.tr < 0 ? 'bad' : ''}">${B.tr > 0 ? '── 読み勝った！' : B.tr < 0 ? '── 読まれていた…' : '── 互角'}</b></div>`
     : '';
+  const sideHtml = (sd) => {
+    const gen = sd === 'a' ? g : dg;
+    const clan = B[sd].clan;
+    const info = gen
+      ? `${sd === 'd' ? '' : portrait(gen, 40)}<div><b>${esc(gen.name)}</b><small>統率${gen.str}${sd === 'a' && supNames.length ? `・援軍${supNames.length}` : ''}</small></div>${sd === 'd' ? portrait(gen, 40) : ''}`
+      : '<div><b>守将なし</b><small>&nbsp;</small></div>';
+    return `<div class="b-side ${sd === 'a' ? 'left' : 'right'}" style="--c:${CLANS[clan].color}">
+      <div class="b-gen">${info}</div>
+      <div class="bar"><i id="bar-${sd}" style="width:100%"></i></div>
+      <div class="b-nums"><span class="num" id="num-${sd}">${fmt(B[sd].troops)}</span><span class="st" id="st-${sd}"></span></div>
+      <div class="bar morale"><i id="mbar-${sd}"></i></div>
+      <small class="mtxt" id="mor-${sd}"></small>
+    </div>`;
+  };
   box.innerHTML = `
-    <div class="b-head"><div class="b-title">合 戦</div><div class="b-sub">${MAP.byId[r.to].name}の戦い</div>${tac}</div>
+    <div class="b-head"><div class="b-title">${defense ? '籠 城 戦' : '合 戦'}</div>
+      <div class="b-sub">${MAP.byId[B.to].name}の戦い${defense ? `（${pShort()}の守り）` : ''}</div>${tac}</div>
     <div class="b-field">
-      ${battleScene(r, S.turn)}
+      ${battleScene(B, S.turn)}
       <div class="spark" id="spark"></div>
       <div class="stamp" id="stamp"></div>
     </div>
-    <div class="b-bars">
-      <div class="b-side left" style="--c:${CLANS[r.attacker].color}">
-        <div class="b-gen">${portrait(g, 40)}<div><b>${esc(g.name)}</b><small>統率${g.str}${supNames.length ? `・援軍${supNames.length}` : ''}</small></div></div>
-        <div class="bar"><i id="bar-a" style="width:100%"></i></div>
-        <span class="num" id="num-a">${fmt(a0)}</span>
-      </div>
-      <div class="b-side right" style="--c:${CLANS[r.defender].color}">
-        <div class="b-gen">${dg ? `<div><b>${esc(dg.name)}</b><small>統率${dg.str}</small></div>${portrait(dg, 40)}` : '<div><b>守将なし</b><small>&nbsp;</small></div>'}</div>
-        <div class="bar"><i id="bar-d" style="width:100%"></i></div>
-        <span class="num" id="num-d">${fmt(d0)}</span>
-      </div>
-    </div>
+    <div class="b-bars">${sideHtml('a')}${sideHtml('d')}</div>
     <p class="b-round" id="round">いざ、尋常に勝負！</p>
-    <p class="b-msg" id="bmsg"></p>
-    <button class="btn plain" id="skip">結果を見る</button>`;
+    <div class="b-report" id="b-report"></div>
+    <div class="b-cmds" id="b-cmds"></div>
+    <div class="b-foot" id="b-foot">
+      <button class="btn plain" id="b-auto">おまかせで決着</button>
+      <button class="btn plain" id="b-skip">結果まで飛ばす</button>
+    </div>
+    <div class="duel" id="duel" hidden></div>`;
   box.hidden = false;
   Sound.horagai();
   Sound.bgmStart('battle');
 
-  // 兵が減った分だけ、足軽が倒れていく
   const fall = (id, ratio) => {
     const sols = [...document.querySelectorAll(`#${id} .sol`)];
     const alive = Math.ceil(sols.length * ratio);
     sols.forEach((el, k) => el.classList.toggle('down', k >= alive));
   };
-  const show = (i) => {
-    const { a, d } = r.rounds[i];
-    $('bar-a').style.width = `${(a / a0) * 100}%`;
-    $('bar-d').style.width = `${(d / Math.max(1, d0)) * 100}%`;
-    $('num-a').textContent = fmt(a);
-    $('num-d').textContent = fmt(d);
-    fall('army-a', a / a0);
-    fall('army-d', d / Math.max(1, d0));
+  const updateBars = () => {
+    ['a', 'd'].forEach((sd) => {
+      const x = B[sd];
+      $(`bar-${sd}`).style.width = `${(x.troops / x.start) * 100}%`;
+      $(`num-${sd}`).textContent = fmt(x.troops);
+      $(`mbar-${sd}`).style.width = `${x.morale}%`;
+      $(`mbar-${sd}`).classList.toggle('low', x.morale < 30);
+      $(`mor-${sd}`).textContent = `士気 ${x.morale}`;
+      const tags = [];
+      if (x.confused > 0) tags.push('混乱');
+      if (x.wall > 0) tags.push('守り固め');
+      if (x.starve > 0) tags.push('兵糧不足');
+      $(`st-${sd}`).textContent = tags.join('・');
+    });
+    fall('army-a', B.a.troops / B.a.start);
+    fall('army-d', B.d.troops / B.d.start);
   };
   const replay = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
-
-  let i = 0;
-  let timer;
-  const step = () => {
-    i++;
-    if (i >= r.rounds.length) return finish();
+  const report = (lines) => { $('b-report').innerHTML = lines.map((l) => `<p>${esc(l)}</p>`).join(''); };
+  const animate = () => {
     const A = $('army-a'), D = $('army-d');
-    // 矢を射かけてから、ぶつかり合う
-    $('bf-arrows').innerHTML = arrowVolley(i % 2 === 1);
+    $('bf-arrows').innerHTML = arrowVolley(B.round % 2 === 1);
     [A, D].forEach((x) => x.classList.add('lunge'));
     replay($('spark'), 'go');
     replay($('bf-dust'), 'go');
     replay(box, 'shake');
     Sound.clash(0.02);
     setTimeout(() => [A, D].forEach((x) => x.classList.remove('lunge')), 260);
-    setTimeout(() => show(i), 180);
-    $('round').textContent = `第 ${'一二三四五六'[i - 1]} 合`;
-    timer = setTimeout(step, 950);
+    setTimeout(updateBars, 180);
   };
-  timer = setTimeout(step, 1600);
+  updateBars();
+  report([defense
+    ? `${CLANS[B.attacker].name}の${g.name}が攻めてきた！ 城を守り抜け！`
+    : `${g.name}が${fmt(B.a.start)}兵を率いて出陣！`]);
 
+  let busy = false;
+  let timer = null;
+  let carry = []; // 決着の直前に出た文（一騎打ちの結果など）を、決着の画面にも残す
+
+  // 命令のボタン
+  function renderCmds() {
+    const el = $('b-cmds');
+    if (B.over) { el.innerHTML = ''; return; }
+    if (auto) {
+      el.innerHTML = '<div class="b-autonote">おまかせで進めています… <button id="b-manual">采配に戻る</button></div>';
+      $('b-manual').onclick = () => { Sound.tap(); auto = false; clearTimeout(timer); renderCmds(); };
+      return;
+    }
+    const cmds = ['attack', 'charge', 'guard', 'scheme'].concat(defense ? [] : ['retreat']);
+    const arts = B[me].arts.filter((id) => !B[me].used[id]);
+    el.innerHTML = `<div class="cmd-grid">${cmds.map((c) =>
+      `<button class="btn ${c === 'retreat' ? 'plain' : ''}" data-cmd="${c}"><b>${COMMANDS[c].name}</b><small>${COMMANDS[c].desc}</small></button>`).join('')}
+      ${arts.map((id) => `<button class="btn red art" data-cmd="art:${id}"><b>戦法「${ARTS[S.gens[id].skill].name}」</b><small>${esc(S.gens[id].name)}：${ARTS[S.gens[id].skill].desc}</small></button>`).join('')}</div>`;
+    el.querySelectorAll('[data-cmd]').forEach((b) => {
+      b.onclick = () => { if (!busy) { Sound.tap(); doRound(b.dataset.cmd); } };
+    });
+  }
+
+  function afterRound() {
+    if (B.duel) { openDuel(); return; }
+    if (B.over) { finish(); return; }
+    busy = false;
+    renderCmds();
+    if (auto) timer = setTimeout(() => doRound(aiCommand(S, B, me)), wait(900));
+  }
+
+  function doRound(cmd) {
+    busy = true;
+    carry = [];
+    $('b-cmds').querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    const cmds = {};
+    cmds[me] = cmd;
+    cmds[foe] = aiCommand(S, B, foe);
+    const rep = stepBattle(S, B, cmds);
+    $('round').textContent = `第 ${'一二三四五六七八'[B.round - 1] || B.round} 合`;
+    report(rep.lines);
+    animate();
+    timer = setTimeout(afterRound, wait(1100));
+  }
+
+  // ---------- 一騎打ち ----------
+  function openDuel() {
+    const d = $('duel');
+    const mineChallenges = B.duel.challenger === me;
+    const myGen = me === 'a' ? g : dg, foeGen = me === 'a' ? dg : g;
+    if (auto) {
+      const lines = autoDuel(S, B);
+      carry = lines;
+      report(lines);
+      updateBars();
+      timer = setTimeout(afterRound, wait(1300));
+      return;
+    }
+    d.hidden = false;
+    d.innerHTML = `<div class="duel-box">
+      <div class="duel-title">一 騎 打 ち</div>
+      <p class="duel-say">${mineChallenges ? `敵将${esc(foeGen.name)}に一騎打ちを挑みますか？` : `「そこの大将、勝負せよ！」 敵将${esc(foeGen.name)}が一騎打ちを挑んできた！`}</p>
+      <div class="duel-vs">${duelCard(myGen)}<span>対</span>${duelCard(foeGen)}</div>
+      <p class="hint">勝てば敵の士気が大きく下がり、敵将を捕らえることも。負ければ味方の士気が下がる。${mineChallenges ? '' : '断ると士気が少し下がる。'}</p>
+      <button class="btn red" id="du-yes">${mineChallenges ? '挑む' : '受けて立つ'}</button>
+      <button class="btn plain" id="du-no">${mineChallenges ? 'やめておく' : '断る'}</button>
+    </div>`;
+    Sound.taiko(0, 0.8);
+    $('du-yes').onclick = () => { Sound.tap(); startDuel(B); duelRound(myGen, foeGen); };
+    $('du-no').onclick = () => {
+      Sound.tap();
+      const line = mineChallenges ? (B.duel = null, '一騎打ちは見送った') : declineDuel(B, me);
+      d.hidden = true;
+      report([line]);
+      updateBars();
+      afterRound();
+    };
+  }
+
+  function duelCard(gen) {
+    const hp = B.duel && B.duel.hp ? B.duel.hp[gen === g ? 'a' : 'd'] : 3;
+    return `<div class="duel-gen">${portrait(gen, 64)}<b>${esc(gen.name)}</b><small>統率 ${gen.str}</small>
+      <div class="hp">${'<i class="on"></i>'.repeat(Math.max(0, hp))}${'<i></i>'.repeat(Math.max(0, 3 - hp))}</div></div>`;
+  }
+
+  function duelRound(myGen, foeGen, text) {
+    const D = B.duel;
+    const d = $('duel');
+    d.innerHTML = `<div class="duel-box">
+      <div class="duel-title">一 騎 打 ち</div>
+      <div class="duel-vs">${duelCard(myGen)}<span>対</span>${duelCard(foeGen)}</div>
+      <p class="duel-say">${text ? esc(text) : '手を選べ！（斬るは払うに、払うは受けるに、受けるは斬るに強い）'}</p>
+      ${D.done ? '<button class="btn red" id="du-end">決着</button>' : `<div class="duel-moves">${Object.entries(DUEL_MOVES).map(([k, m]) => `<button class="btn" data-mv="${k}">${m.name}</button>`).join('')}</div>`}
+    </div>`;
+    if (D.done) {
+      if ((D.done === me)) Sound.win(); else Sound.lose();
+      $('du-end').onclick = () => {
+        Sound.tap();
+        const lines = endDuel(S, B);
+        d.hidden = true;
+        carry = lines;
+        report(lines);
+        updateBars();
+        afterRound();
+      };
+      return;
+    }
+    d.querySelectorAll('[data-mv]').forEach((b) => {
+      b.onclick = () => {
+        const moves = {};
+        moves[me] = b.dataset.mv;
+        moves[foe] = aiDuelMove();
+        Sound.clash(0);
+        replay(d.querySelector('.duel-box'), 'hit');
+        duelRound(myGen, foeGen, duelStep(S, B, moves));
+      };
+    });
+  }
+
+  // ---------- 決着 ----------
   function finish() {
     clearTimeout(timer);
-    show(r.rounds.length - 1);
+    busy = true;
+    const log = [];
+    const r = endBattle(S, B, log);
+    checkWin(S);
+    save();
+    render();
+    updateBars();
+    $('b-cmds').innerHTML = '';
+    $('b-foot').innerHTML = '';
     Sound.bgmStop(0.5);
+    const good = defense ? !r.won : r.won; // プレイヤーにとって良い結果か
     const stamp = $('stamp');
-    stamp.textContent = r.won ? '落城' : '撤退';
-    stamp.className = 'stamp go ' + (r.won ? 'win' : 'lose');
+    stamp.textContent = r.won ? '落城' : defense ? '撃退' : '撤退';
+    stamp.className = 'stamp go ' + (good ? 'win' : 'lose');
     if (r.won) {
       fall('army-d', 0);
-      $('bf-fire').classList.add('on');                       // 城に火の手
-      document.querySelector('.bf-castle').style.setProperty('--c', CLANS[r.attacker].color);
+      $('bf-fire').classList.add('on');
+      document.querySelector('.bf-castle').style.setProperty('--c', CLANS[B.attacker].color);
     } else {
-      $('army-a').classList.add('retreat');                  // 退却
+      $('army-a').classList.add('retreat');
     }
-    $('round').textContent = r.won ? `${MAP.byId[r.to].short}、落城！` : '攻略ならず…';
-    let msg = r.won ? `残った ${fmt(r.left)} 兵が入城した` : `残った ${fmt(r.left)} 兵は退いた`;
-    if (r.won && r.defender !== 'none' && castlesOf(S, r.defender).length === 0) msg += `。${CLANS[r.defender].name}は滅亡した！`;
-    if (r.grew) msg += `\n${g.name}の統率が上がった！`;
-    $('bmsg').textContent = msg;
-    setTimeout(() => (r.won ? Sound.win() : Sound.lose()), 350);
-    const btn = $('skip');
-    btn.textContent = '閉じる';
-    btn.className = 'btn red';
-    btn.onclick = () => {
+    $('round').textContent = defense
+      ? (r.won ? `${MAP.byId[B.to].short}は落城した…` : `${MAP.byId[B.to].short}を守り抜いた！`)
+      : (r.won ? `${MAP.byId[B.to].short}、落城！` : '攻略ならず…');
+    const lines = [...carry];
+    if (!defense) lines.push(r.won ? `残った ${fmt(r.left)} 兵が入城した` : `残った ${fmt(r.left)} 兵は退いた`);
+    if (r.won && B.defender !== 'none' && castlesOf(S, B.defender).length === 0) lines.push(`${CLANS[B.defender].name}は滅亡した！`);
+    if (r.grew && B.attacker === PLAYER) lines.push(`${g.name}の統率が上がった！`);
+    lines.push(...log);
+    report(lines);
+    setTimeout(() => (good ? Sound.win() : Sound.lose()), 350);
+    $('b-foot').innerHTML = '<button class="btn red" id="b-close">閉じる</button>';
+    $('b-close').onclick = () => {
       Sound.tap();
       box.hidden = true;
       Sound.bgmStart('map');
-      handleCaptives(r.captured || [], () => {
-        tutAdvance(5);
-        achievementToast(checkAchievements(S));
-        if (S.result) showEnding();
-      });
+      handleCaptives(r.captured || [], () => { if (onClose) onClose(r); });
     };
   }
-  $('skip').onclick = finish;
+
+  $('b-auto').onclick = () => {
+    Sound.tap();
+    auto = true;
+    renderCmds();
+    if (!busy) doRound(aiCommand(S, B, me));
+  };
+  $('b-skip').onclick = () => {
+    Sound.tap();
+    clearTimeout(timer);
+    $('duel').hidden = true;
+    autoBattle(S, B);
+    finish();
+  };
+
+  renderCmds();
+  if (auto) timer = setTimeout(() => doRound(aiCommand(S, B, me)), wait(1400));
+}
+
+// ---------- 敵襲（守りの合戦） ----------
+function processDefenses(done) {
+  const q = S.pendingDefense || [];
+  if (!q.length) { done(); return; }
+  const p = q.shift();
+  save();
+  if (S.castles[p.to].owner !== PLAYER || !S.gens[p.gid]) { processDefenses(done); return; }
+  const ag = S.gens[p.gid];
+  const total = p.n + (p.support || []).reduce((a, sp) => a + sp.n, 0);
+  const c = S.castles[p.to];
+  const dg = defLeader(S, p.to);
+  openModal(`<div class="event" data-lock>
+      <div class="ev-icon">襲</div>
+      <h2>敵 襲 ！</h2>
+      <p class="ev-text">${CLANS[p.attacker].name}の${esc(ag.name)}が、${fmt(total)}兵で<b>${MAP.byId[p.to].name}</b>に攻めてきた！\n守備 ${fmt(c.troops)} 兵 ・ 防御 ${c.def.toFixed(1)}</p>
+      <div class="glist pick">${genCard(ag)}</div>
+      <p class="hint">守将：${dg ? esc(dg.name) : 'なし（士気が下がりやすい）'}</p>
+    </div>
+    <button class="btn red" id="df-cmd">采配で迎え撃つ</button>
+    <button class="btn plain" id="df-auto">おまかせで守る</button>
+    <button class="btn plain" id="df-skip">結果だけ見る</button>`);
+  Sound.horagai();
+  const go = (auto, skip) => {
+    closeModal();
+    const B = startBattle(S, { from: p.from, to: p.to, n: p.n, gid: p.gid, support: p.support || [], attacker: p.attacker, playerSide: 'd', committed: true });
+    runBattle(B, { auto, onClose: () => processDefenses(done) });
+    if (skip) $('b-skip').click();
+  };
+  $('df-cmd').onclick = () => { Sound.tap(); go(false); };
+  $('df-auto').onclick = () => { Sound.tap(); go(true); };
+  $('df-skip').onclick = () => { Sound.tap(); go(true, true); };
 }
 
 // ---------- 捕虜 ----------
@@ -1194,6 +1434,7 @@ function onEndTurn() {
   selected = null;
   mode = null;
   const before = S.gold[PLAYER];
+  S.deferDefense = getSettings().defenseMode === 'command';
   const log = endTurn(S);
   save();
   render();
@@ -1206,9 +1447,19 @@ function onEndTurn() {
     $('ok').onclick = () => {
       Sound.tap();
       closeModal();
-      if (S.result) showEnding();
-      else runEvents(() => achievementToast(checkAchievements(S)));
+      afterDefenses();
     };
+  });
+}
+
+// 敵襲の合戦をすべて終えてから、勝ち負けを調べて季節の出来事へ
+function afterDefenses() {
+  processDefenses(() => {
+    checkWin(S);
+    save();
+    render();
+    if (S.result) showEnding();
+    else runEvents(() => achievementToast(checkAchievements(S)));
   });
 }
 
@@ -1338,7 +1589,8 @@ function showDebug() {
         return;
       }
       if (k === 'spring') {
-        // 次の春まで進める（途中の季節の出来事は省略）
+        // 次の春まで進める（途中の季節の出来事は省略。敵の攻撃はその場で決着させる）
+        S.deferDefense = false;
         do {
           endTurn(S);
           if (S.turn % 4 !== 0) S.pending = [];
@@ -1362,6 +1614,7 @@ $('btn-menu').onclick = () => {
   openModal(`<h2>目 録</h2>
     <button class="btn plain" id="m-roster">家臣団（武将一覧・歴代当主）</button>
     <button class="btn plain" id="m-diplo">外交</button>
+    <button class="btn plain" id="m-settings">設定（合戦のおまかせ・速さ）</button>
     <button class="btn plain" id="m-records">戦績・実績</button>
     <button class="btn plain" id="m-export">セーブの書き出し（枠${currentSlot}）</button>
     <button class="btn plain" id="m-help">遊び方</button>
@@ -1371,6 +1624,7 @@ $('btn-menu').onclick = () => {
   $('m-roster').onclick = () => { Sound.tap(); showRoster(); };
   $('m-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
   $('m-records').onclick = () => { Sound.tap(); showRecords(); };
+  $('m-settings').onclick = () => { Sound.tap(); showSettings(); };
   $('m-export').onclick = () => { Sound.tap(); save(); showExport(currentSlot, closeModal); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };
   if ($('m-debug')) $('m-debug').onclick = () => { Sound.tap(); showDebug(); };

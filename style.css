@@ -772,7 +772,7 @@ textarea.code {
 .file-btn input { position: absolute; inset: 0; opacity: 0; }
 
 /* ---------- 合戦の絵 ---------- */
-.b-field { display: flex; align-items: center; justify-content: center; padding: 0; }
+.b-field { display: flex; align-items: center; justify-content: center; padding: 0; min-height: 150px; }
 .b-field::after { display: none; }
 svg.bf {
   width: 100%; height: 100%;
@@ -809,6 +809,68 @@ svg.bf {
 @keyframes shootL { 0% { opacity: 1; transform: translate(0, 0); } 100% { opacity: 0.2; transform: translate(-120px, 40px); } }
 .b-field .spark { bottom: auto; top: 72%; }
 .b-field .stamp { top: 45%; }
+
+/* ---------- 采配 ---------- */
+#battle { overflow-y: auto; }
+.b-nums { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.b-side.right .b-nums { flex-direction: row-reverse; }
+.b-nums .st { font-size: 11px; font-weight: 800; color: #ffb0a0; }
+.bar.morale { height: 7px; margin-top: 4px; }
+.bar.morale i { background: linear-gradient(90deg, #e0a030, #f3dc92); transition: width 0.45s ease; }
+.bar.morale i.low { background: linear-gradient(90deg, #b8262f, #e0603a); }
+.b-side.right .bar.morale i { margin-left: auto; }
+.mtxt { font-size: 11px; opacity: 0.85; }
+.b-report {
+  min-height: 44px; margin: 4px 0 0; padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(212, 169, 60, 0.4); border-radius: 8px;
+  font-size: 13px; line-height: 1.5;
+}
+.b-report p { margin: 0; }
+.b-report p + p { margin-top: 2px; opacity: 0.9; }
+.b-cmds { margin-top: 8px; }
+.cmd-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cmd-grid .btn { margin: 0; padding: 7px 4px; line-height: 1.2; }
+.cmd-grid .btn b { display: block; font-size: 15px; }
+.cmd-grid .btn small { display: block; font-size: 9.5px; font-family: var(--gothic); font-weight: 600; letter-spacing: 0; opacity: 0.85; }
+.cmd-grid .btn.art { grid-column: span 3; }
+.cmd-grid .btn.art b { font-size: 14px; }
+.b-autonote { text-align: center; font-size: 13px; padding: 8px; }
+.b-autonote button { margin-left: 8px; background: #fff; color: var(--red); border: none; border-radius: 6px; padding: 4px 10px; font-weight: 800; }
+.b-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.b-foot .btn { margin: 0; padding: 8px; font-size: 13px; }
+.b-foot .btn:only-child { grid-column: span 2; font-size: 16px; padding: 12px; }
+
+/* 一騎打ち */
+.duel {
+  position: absolute; inset: 0; z-index: 10;
+  background: rgba(10, 6, 8, 0.82);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.duel-box {
+  width: 100%; max-width: 380px;
+  background: linear-gradient(180deg, #2b1a1e, #1a1014);
+  border: 2px solid var(--gold); border-radius: 12px; padding: 16px;
+  text-align: center;
+}
+.duel-box.hit { animation: shake 0.3s; }
+.duel-title { font-family: var(--brush); font-size: 34px; color: var(--gold-hi); letter-spacing: 0.2em; }
+.duel-say { font-size: 14px; line-height: 1.6; min-height: 44px; }
+.duel-vs { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 8px 0; }
+.duel-vs > span { font-family: var(--brush); font-size: 28px; color: var(--red-hi); }
+.duel-gen { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.duel-gen b { font-family: var(--mincho); font-size: 15px; }
+.duel-gen small { font-size: 11px; opacity: 0.8; }
+.duel-gen .hp { display: flex; gap: 4px; margin-top: 4px; }
+.duel-gen .hp i { width: 14px; height: 14px; border-radius: 3px; background: rgba(255, 255, 255, 0.15); transform: rotate(45deg); }
+.duel-gen .hp i.on { background: var(--red-hi); }
+.duel-moves { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.duel-moves .btn { margin: 0; font-size: 18px; padding: 14px 4px; }
+.duel-box .hint { color: #cdbfa8; font-size: 12px; }
+
+/* 設定 */
+.seg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.seg-row button { padding: 10px; border-radius: 6px; border: 2px solid var(--line); background: #fffaf0; font-family: var(--mincho); font-weight: 800; }
+.seg-row button.on { border-color: var(--red); background: #fbe5e2; }
 
 /* ==========================================================
    横向き・iPad
@@ -887,11 +949,19 @@ svg.bf {
   .b-head .b-title { font-size: 26px; }
   .b-tactic { margin-top: 2px; font-size: 12px; }
   .b-tactic b { display: inline; font-size: 13px; margin-left: 6px; }
-  .b-field { grid-column: 1; grid-row: 2 / span 4; min-height: 0; }
-  .b-bars { grid-column: 2; grid-row: 2; align-self: end; }
-  .b-round { grid-column: 2; grid-row: 3; }
-  .b-msg { grid-column: 2; grid-row: 4; }
-  #battle > .btn { grid-column: 2; grid-row: 5; }
+  #battle { grid-template-rows: repeat(6, auto); align-content: start; row-gap: 4px; }
+  .b-head .b-sub { display: none; }
+  .b-report p + p { display: none; }
+  .b-field { grid-column: 1; grid-row: 2 / span 5; min-height: 0; }
+  .b-bars { grid-column: 2; grid-row: 2; margin-top: 0; }
+  .b-round { grid-column: 2; grid-row: 3; margin: 0; font-size: 15px; min-height: 0; }
+  .b-field { align-self: start; }
+  .b-report { grid-column: 2; grid-row: 4; min-height: 0; font-size: 12px; }
+  .b-cmds { grid-column: 2; grid-row: 5; margin-top: 2px; }
+  .b-foot { grid-column: 2; grid-row: 6; }
+  .cmd-grid .btn { padding: 5px 2px; }
+  .cmd-grid .btn small { display: none; }
+  .b-gen .portrait { width: 30px; height: 30px; }
   .nobori { height: 110px; }
   .nobori:nth-child(2) { height: 96px; }
   .nobori:nth-child(3) { height: 84px; }

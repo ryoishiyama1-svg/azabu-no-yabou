@@ -193,6 +193,8 @@ function migrate(s) {
   aiClans().forEach((k) => { s.rel[k] = s.rel[k] || { friend: 30, truce: 0, ally: 0 }; });
   s.encircle = !!s.encircle;
   s.pending = s.pending || [];
+  s.pendingDefense = s.pendingDefense || [];
+  s.underAttack = s.underAttack || {};
   return s;
 }
 
@@ -663,7 +665,7 @@ function autoCastle(s, clan, id, cfg, dist, log) {
   const use = (g) => { if (g) s.acted[g.id] = true; };
   // 旗揚げ直後の猶予期間は、他家は麻布家を攻めない
   const grace = clan !== PLAYER && s.turn < graceTurns(s);
-  const enemies = hostileNeighbors(s, id).filter((n) => !(grace && s.castles[n].owner === PLAYER));
+  const enemies = hostileNeighbors(s, id).filter((n) => !(grace && s.castles[n].owner === PLAYER) && !s.underAttack[n]);
 
   if (!enemies.length) {
     // 後方：兵と武将を前線へ送り、残りは開発
@@ -705,6 +707,17 @@ function autoCastle(s, clan, id, cfg, dist, log) {
     }
     const total = send + support.reduce((a, sp) => a + sp.n, 0);
     if (total * atkMult(leader) > need) {
+      // プレイヤーが守りの合戦を采配する設定なら、ここでは決着させず「敵襲」として後で戦う
+      if (clan !== PLAYER && s.castles[target].owner === PLAYER && s.deferDefense && !s.delegate[target]) {
+        c.troops -= send;
+        s.acted[leader.id] = true;
+        support.forEach((sp) => { s.castles[sp.from].troops -= sp.n; s.acted[sp.gid] = true; });
+        if (s.rel[clan]) changeFriend(s, clan, -3);
+        s.pendingDefense.push({ from: id, to: target, n: send, gid: leader.id, support, attacker: clan });
+        s.underAttack[target] = true;
+        log.push(`⚠️ ${CLANS[clan].name}の${leader.name}が ${MAP.byId[target].name} に攻めてきた！`);
+        return;
+      }
       const r = attack(s, id, target, send, leader.id, log, support);
       if (r.defender === PLAYER || r.won || clan === PLAYER) log.push(battleLine(s, r));
       if (r.won && r.defender !== 'none' && castlesOf(s, r.defender).length === 0) {
@@ -869,6 +882,8 @@ function succeed(s, gid) {
 // ---------- ターン終了 ----------
 function endTurn(s) {
   const log = [];
+  s.pendingDefense = [];
+  s.underAttack = {};
   runDelegated(s, log);
   if (!s.debugFreeze) aiTurn(s, log);
   s.turn++;
