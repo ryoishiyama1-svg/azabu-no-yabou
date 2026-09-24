@@ -162,9 +162,25 @@ const ARTS = {
 
 // 一騎打ちの手：斬るは払うに、払うは受けるに、受けるは斬るに強い
 const DUEL_MOVES = {
-  slash: { name: '斬る', beats: 'sweep' },
-  sweep: { name: '払う', beats: 'block' },
-  block: { name: '受ける', beats: 'slash' },
+  slash: { name: '斬る', beats: 'sweep', desc: '払うに勝つ' },
+  sweep: { name: '払う', beats: 'block', desc: '受けるに勝つ' },
+  block: { name: '受ける', beats: 'slash', desc: '斬るに勝つ' },
+  charge: { name: '溜める', desc: '気合+40・攻められると2の傷' },
+};
+// 一騎打ちのルール
+const DUEL = { hp: 5, maxTurns: 7, kiMax: 100, kiWin: 25, kiHit: 15, kiCharge: 40 };
+// 必殺技（気合が満ちると使える）。特技ごとに違う。特技がなければ「渾身の一撃」
+const DUEL_SPECIALS = {
+  totsugeki: { name: '一番槍', desc: '何を出されても2の傷' },
+  teppeki: { name: '不動の構え', desc: 'この合は無傷。打ち返して1の傷（攻めてきた相手には2）' },
+  shinsan: { name: '読み切り', desc: '相手の手を読み切り、2の傷を与えて無傷' },
+  konshin: { name: '渾身の一撃', desc: '2の傷。ただし「受ける」には返される' },
+};
+// 名乗り（統率・知略・魅力のどれが高いかで口ぶりが変わる）
+const DUEL_CALLS = {
+  str: ['{clan}の{name}、参る！ この槍、受けてみよ！', '我こそは{clan}の{name}！ いざ尋常に勝負！'],
+  int: ['{clan}の{name}。力押しだけでは勝てぬと教えてやろう', '{name}と申す。その太刀筋、すでに見えておる'],
+  cha: ['{clan}の{name}！ みんな、見ていてくれ！', '{name}、推して参る！ 胸を借りるぞ！'],
 };
 
 // 学校の特色（プログラムで割り当てた架空の設定。実在の学校とは関係ない）

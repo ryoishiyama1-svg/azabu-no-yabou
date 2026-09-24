@@ -70,6 +70,7 @@ const EVENTS = {
     }),
     apply(s, p, ci) {
       const cands = heirsOf(s, p);
+      if (!cands.length) return ''; // 城をすべて失っている（敗北）
       return succeed(s, cands[ci] || cands[0]);
     },
   },

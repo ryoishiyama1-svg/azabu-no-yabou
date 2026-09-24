@@ -35,6 +35,37 @@ function crestBadge(clan, size = 20) {
     <circle r="30" fill="${c.color}"/>${crestInner(c.crest, '#fff')}</svg>`;
 }
 
+// ---------- 一騎打ちの舞台：夕日の野原。両軍の旗が風になびく ----------
+function duelScene(clanA, clanD) {
+  const flag = (x, clan, flip) => {
+    const c = CLANS[clan] ? CLANS[clan].color : '#777';
+    const d = flip ? -1 : 1;
+    return `<g class="du-flag" transform="translate(${x},0)">
+      <line x1="0" y1="62" x2="0" y2="128" stroke="#3a2616" stroke-width="2"/>
+      <path d="M0,62 Q${9 * d},60 ${18 * d},64 L${18 * d},96 Q${9 * d},92 0,96 Z" fill="${c}"/>
+    </g>`;
+  };
+  return `<svg class="du-scene" viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="du-sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#3b2446"/><stop offset="0.45" stop-color="#c1553a"/><stop offset="0.8" stop-color="#f2a65a"/>
+      </linearGradient>
+      <radialGradient id="du-sun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff2c4"/><stop offset="0.6" stop-color="#f7c35f"/><stop offset="1" stop-color="#f7c35f" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="320" height="160" fill="url(#du-sky)"/>
+    <circle cx="160" cy="104" r="46" fill="url(#du-sun)"/>
+    <circle cx="160" cy="104" r="22" fill="#fde7a6"/>
+    <path d="M0,112 L40,94 L78,106 L120,88 L160,104 L205,86 L250,102 L290,90 L320,100 L320,160 L0,160 Z" fill="#5a2f35" opacity="0.8"/>
+    <path d="M0,124 Q80,112 160,120 Q240,128 320,116 L320,160 L0,160 Z" fill="#2d2019"/>
+    <g stroke="#4b3a22" stroke-width="1.2" opacity="0.8">${Array.from({ length: 26 }, (_, i) => {
+      const x = 6 + i * 12.4, h = 5 + (i * 7) % 8;
+      return `<path d="M${x},${140 + (i % 3) * 5} q2,-${h} 5,-${h + 2}"/>`;
+    }).join('')}</g>
+    ${flag(22, clanA, false)}${flag(40, clanA, false)}${flag(298, clanD, true)}${flag(280, clanD, true)}
+    <g class="du-birds" fill="none" stroke="#2a1a24" stroke-width="1.2"><path d="M110,34 q4,-4 8,0 q4,-4 8,0"/><path d="M200,24 q3,-3 6,0 q3,-3 6,0"/></g>
+  </svg>`;
+}
+
 // ---------- 会談の部屋（相手の生徒会室。床の間に相手の家紋の掛け軸） ----------
 function meetingRoom(clan) {
   const c = CLANS[clan];

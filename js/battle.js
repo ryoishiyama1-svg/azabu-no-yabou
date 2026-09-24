@@ -215,41 +215,153 @@ function checkBattleEnd(B, lines, name) {
 
 // ---------- 一騎打ち ----------
 function startDuel(B) {
-  B.duel = Object.assign(B.duel || {}, { hp: { a: 3, d: 3 }, turn: 0, done: null, log: [] });
+  B.duel = Object.assign(B.duel || {}, {
+    hp: { a: DUEL.hp, d: DUEL.hp }, ki: { a: 0, d: 0 }, turn: 0, done: null, log: [], next: null,
+  });
   return B.duel;
 }
 
-function aiDuelMove() {
-  return pick(Object.keys(DUEL_MOVES));
+const duelGen = (s, B, side) => s.gens[side === 'a' ? B.gid : B.dgid];
+// その武将の必殺技
+function duelSpecialOf(g) {
+  return DUEL_SPECIALS[g.skill] ? g.skill : 'konshin';
+}
+// 名乗り
+function duelCall(g) {
+  const k = g.int >= g.str && g.int >= g.cha ? 'int' : g.cha > g.str ? 'cha' : 'str';
+  // 独立校の武将は学校の名で名乗る
+  const clan = g.clan === 'none' || !CLANS[g.clan] ? MAP.byId[g.loc || g.school].name : CLANS[g.clan].name;
+  return pick(DUEL_CALLS[k]).replace('{clan}', clan).replace('{name}', g.name);
+}
+// 武将ごとのクセ：出しやすい手（見た目の番号から決まるので、同じ相手ならいつも同じ）
+function duelHabit(g) {
+  return ['slash', 'sweep', 'block'][hashStr(g.id) % 3];
 }
 
-// 一太刀すすめる
+// 他家の武将（またはおまかせ）の手を決める
+function aiDuelMove(s, B, side) {
+  const D = B.duel;
+  const g = duelGen(s, B, side);
+  if (D.ki[side] >= DUEL.kiMax && Math.random() < 0.75) return 'special';
+  const foeKi = D.ki[other(side)];
+  // 相手が溜めそうなら攻める、こちらの体力に余裕があれば溜める
+  if (D.ki[side] < DUEL.kiMax && D.ki[side] >= 40 && D.hp[side] >= 3 && Math.random() < 0.25) return 'charge';
+  const w = { slash: 1, sweep: 1, block: 1 };
+  w[duelHabit(g)] += 1.2;
+  if (g.str >= 70) w.slash += 0.5;
+  if (g.int >= 70) w.block += 0.5;
+  if (foeKi >= DUEL.kiMax) w.block += 1; // 相手の必殺技を警戒して受けに回る
+  let r = Math.random() * (w.slash + w.sweep + w.block);
+  return Object.keys(w).find((k) => (r -= w[k]) <= 0) || 'slash';
+}
+
+// 相手の次の手を読む（知略が高いほど、はっきり見える）
+// 戻り値：{ level: 'clear' | 'guess' | 'none', move }（guess はときどき外れる）
+function duelRead(s, B, side) {
+  const D = B.duel;
+  const me = duelGen(s, B, side), foe = duelGen(s, B, other(side));
+  const real = D.next && D.next[other(side)];
+  if (!real) return { level: 'none' };
+  const p = clamp((me.int - 35) / 70 - (foe.int - 50) / 250, 0.05, 0.85);
+  const r = Math.random();
+  if (r < p * 0.55) return { level: 'clear', move: real };
+  if (r < p) {
+    const wrong = Math.random() < 0.3;
+    return { level: 'guess', move: wrong ? pick(Object.keys(DUEL_MOVES).filter((k) => k !== real && k !== 'charge')) : real };
+  }
+  return { level: 'none' };
+}
+
+// 一合すすめる。moves = { a, d }（'slash' | 'sweep' | 'block' | 'charge' | 'special'）
+// 戻り値：{ text, dmg: {a, d}, special: [side...] }
 function duelStep(s, B, moves) {
   const D = B.duel;
   D.turn++;
-  const ga = s.gens[B.gid], gd = s.gens[B.dgid];
-  const x = moves.a, y = moves.d;
-  let text;
-  const hitBonus = (w, l) => (w.str - l.str >= 20 && Math.random() < 0.5 ? 1 : 0);
-  if (DUEL_MOVES[x].beats === y) {
-    const dmg = 1 + hitBonus(ga, gd);
-    D.hp.d -= dmg;
-    text = `${ga.name}の「${DUEL_MOVES[x].name}」が${gd.name}の「${DUEL_MOVES[y].name}」を破った！`;
-  } else if (DUEL_MOVES[y].beats === x) {
-    const dmg = 1 + hitBonus(gd, ga);
-    D.hp.a -= dmg;
-    text = `${gd.name}の「${DUEL_MOVES[y].name}」が${ga.name}の「${DUEL_MOVES[x].name}」を破った！`;
+  D.next = null;
+  const ga = duelGen(s, B, 'a'), gd = duelGen(s, B, 'd');
+  const gen = { a: ga, d: gd };
+  const mv = { a: moves.a, d: moves.d };
+  // 気合が足りなければ必殺技は出せない（念のため）
+  ['a', 'd'].forEach((sd) => { if (mv[sd] === 'special' && D.ki[sd] < DUEL.kiMax) mv[sd] = 'slash'; });
+  const dmg = { a: 0, d: 0 };
+  const texts = [];
+  const specials = [];
+  const guard = { a: false, d: false };
+  const basic = (m) => m === 'slash' || m === 'sweep' || m === 'block';
+  const bonus = (w, l) => (gen[w].str - gen[l].str >= 20 && Math.random() < 0.5 ? 1 : 0);
+
+  // 必殺技
+  ['a', 'd'].forEach((sd) => {
+    if (mv[sd] !== 'special') return;
+    const o = other(sd);
+    const sp = duelSpecialOf(gen[sd]);
+    specials.push(sd);
+    D.ki[sd] = 0;
+    const nm = `${gen[sd].name}の「${DUEL_SPECIALS[sp].name}」`;
+    if (sp === 'totsugeki') { dmg[o] += 2; texts.push(`${nm}！ 一直線に突き通した！`); }
+    if (sp === 'teppeki') {
+      // 攻めてきた相手ほど、強く打ち返される
+      const hard = mv[o] === 'slash' || mv[o] === 'sweep' || mv[o] === 'special';
+      dmg[o] += hard ? 2 : 1;
+      guard[sd] = true;
+      texts.push(`${nm}！ すべてを受け止め、${hard ? '鋭く' : ''}打ち返した！`);
+    }
+    if (sp === 'shinsan') { dmg[o] += 2; guard[sd] = mv[o] !== 'special'; texts.push(`${nm}！ 太刀筋を見切って斬り込んだ！`); }
+    if (sp === 'konshin') {
+      if (mv[o] === 'block') { dmg[sd] += 1; texts.push(`${nm}！ ……しかし${gen[o].name}に受け流され、返り討ちにあった！`); }
+      else { dmg[o] += 2; texts.push(`${nm}！ 力のかぎり打ち込んだ！`); }
+    }
+  });
+
+  if (!specials.length) {
+    const x = mv.a, y = mv.d;
+    if (x === 'charge' && y === 'charge') {
+      texts.push('両者、にらみ合って気を練った');
+    } else if (x === 'charge' || y === 'charge') {
+      const c = x === 'charge' ? 'a' : 'd', o = other(c);
+      if (mv[o] === 'block') texts.push(`${gen[c].name}は気合を溜めた。${gen[o].name}は様子を見ている`);
+      else {
+        dmg[c] += 2;
+        D.ki[o] += DUEL.kiWin;
+        texts.push(`${gen[c].name}が気合を溜める隙を突いて、${gen[o].name}の「${DUEL_MOVES[mv[o]].name}」が決まった！`);
+      }
+    } else if (DUEL_MOVES[x].beats === y) {
+      dmg.d += 1 + bonus('a', 'd');
+      D.ki.a += DUEL.kiWin;
+      texts.push(`${ga.name}の「${DUEL_MOVES[x].name}」が${gd.name}の「${DUEL_MOVES[y].name}」を破った！`);
+    } else if (DUEL_MOVES[y].beats === x) {
+      dmg.a += 1 + bonus('d', 'a');
+      D.ki.d += DUEL.kiWin;
+      texts.push(`${gd.name}の「${DUEL_MOVES[y].name}」が${ga.name}の「${DUEL_MOVES[x].name}」を破った！`);
+    } else {
+      // 同じ手：統率の高いほうが押し勝ちやすい
+      const w = Math.random() < ga.str / (ga.str + gd.str) ? 'a' : 'd';
+      dmg[other(w)] += 1;
+      D.ki[w] += 15;
+      texts.push(`同じ「${DUEL_MOVES[x].name}」で激しく打ち合い、${gen[w].name}が押し勝った`);
+    }
   } else {
-    // 同じ手：統率の高いほうが押し勝ちやすい
-    const pa = ga.str / (ga.str + gd.str);
-    if (Math.random() < pa) { D.hp.d -= 1; text = `激しく打ち合い、${ga.name}が押し勝った`; }
-    else { D.hp.a -= 1; text = `激しく打ち合い、${gd.name}が押し勝った`; }
+    // 必殺技を受けた側が「溜める」なら気合だけはたまる。ふつうの手は必殺技に押し切られる
+    ['a', 'd'].forEach((sd) => {
+      if (mv[sd] === 'charge') D.ki[sd] += DUEL.kiCharge;
+      else if (basic(mv[sd]) && !specials.includes(sd) && mv[sd] !== 'block') texts.push(`${gen[sd].name}の「${DUEL_MOVES[mv[sd]].name}」は押し切られた`);
+    });
   }
+  ['a', 'd'].forEach((sd) => {
+    if (guard[sd]) dmg[sd] = 0;
+    if (mv[sd] === 'charge' && !specials.length) D.ki[sd] += DUEL.kiCharge;
+    if (dmg[sd] > 0) D.ki[sd] += DUEL.kiHit;
+    D.ki[sd] = Math.min(DUEL.kiMax, D.ki[sd]);
+    D.hp[sd] = Math.max(0, D.hp[sd] - dmg[sd]);
+  });
+  const text = texts.join('\n');
   D.log.push(text);
-  if (D.hp.a <= 0 || D.hp.d <= 0 || D.turn >= 5) {
-    D.done = D.hp.a === D.hp.d ? (ga.str >= gd.str ? 'a' : 'd') : D.hp.a > D.hp.d ? 'a' : 'd';
+  if (D.hp.a <= 0 || D.hp.d <= 0 || D.turn >= DUEL.maxTurns) {
+    // 体力が同じなら、統率の高いほうが判定勝ち（同じならその場の勢い）
+    D.done = D.hp.a !== D.hp.d ? (D.hp.a > D.hp.d ? 'a' : 'd')
+      : ga.str !== gd.str ? (ga.str > gd.str ? 'a' : 'd') : (Math.random() < 0.5 ? 'a' : 'd');
   }
-  return text;
+  return { text, dmg, specials, moves: mv };
 }
 
 // 一騎打ちの決着を合戦に反映する
@@ -285,7 +397,7 @@ function autoDuel(s, B) {
   const gt = s.gens[target === 'a' ? B.gid : B.dgid], gc = s.gens[B.duel.challenger === 'a' ? B.gid : B.dgid];
   if (gt.str + 10 >= gc.str) {
     startDuel(B);
-    while (!B.duel.done) duelStep(s, B, { a: aiDuelMove(), d: aiDuelMove() });
+    while (!B.duel.done) duelStep(s, B, { a: aiDuelMove(s, B, 'a'), d: aiDuelMove(s, B, 'd') });
     return endDuel(s, B);
   }
   return [declineDuel(B, target)];

@@ -1634,45 +1634,92 @@ function runBattle(B, { auto = false, onClose } = {}) {
       return;
     }
     d.hidden = false;
-    d.innerHTML = `<div class="duel-box">
-      <div class="duel-title">一 騎 打 ち</div>
-      <p class="duel-say">${mineChallenges ? `敵将${esc(foeGen.name)}に一騎打ちを挑みますか？` : `「そこの大将、勝負せよ！」 敵将${esc(foeGen.name)}が一騎打ちを挑んできた！`}</p>
-      <div class="duel-vs">${duelCard(myGen)}<span>対</span>${duelCard(foeGen)}</div>
-      <p class="hint">勝てば敵の士気が大きく下がり、敵将を捕らえることも。負ければ味方の士気が下がる。${mineChallenges ? '' : '断ると士気が少し下がる。'}</p>
-      <button class="btn red" id="du-yes">${mineChallenges ? '挑む' : '受けて立つ'}</button>
-      <button class="btn plain" id="du-no">${mineChallenges ? 'やめておく' : '断る'}</button>
-    </div>`;
+    const du = { myGen, foeGen, mood: {}, say: null, busy: false, calls: [duelCall(myGen), duelCall(foeGen)] };
+    drawDuel(du, mineChallenges);
     Sound.taiko(0, 0.8);
-    $('du-yes').onclick = () => { Sound.tap(); startDuel(B); duelRound(myGen, foeGen); };
-    $('du-no').onclick = () => {
-      Sound.tap();
-      const line = mineChallenges ? (B.duel = null, '一騎打ちは見送った') : declineDuel(B, me);
-      d.hidden = true;
-      report([line]);
-      updateBars();
-      afterRound();
-    };
+    Sound.taiko(0.25, 0.8);
   }
 
-  function duelCard(gen) {
-    const hp = B.duel && B.duel.hp ? B.duel.hp[gen === g ? 'a' : 'd'] : 3;
-    return `<div class="duel-gen">${portrait(gen, 64)}<b>${esc(gen.name)}</b><small>統率 ${gen.str}</small>
-      <div class="hp">${'<i class="on"></i>'.repeat(Math.max(0, hp))}${'<i></i>'.repeat(Math.max(0, 3 - hp))}</div></div>`;
-  }
-
-  function duelRound(myGen, foeGen, text) {
-    const D = B.duel;
+  // 一騎打ちの画面。du.offer のあいだは「受けるか」を聞き、始まったら手を選ぶ
+  function drawDuel(du, offer = null) {
     const d = $('duel');
-    d.innerHTML = `<div class="duel-box">
-      <div class="duel-title">一 騎 打 ち</div>
-      <div class="duel-vs">${duelCard(myGen)}<span>対</span>${duelCard(foeGen)}</div>
-      <p class="duel-say">${text ? esc(text) : '手を選べ！（斬るは払うに、払うは受けるに、受けるは斬るに強い）'}</p>
-      ${D.done ? '<button class="btn red" id="du-end">決着</button>' : `<div class="duel-moves">${Object.entries(DUEL_MOVES).map(([k, m]) => `<button class="btn" data-mv="${k}">${m.name}</button>`).join('')}</div>`}
+    const D = B.duel;
+    const started = !!(D && D.hp);
+    const { myGen, foeGen } = du;
+    const my = me, fo = foe;
+    const stat = (sd, gen) => {
+      const hp = started ? D.hp[sd] : DUEL.hp;
+      const ki = started ? D.ki[sd] : 0;
+      return `<div class="du-stat ${sd === my ? 'me' : 'foe'}">
+        <b>${esc(gen.name)}</b><small>統率${gen.str}・知略${gen.int}</small>
+        <div class="du-hp"><span>体</span>${Array.from({ length: DUEL.hp }, (_, i) => `<i class="${i < hp ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="du-ki ${ki >= DUEL.kiMax ? 'full' : ''}"><span>気合</span><em><i style="width:${ki}%"></i></em><small>${ki >= DUEL.kiMax ? '必殺！' : ki}</small></div>
+      </div>`;
+    };
+    const roundName = started ? `第${'一二三四五六七'[Math.min(D.turn, 6)]}合` : '';
+    let body = '';
+    if (!started) {
+      // 名乗りと、受けるかどうか
+      body = `<div class="du-say"><p><b>${esc(myGen.name)}</b>「${esc(du.calls[0])}」</p><p><b class="foe">${esc(foeGen.name)}</b>「${esc(du.calls[1])}」</p></div>
+        <p class="du-note">${offer ? `敵将${esc(foeGen.name)}に一騎打ちを挑みますか？` : `敵将${esc(foeGen.name)}が一騎打ちを挑んできた！`}<br>
+        勝てば敵の士気が大きく下がり、敵将を捕らえることも。負ければ味方の士気が下がる。${offer ? '' : '断ると士気が少し下がる。'}</p>
+        <div class="du-moves two"><button class="btn red" id="du-yes">${offer ? '挑む' : '受けて立つ'}</button>
+        <button class="btn plain" id="du-no">${offer ? 'やめておく' : '断る'}</button></div>`;
+    } else if (D.done) {
+      const won = D.done === my;
+      body = `${du.say ? `<div class="du-say">${du.say}</div>` : ''}
+        <button class="btn red" id="du-end">${won ? '勝ち名乗りを上げる' : '決着'}</button>`;
+    } else {
+      const read = D.read || { level: 'none' };
+      const readText = read.level === 'clear' ? `🔍 見えた！ 次は「${DUEL_MOVES[read.move] ? DUEL_MOVES[read.move].name : DUEL_SPECIALS[duelSpecialOf(foeGen)].name}」で来る`
+        : read.level === 'guess' ? `🔍 たぶん「${DUEL_MOVES[read.move] ? DUEL_MOVES[read.move].name : '必殺技'}」で来る……？`
+        : '🔍 相手の構えは読めない';
+      const sp = DUEL_SPECIALS[duelSpecialOf(myGen)];
+      const canSp = D.ki[my] >= DUEL.kiMax;
+      body = `<div class="du-say">${du.say || `<p>${esc(pick(['間合いをはかる……', '風が止んだ……', '両者、じりじりと詰め寄る']))}</p>`}
+          <p class="du-read ${read.level}">${readText}</p>
+          ${D.ki[fo] >= DUEL.kiMax ? `<p class="du-warn">⚠ ${esc(foeGen.name)}の気合が満ちている！ 必殺技に気をつけろ</p>` : ''}</div>
+        <div class="du-moves">${['slash', 'sweep', 'block', 'charge'].map((k) => `<button class="btn" data-mv="${k}"><b>${DUEL_MOVES[k].name}</b><small>${DUEL_MOVES[k].desc}</small></button>`).join('')}
+          <button class="btn red du-sp" data-mv="special" ${canSp ? '' : 'disabled'}><b>必殺「${sp.name}」</b><small>${canSp ? sp.desc : `気合${DUEL.kiMax}で使える`}</small></button></div>`;
+    }
+    d.innerHTML = `<div class="duel-box du2">
+      <div class="du-title">一 騎 打 ち${started ? `<small>${roundName}／${DUEL.maxTurns}合</small>` : ''}</div>
+      <div class="du-stage" id="du-stage">
+        ${duelScene(B[my].clan, B[fo].clan)}
+        <div class="du-p left">${portrait(myGen, 84, du.mood[my] || null)}</div>
+        <div class="du-p right">${portrait(foeGen, 84, du.mood[fo] || null)}</div>
+        <div class="du-flash" id="du-flash"></div>
+        <div class="du-cut" id="du-cut"></div>
+        ${du.dmg ? ['a', 'd'].filter((sd) => du.dmg[sd]).map((sd) => `<div class="du-dmg ${sd === my ? 'left' : 'right'}">−${du.dmg[sd]}</div>`).join('') : ''}
+        ${started && D.done ? `<div class="du-stamp ${D.done === my ? 'win' : 'lose'}">${D.done === my ? '勝' : '負'}</div>` : ''}
+      </div>
+      <div class="du-stats">${stat(my, myGen)}${stat(fo, foeGen)}</div>
+      ${body}
     </div>`;
+    du.dmg = null;
+    if (!started) {
+      $('du-yes').onclick = () => {
+        Sound.tap();
+        Sound.bgmStart('duel');
+        startDuel(B);
+        prepareDuelTurn();
+        du.say = null;
+        drawDuel(du);
+      };
+      $('du-no').onclick = () => {
+        Sound.tap();
+        const line = offer ? (B.duel = null, '一騎打ちは見送った') : declineDuel(B, me);
+        d.hidden = true;
+        report([line]);
+        updateBars();
+        afterRound();
+      };
+      return;
+    }
     if (D.done) {
-      if ((D.done === me)) Sound.win(); else Sound.lose();
       $('du-end').onclick = () => {
         Sound.tap();
+        Sound.bgmStart('battle');
         const lines = endDuel(S, B);
         d.hidden = true;
         carry = lines;
@@ -1684,14 +1731,53 @@ function runBattle(B, { auto = false, onClose } = {}) {
     }
     d.querySelectorAll('[data-mv]').forEach((b) => {
       b.onclick = () => {
+        if (du.busy) return;
+        du.busy = true;
+        d.querySelectorAll('[data-mv]').forEach((x) => { x.disabled = true; });
         const moves = {};
         moves[me] = b.dataset.mv;
-        moves[foe] = aiDuelMove();
-        Sound.clash(0);
-        replay(d.querySelector('.duel-box'), 'hit');
-        duelRound(myGen, foeGen, duelStep(S, B, moves));
+        moves[foe] = D.next[foe];
+        const r = duelStep(S, B, moves);
+        const spName = (sd) => DUEL_SPECIALS[duelSpecialOf(sd === me ? myGen : foeGen)].name;
+        // 必殺技は名前を大きく出してから斬る
+        const lead = r.specials.length ? 750 : 0;
+        if (r.specials.length) {
+          const cut = $('du-cut');
+          cut.textContent = r.specials.map(spName).join('　×　');
+          cut.className = `du-cut go ${r.specials.includes(me) ? 'me' : 'foe'}`;
+          Sound.kiai();
+        } else {
+          Sound.slash();
+          Sound.clash(0.12);
+        }
+        setTimeout(() => {
+          replay($('du-flash'), 'go');
+          replay(d.querySelector('.duel-box'), 'hit');
+          du.dmg = r.dmg;
+          ['a', 'd'].forEach((sd) => {
+            du.mood[sd] = r.dmg[sd] ? 'angry' : r.dmg[other(sd)] ? 'happy' : 'think';
+          });
+          const lines = r.text.split('\n').map((l) => `<p>${esc(l)}</p>`).join('');
+          const mvName = (sd) => (r.moves[sd] === 'special' ? `必殺「${spName(sd)}」` : DUEL_MOVES[r.moves[sd]].name);
+          du.say = `<p class="du-mv">${esc(myGen.name)}：${mvName(me)}　／　${esc(foeGen.name)}：${mvName(foe)}</p>${lines}`;
+          if (B.duel.done) {
+            const won = B.duel.done === me;
+            du.mood[me] = won ? 'happy' : 'think';
+            du.mood[foe] = won ? 'think' : 'happy';
+            setTimeout(() => (won ? Sound.win() : Sound.lose()), 300);
+          } else prepareDuelTurn();
+          du.busy = false;
+          drawDuel(du);
+        }, lead + 150);
       };
     });
+  }
+
+  // 次の合の、相手の手（先に決めておくので「読み」が本当の手を指す）
+  function prepareDuelTurn() {
+    const D = B.duel;
+    D.next = { [foe]: aiDuelMove(S, B, foe) };
+    D.read = duelRead(S, B, me);
   }
 
   // ---------- 決着 ----------

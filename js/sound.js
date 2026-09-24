@@ -89,6 +89,38 @@ const Sound = (() => {
     o.start(t); o.stop(t + 0.3);
   }
 
+  // 斬撃：空気を裂く音（高い音から低い音へすべる風切り）
+  function slash(delay = 0, big = false) {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime + delay;
+    noise = noise || noiseBuffer(c);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    n.buffer = noise; f.type = 'bandpass'; f.Q.value = 1.2;
+    f.frequency.setValueAtTime(big ? 5200 : 4200, t);
+    f.frequency.exponentialRampToValueAtTime(big ? 500 : 900, t + (big ? 0.35 : 0.18));
+    env(c, g, t, big ? 0.5 : 0.3, 0.01, big ? 0.35 : 0.18);
+    n.connect(f).connect(g).connect(c.destination);
+    n.start(t); n.stop(t + 0.45);
+  }
+
+  // 必殺技：気合の高まり（せり上がる音）から大太鼓の一撃
+  function kiai() {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime;
+    const o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(120, t);
+    o.frequency.exponentialRampToValueAtTime(520, t + 0.45);
+    f.type = 'lowpass'; f.frequency.value = 1600;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.14, t + 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    o.connect(f).connect(g).connect(c.destination);
+    o.start(t); o.stop(t + 0.55);
+    taiko(0.45, 1.2);
+    slash(0.5, true);
+  }
+
   // 琴：音をはじく
   function koto(notes, gap = 0.12) {
     const c = ensure(); if (!c) return;
@@ -393,7 +425,29 @@ const Sound = (() => {
     n.start(t); n.stop(t + 0.06);
   }
 
+  // ---------- 一騎打ちBGM ----------
+  // 締太鼓の刻みと大太鼓の連打、高い篠笛が張りつめた空気をつくる（4小節のくり返し）
+  const DUEL_STEP = 60 / 164 / 4;
+  const DUEL_FUE = melodyAt([
+    [81, 3], [82, 1], [81, 2], [77, 2],
+    [74, 6], [0, 2],
+    [81, 2], [82, 2], [86, 3], [82, 1],
+    [81, 6], [0, 2],
+  ]);
+  const DUEL_TAIKO = ['D..D..D.D.d.D...', 'D..D..D.D.ddDddd'];
+
   const TRACKS = {
+    duel: {
+      step: DUEL_STEP, loop: 16 * 4, vol: 0.55,
+      play(c, out, s, t) {
+        const bar = Math.floor(s / 16), b = s % 16;
+        const k = DUEL_TAIKO[bar % 2][b];
+        if (k !== '.') bgmDrum(c, out, t, k === 'D');
+        bgmShime(c, out, t, b % 4 === 0);
+        if (b === 0 || b === 8) bgmShamisen(c, out, t, bar % 2 ? 51 : 50);
+        if (DUEL_FUE[s]) bgmFue(c, out, t, DUEL_FUE[s][0] - 12, DUEL_FUE[s][1] * DUEL_STEP);
+      },
+    },
     meeting: {
       step: MEET_STEP, loop: 16 * 8, vol: 0.45,
       play(c, out, s, t) {
@@ -479,7 +533,7 @@ const Sound = (() => {
     const tr = TRACKS[kind];
     const out = c.createGain();
     out.gain.setValueAtTime(0.0001, c.currentTime);
-    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'battle' || kind === 'win' ? 0.8 : 2));
+    out.gain.exponentialRampToValueAtTime(tr.vol, c.currentTime + (kind === 'battle' || kind === 'win' || kind === 'duel' ? 0.8 : 2));
     out.connect(c.destination);
     const state = { kind, out, step: 0, next: c.currentTime + 0.1, timer: null };
     state.timer = setInterval(() => {
@@ -547,6 +601,8 @@ const Sound = (() => {
     tap,
     taiko,
     clash,
+    slash,
+    kiai,
     horagai,
     win() { koto([587, 659, 784, 880, 1175], 0.11); },   // 陽音階で上る
     lose() { koto([440, 392, 330, 294, 220], 0.2); },
