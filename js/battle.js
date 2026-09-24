@@ -333,8 +333,10 @@ function endBattle(s, B, log) {
     if (g.clan === B.attacker) moveGeneral(s, B.gid, B.to);
     result.captured.push(...scatterGenerals(s, B.to, B.defender, B.attacker, log));
     result.grew = g.clan === B.attacker ? grow(g, 'str') : null;
-    if (B.attacker === PLAYER) s.stats.battlesWon++;
+    if (B.attacker === PLAYER) { s.stats.battlesWon++; changeLoyal(g, 3); }
   } else {
+    if (B.attacker === PLAYER) changeLoyal(g, -3);
+    if (B.defender === PLAYER && dg) changeLoyal(dg, 4);
     if (B.duelCapture === 'd') captureGen(dg, B.attacker, B.to);
     dst.troops = B.d.troops;
     const total = B.a.start;

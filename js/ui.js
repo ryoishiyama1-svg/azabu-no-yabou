@@ -67,11 +67,17 @@ function skillTag(g) {
 function gradeTag(g) {
   return g.grade ? `<span class="grade g${g.grade}">${g.grade}年</span>` : '';
 }
+// 忠誠度（自分の家臣だけ表示。当主は表示しない）
+function loyalTag(g) {
+  if (g.clan !== PLAYER || g.lord || g.loyal === undefined) return '';
+  const cls = g.loyal < LOYAL.rebelBelow ? 'danger' : g.loyal < LOYAL.leaveBelow ? 'low' : g.loyal >= 80 ? 'high' : '';
+  return `<span class="loyal ${cls}">忠${g.loyal}</span>`;
+}
 function genCard(g, { acted = false, extra = '' } = {}) {
   return `<div class="gcard ${acted ? 'acted' : ''}" data-gid="${g.id}">
     ${portrait(g, 46)}
     <div class="gi">
-      <div class="gn">${esc(g.name)}${g.lord ? '<span class="lord">当主</span>' : ''}</div>
+      <div class="gn">${esc(g.name)}${g.lord ? '<span class="lord">当主</span>' : ''}${loyalTag(g)}</div>
       <div class="gt">${gradeTag(g)}${esc(g.title)} ${skillTag(g)}</div>
       <div class="gs">${statLine(g)}</div>
     </div>${extra}
@@ -359,6 +365,12 @@ function showHelp() {
       <li>城を落とすと、敵の武将を<b>捕らえる</b>ことがあります。登用すれば家臣になります</li>
       <li>命令をこなすと、能力が少しずつ上がります</li>
     </ul>
+    <h3>忠誠と褒美</h3>
+    <ul>
+      <li>家臣には<b>忠誠度</b>があり、季節ごとに少しずつ下がります（当主の魅力が高いと下がりにくい）</li>
+      <li><b>褒美</b>（金${LOYAL.rewardCost}）で忠誠が上がります。合戦で勝つ、合宿や文化祭の演劇でも上がります</li>
+      <li>忠誠が${LOYAL.leaveBelow}未満だと<b>出奔</b>、${LOYAL.rebelBelow}未満だと城ごと<b>謀反</b>を起こすことがあります。捕虜から登用した武将は忠誠が低めです</li>
+    </ul>
     <h3>卒業と家督相続</h3>
     <ul>
       <li>武将には<b>学年</b>があります。毎年春、<b>3年生は卒業</b>していなくなり、各校に<b>新入生</b>が入ります</li>
@@ -621,7 +633,8 @@ function renderPanel() {
         <button class="btn" id="c-recruit" ${dis(canRecruit(S, selected))}><span class="k">兵</span>徴兵<small>金${RULES.recruitCost}</small></button>
         <button class="btn" id="c-develop" ${dis(canDevelop(S, selected))}><span class="k">商</span>開発<small>金${RULES.developCost}</small></button>
         <button class="btn" id="c-fortify" ${dis(canFortify(S, selected))}><span class="k">城</span>築城<small>金${RULES.fortifyCost}</small></button>
-        <button class="btn plain wide" id="c-close">閉じる</button>
+        <button class="btn" id="c-reward" ${gens.some((g) => canReward(S, g)) ? '' : 'disabled'}><span class="k">賞</span>褒美<small>金${LOYAL.rewardCost}・忠誠+</small></button>
+        <button class="btn plain wide2" id="c-close">閉じる</button>
       </div>`;
   } else {
     const srcs = attackSources(selected);
@@ -649,6 +662,10 @@ function renderCouncil() {
     <div class="p-head"><h2>軍議</h2><span class="p-sub">${SCENARIOS[S.scenario].name} ／ 武将 ${gensOf(S, PLAYER).length}人 ／ 収入 ${fmt(income(S, PLAYER))}</span></div>
     <p class="kakun">${S.lords.length}代目 ${esc((lordOf(S) || {}).name || '（当主不在）')} ・ 家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small>${S.debug ? ' <b class="dbg">DEBUG</b>' : ''}</p>
     <p class="hint">城をタップして命令しましょう。命令できる武将：<b>${idleGens}人</b>${delegCount ? `　委任中の城：<b>${delegCount}</b>` : ''}</p>
+    ${(() => {
+      const low = gensOf(S, PLAYER).filter((g) => !g.lord && g.loc && g.loyal < LOYAL.leaveBelow).length;
+      return low ? `<button class="warn loyal-warn" id="loyal-warn">⚠ 忠誠の低い家臣が ${low}人。出奔や謀反のおそれあり（タップで褒美）</button>` : '';
+    })()}
     ${S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : ''}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
     <div class="bulk">
@@ -661,6 +678,7 @@ function renderCouncil() {
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
   $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
+  if ($('loyal-warn')) $('loyal-warn').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）'); };
 }
 
 // ---------- 軍師の手ほどき（チュートリアル） ----------
@@ -791,6 +809,37 @@ function bulk(kind) {
   toast(n ? `${n}城で${kind === 'recruit' ? '徴兵' : '開発'}しました` : '命令できる城がありません');
 }
 
+// ---------- 褒美 ----------
+// gens の中から誰に褒美を与えるか選ぶ。忠誠の低い順に並べる
+function showReward(gens, title, back) {
+  const list = gens.filter((g) => g.clan === PLAYER && !g.lord).sort((a, b) => a.loyal - b.loyal);
+  const low = list.filter((g) => g.loyal < 50 && canReward(S, g));
+  openModal(`<h2>${title}</h2>
+    <p class="hint" style="text-align:center">金${LOYAL.rewardCost}で忠誠+${LOYAL.rewardGain}。1人につき1季に1回。命令の回数は使いません。<br>所持金 ${fmt(S.gold[PLAYER])}</p>
+    ${low.length > 1 ? `<button class="btn red" id="rw-low">忠誠50未満の ${low.length}人 にまとめて褒美（金${fmt(low.length * LOYAL.rewardCost)}）</button>` : ''}
+    <div class="glist pick">${list.map((g) => genCard(g, {
+      extra: canReward(S, g) ? `<button class="rw-btn" data-rw="${g.id}">褒美</button>` : `<span class="rw-done">${S.rewarded[g.id] ? '済' : ''}</span>`,
+    })).join('') || '<p class="hint">褒美を与えられる家臣はいない</p>'}</div>
+    <button class="btn plain" id="rw-back">${back ? 'もどる' : '閉じる'}</button>`);
+  const again = (msg) => { save(); render(); showReward(gens, title, back); if (msg) toast(msg); };
+  modalBody.querySelectorAll('[data-rw]').forEach((b) => {
+    b.onclick = (e) => {
+      e.stopPropagation();
+      Sound.tap();
+      const g = S.gens[b.dataset.rw];
+      const gain = reward(S, g.id);
+      again(`${esc(g.name)}に褒美を与えた。忠誠+${gain}`);
+    };
+  });
+  if ($('rw-low')) $('rw-low').onclick = () => {
+    Sound.win();
+    let n = 0;
+    low.forEach((g) => { if (canReward(S, g)) { reward(S, g.id); n++; } });
+    again(`${n}人に褒美を与えた`);
+  };
+  $('rw-back').onclick = () => { Sound.tap(); if (back) back(); else closeModal(); };
+}
+
 // 担当の武将を自動で選んで内政
 function act(fn, stat, label) {
   const g = bestBy(idleGensAt(S, selected), stat);
@@ -811,6 +860,7 @@ function bindPanel() {
   on('c-recruit', () => act(recruit, 'cha', '徴兵'));
   on('c-develop', () => act(develop, 'pol', '開発'));
   on('c-fortify', () => act(fortify, 'int', '築城'));
+  on('c-reward', () => { Sound.tap(); showReward(gensAt(S, selected), '褒美'); });
   on('c-strike', () => { Sound.tap(); openAttack(null, selected); });
   const d = $('c-deleg');
   if (d) d.onchange = () => {
@@ -834,9 +884,20 @@ function showGeneral(gid) {
       <div class="gstats">
         ${['str', 'pol', 'cha', 'int'].map((k) => `<div><span>${STAT_NAMES[k]}</span><i style="width:${g[k]}%"></i><b>${g[k]}</b></div>`).join('')}
       </div>
+      ${g.clan === PLAYER && !g.lord ? `<div class="gstats"><div><span>忠誠</span><i class="loyal-bar ${g.loyal < LOYAL.leaveBelow ? 'low' : ''}" style="width:${g.loyal}%"></i><b>${g.loyal}</b></div></div>
+        <p class="hint">${g.loyal < LOYAL.rebelBelow ? '謀反を起こすおそれがある！' : g.loyal < LOYAL.leaveBelow ? '出奔するおそれがある' : g.loyal >= 80 ? '忠義に厚い' : 'まずまずの忠誠'}</p>` : ''}
       ${g.skill ? `<p><span class="skill">${SKILLS[g.skill].name}</span> ${SKILLS[g.skill].desc}</p>` : '<p class="hint">特技なし</p>'}
+      ${g.skill && ARTS[g.skill] ? `<p class="hint">戦法「${ARTS[g.skill].name}」：${ARTS[g.skill].desc}</p>` : ''}
     </div>
+    ${canReward(S, g) ? `<button class="btn red" id="gd-reward">褒美を与える（金${LOYAL.rewardCost}）</button>` : ''}
     <button class="btn plain" data-close>閉じる</button>`);
+  if ($('gd-reward')) $('gd-reward').onclick = () => {
+    const gain = reward(S, gid);
+    save();
+    render();
+    showGeneral(gid);
+    toast(`${esc(g.name)}に褒美を与えた。忠誠+${gain}`);
+  };
 }
 
 // ---------- タップ ----------
@@ -1391,8 +1452,11 @@ function lordsHistory() {
 function showRoster() {
   const gens = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || b.grade - a.grade || a.loc.localeCompare(b.loc));
   const seniors = gens.filter((g) => g.grade >= 3).length;
+  const retainers = gens.filter((g) => !g.lord);
+  const avgLoyal = retainers.length ? Math.round(retainers.reduce((a, g) => a + g.loyal, 0) / retainers.length) : 0;
   openModal(`<h2>家臣団</h2>
-    <p class="hint" style="text-align:center">${gens.length}人（うち3年生 ${seniors}人は次の春に卒業）・ タップするとその城へ</p>
+    <p class="hint" style="text-align:center">${gens.length}人（うち3年生 ${seniors}人は次の春に卒業）・ 平均の忠誠 ${avgLoyal} ・ タップするとその城へ</p>
+    <button class="btn" id="roster-reward">褒美を与える（忠誠の低い順）</button>
     <div class="glist roster">${gens.map((g) => genCard(g, {
       acted: !!S.acted[g.id],
       extra: `<span class="where">${MAP.byId[g.loc].short}</span>`,
@@ -1400,6 +1464,7 @@ function showRoster() {
     <h3>歴代当主</h3>
     ${lordsHistory()}
     <button class="btn plain" data-close>閉じる</button>`);
+  $('roster-reward').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）', showRoster); };
   modalBody.querySelectorAll('.gcard').forEach((c) => {
     c.onclick = () => {
       Sound.tap();

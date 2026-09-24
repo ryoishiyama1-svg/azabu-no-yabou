@@ -124,6 +124,7 @@ function makeGeneral(s, school, clan, { strong = false, title, grade } = {}) {
     title: title || pick(TITLES),
     school, origin: clan, clan, loc: school,
     grade: grade || randInt(1, 3), // 学年。3年生は春に卒業する
+    loyal: randInt(58, 78),        // 忠誠度
     str: randInt(lo, hi), pol: randInt(lo, hi), cha: randInt(lo, hi), int: randInt(lo, hi),
     skill: Math.random() < (strong ? 0.55 : 0.25) ? pick(Object.keys(SKILLS)) : null,
     look: randInt(0, 9999),
@@ -158,7 +159,11 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
       // 家臣は1・2年生中心（最初の春にいきなり大勢卒業しないように）
       // 麻布家以外は地図の真ん中で四方から攻められやすいので、家臣を1人多くする
       const grades = PLAYER === 'azabu' ? [1, 2, 1, 2] : [1, 2, 1, 2, 1];
-      grades.forEach((grade, i) => makeGeneral(s, n.id, PLAYER, { strong: true, grade, title: i === 0 ? '生徒会長' : undefined }));
+      grades.forEach((grade, i) => {
+        const g = makeGeneral(s, n.id, PLAYER, { strong: true, grade, title: i === 0 ? '生徒会長' : undefined });
+        g.loyal = randInt(80, 92); // 旗揚げからの家臣は忠誠が厚い
+      });
+      lord.loyal = 100;
     } else if (capital) {
       for (let i = 0; i < 5; i++) makeGeneral(s, n.id, n.clan, { strong: i < 3, title: i === 0 ? '生徒会長' : undefined });
     } else {
@@ -185,7 +190,11 @@ function migrate(s) {
   s.scenario = setScenario(s.scenario || 'tokyo');
   s.player = setPlayer(s.player || 'azabu');
   s.tut = s.tut || 0;
-  Object.values(s.gens).forEach((g) => { if (!g.grade) g.grade = g.lord ? 2 : randInt(1, 3); });
+  Object.values(s.gens).forEach((g) => {
+    if (!g.grade) g.grade = g.lord ? 2 : randInt(1, 3);
+    if (g.loyal === undefined) g.loyal = g.lord ? 100 : 72;
+  });
+  s.rewarded = s.rewarded || {};
   if (!s.kakun) { const l = lordOf(s); s.kakun = l ? kakunOf(l) : 'cha'; }
   if (!s.lords) { const l = lordOf(s); s.lords = l ? [{ name: l.name, from: 0, kakun: s.kakun }] : []; }
   s.stats = Object.assign({ battlesWon: 0, tacticWins: 0, recruited: 0, diplo: 0, minCastles: 99 }, s.stats || {});
@@ -577,8 +586,10 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
     moveGeneral(s, gid, to);
     result.captured = scatterGenerals(s, to, defender, attacker, log);
     result.grew = grow(g, 'str');
-    if (attacker === PLAYER) s.stats.battlesWon++;
+    if (attacker === PLAYER) { s.stats.battlesWon++; changeLoyal(g, 3); }
   } else {
+    if (attacker === PLAYER) changeLoyal(g, -3);
+    if (defender === PLAYER && dg) changeLoyal(dg, 4);
     dst.troops = r.defLeft;
     // 生き残りは出てきた城へ、兵の割合に応じて帰る
     const parts = [{ from, n: n - support.reduce((a, sp) => a + sp.n, 0) }, ...support];
@@ -604,6 +615,7 @@ function tryRecruitCaptive(s, gid) {
   if (ok && s.castles[g.capturedAt].owner === PLAYER) {
     g.clan = PLAYER;
     g.loc = g.capturedAt;
+    g.loyal = randInt(35, 55); // 捕虜から仕えた武将は、まだ心を開いていない
     s.stats.recruited++;
   } else {
     g.clan = 'ronin';
@@ -784,7 +796,12 @@ function runDelegated(s, log) {
   const dist = frontDistance(s, PLAYER);
   castlesOf(s, PLAYER)
     .filter((id) => s.delegate[id])
-    .forEach((id) => autoCastle(s, PLAYER, id, { ratio: RULES.delegateRatio, reserve: RULES.delegateReserve }, dist, log));
+    .forEach((id) => {
+      autoCastle(s, PLAYER, id, { ratio: RULES.delegateRatio, reserve: RULES.delegateReserve }, dist, log);
+      // 委任した城では、忠誠の低い家臣に自動で褒美を与える
+      gensAt(s, id).filter((g) => g.loyal < 50 && canReward(s, g) && s.gold[PLAYER] >= LOYAL.rewardCost + RULES.delegateReserve)
+        .forEach((g) => reward(s, g.id));
+    });
 }
 
 function bulkCommand(s, kind) {
@@ -799,6 +816,66 @@ function bulkCommand(s, kind) {
       if (g && can(s, id)) { fn(s, id, g); s.acted[g.id] = true; count++; }
     });
   return count;
+}
+
+// ---------- 忠誠度 ----------
+const LOYAL = {
+  rewardCost: 100, rewardGain: 12,
+  leaveBelow: 40,   // これより低いと出奔することがある
+  rebelBelow: 30,   // これより低いと謀反を起こすことがある
+};
+
+function changeLoyal(g, d) {
+  if (g && !g.lord) g.loyal = clamp(Math.round((g.loyal ?? 70) + d), 0, 100);
+}
+
+function canReward(s, g) {
+  return g.clan === PLAYER && !g.lord && !s.rewarded[g.id] && s.gold[PLAYER] >= LOYAL.rewardCost && g.loyal < 100;
+}
+
+// 褒美：金を与えて忠誠を上げる（命令の回数は使わない。1人1季に1回）
+function reward(s, gid) {
+  const g = s.gens[gid];
+  const lord = lordOf(s);
+  const gain = LOYAL.rewardGain + (lord && lord.cha >= 80 ? 3 : 0);
+  s.gold[PLAYER] -= LOYAL.rewardCost;
+  s.rewarded[gid] = true;
+  changeLoyal(g, gain);
+  return gain;
+}
+
+// 季節ごとの忠誠の変化と、出奔・謀反
+function loyaltyTick(s, log) {
+  const lord = lordOf(s);
+  const drift = (lord ? lord.cha - 70 : -20) / 25 - 1.6; // 当主の魅力が高いほど下がりにくい
+  const mine = castlesOf(s, PLAYER);
+  gensOf(s, PLAYER).filter((g) => g.loc && !g.lord).forEach((g) => {
+    changeLoyal(g, Math.floor(drift + Math.random()));
+    // 出奔
+    if (g.loyal < LOYAL.leaveBelow && Math.random() < (LOYAL.leaveBelow - g.loyal) / 150) {
+      g.clan = 'ronin';
+      g.loc = null;
+      log.push(`🚶 忠誠の薄れた${g.name}が、${pName()}を出奔した…`);
+      return;
+    }
+    // 謀反：城でいちばん強い武将が、城ごと独立する（当主のいる城では起きない）
+    const here = gensAt(s, g.loc);
+    const top = bestBy(here, 'str');
+    const lordHere = here.some((x) => x.lord);
+    if (g.loyal < LOYAL.rebelBelow && top === g && !lordHere && mine.length >= 2 &&
+        Math.random() < (LOYAL.rebelBelow - g.loyal) / 120) {
+      const id = g.loc;
+      const refuge = MAP.adj[id].find((n) => s.castles[n].owner === PLAYER && n !== id);
+      here.filter((x) => x !== g).forEach((x) => {
+        if (refuge) moveGeneral(s, x.id, refuge); else { x.clan = 'ronin'; x.loc = null; }
+      });
+      s.castles[id].owner = 'none';
+      delete s.delegate[id];
+      g.clan = 'none';
+      g.loyal = 100;
+      log.push(`🔥 謀反！ ${g.name}が ${MAP.byId[id].name} ごと${pName()}から独立した！`);
+    }
+  });
 }
 
 // ---------- 卒業と入学 ----------
@@ -867,6 +944,9 @@ function succeed(s, gid) {
   const passed = successionCandidates(s).filter((g) => g.id !== gid);
   heir.lord = true;
   heir.title = '当主';
+  heir.loyal = 100;
+  // 当主が代わると家臣の心は少し揺れる。選ばれなかった候補は特に不満を持つ
+  gensOf(s, PLAYER).forEach((g) => { if (!g.lord) changeLoyal(g, passed.includes(g) ? -15 : -3); });
   s.kakun = kakunOf(heir);
   s.lords.push({ name: heir.name, from: s.turn, kakun: s.kakun });
   let text = `${heir.name}が${s.lords.length}代目当主となった。家訓は「${KAKUN[s.kakun].name}」（${KAKUN[s.kakun].desc}）。`;
@@ -891,8 +971,10 @@ function endTurn(s) {
     if (k !== 'none') s.gold[k] += income(s, k);
   });
   s.acted = {};
+  s.rewarded = {};
   Object.keys(s.delegate).forEach((id) => { if (s.castles[id].owner !== PLAYER) delete s.delegate[id]; });
   tickDiplomacy(s, log);
+  loyaltyTick(s, log);
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);

@@ -650,6 +650,25 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .scroll-hint { color: var(--red); }
 @media (orientation: landscape) and (min-width: 640px), (min-width: 1000px) { .scroll-hint { display: none; } }
 
+/* ---------- 忠誠・褒美 ---------- */
+.loyal {
+  font-size: 10px; font-weight: 800; margin-left: 5px; padding: 0 4px; border-radius: 3px; vertical-align: 2px;
+  background: #e9dcbc; color: #6b5a3a;
+}
+.loyal.high { background: #dcebd8; color: #2f6b3f; }
+.loyal.low { background: #fbe0c8; color: #a0521c; }
+.loyal.danger { background: var(--red); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+.cmds .wide2 { grid-column: span 2; }
+.rw-btn {
+  margin-left: auto; flex: none;
+  background: var(--red); color: #fff; border: none; border-radius: 6px;
+  padding: 6px 10px; font-weight: 800; font-size: 13px;
+}
+.rw-done { margin-left: auto; font-size: 12px; color: var(--muted); }
+.loyal-warn { display: block; width: 100%; text-align: left; border: none; margin: 0 0 6px; cursor: pointer; }
+.gstats i.loyal-bar { background: linear-gradient(90deg, #7fb070, #2f8a55); }
+.gstats i.loyal-bar.low { background: linear-gradient(90deg, #e0603a, #b8262f); }
+
 /* ---------- 学年・家訓 ---------- */
 .grade {
   display: inline-block; font-size: 10px; font-weight: 800; color: #fff;

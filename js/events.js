@@ -58,12 +58,13 @@ const EVENTS = {
   },
   summer: {
     icon: '夏', title: '夏合宿',
-    text: () => `夏休みに合宿を開けば、家臣たちの統率が鍛えられるだろう。費用は金${300}。`,
+    text: () => `夏休みに合宿を開けば、家臣たちの統率が鍛えられ、結束も強まるだろう。費用は金${300}。`,
     choices: (s) => [{ label: '合宿を開く（金300）', disabled: s.gold[PLAYER] < 300 }, { label: '見送る' }],
     apply(s, p, ci) {
       if (ci !== 0) return '合宿は見送った。';
       s.gold[PLAYER] -= 300;
-      return `厳しい合宿を乗りこえた。${growAll(s, 'str')}`;
+      gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 3));
+      return `厳しい合宿を乗りこえた。${growAll(s, 'str')}\n寝食を共にし、家臣たちの忠誠も少し上がった。`;
     },
   },
   autumn: {
@@ -71,7 +72,7 @@ const EVENTS = {
     text: (s) => `いよいよ文化祭。${pName()}の出し物を決めよう。`,
     choices: (s) => [
       { label: '模擬店', sub: `金 +${150 + 25 * castlesOf(s, PLAYER).length}` },
-      { label: '演劇', sub: '家臣の魅力が上がる' },
+      { label: '演劇', sub: '家臣の魅力と忠誠が上がる' },
       { label: '研究発表', sub: '家臣の政治が上がる' },
     ],
     apply(s, p, ci) {
@@ -80,7 +81,10 @@ const EVENTS = {
         s.gold[PLAYER] += n;
         return `模擬店は大繁盛！ 金 +${n}`;
       }
-      if (ci === 1) return `演劇は大喝采！ ${growAll(s, 'cha')}`;
+      if (ci === 1) {
+        gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 3));
+        return `演劇は大喝采！ ${growAll(s, 'cha')}\n一体感が生まれ、家臣たちの忠誠も少し上がった。`;
+      }
       return `研究発表は高い評価を受けた。${growAll(s, 'pol')}`;
     },
   },
@@ -139,6 +143,7 @@ const EVENTS = {
       s.gold[PLAYER] -= 200;
       g.clan = PLAYER;
       g.loc = homeCastle(s);
+      g.loyal = randInt(60, 72);
       return `${g.name}が家臣になった！（${MAP.byId[g.loc].short}に配属）`;
     },
   },
@@ -161,6 +166,7 @@ const EVENTS = {
       s.gold[PLAYER] -= 600;
       g.clan = PLAYER;
       g.loc = homeCastle(s);
+      g.loyal = randInt(60, 72);
       return `天才・${g.name}が家臣になった！`;
     },
   },
@@ -198,6 +204,7 @@ const EVENTS = {
       s.gold[PLAYER] -= 300;
       g.clan = PLAYER;
       g.loc = dest;
+      g.loyal = randInt(38, 52); // 寝返った者は、また寝返るかもしれない
       changeFriend(s, from, -10);
       return `${g.name}が寝返った！（${MAP.byId[dest].short}に入った）`;
     },
