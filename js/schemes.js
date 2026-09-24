@@ -32,10 +32,10 @@ function schemeTargets(s, from, kind) {
   });
 }
 
-// 物見やぐらなどで計略を防ぐ力（③施設で使う。今は守将の知略）
+// 計略を防ぐ力：守将の知略と、物見やぐら
 function schemeGuard(s, id) {
   const dg = bestBy(gensAt(s, id), 'int');
-  return dg ? dg.int : 30;
+  return (dg ? dg.int : 30) + (hasFac(s, id, 'tower') ? 25 : 0);
 }
 
 // 成功率
@@ -45,7 +45,8 @@ function schemeChance(s, kind, g, to, target) {
   if (kind === 'discord') return clamp(0.4 + (g.int - guard) / 100, 0.1, 0.85);
   if (kind === 'lure') {
     if (!target || target.lord || target.loyal >= 90) return 0;
-    return clamp(0.05 + (g.int + g.cha - 100) / 200 + (60 - target.loyal) / 70, 0.02, 0.85);
+    const tower = hasFac(s, to, 'tower') ? 0.5 : 1; // 物見やぐらがあると見張りが厳しい
+    return clamp((0.05 + (g.int + g.cha - 100) / 200 + (60 - target.loyal) / 70) * tower, 0.02, 0.85);
   }
   if (kind === 'subvert') {
     const c = s.castles[to];
@@ -118,7 +119,10 @@ function aiSchemes(s, log) {
       .filter((g) => castlesWithin(g.loc, SCHEME_RANGE).some((id) => s.castles[id].owner === PLAYER));
     const g = bestBy(agents, 'int');
     if (!g) return;
-    const targets = castlesWithin(g.loc, SCHEME_RANGE).filter((id) => s.castles[id].owner === PLAYER);
+    // 物見やぐらのある城は、半分の確率でねらいから外す
+    const targets = castlesWithin(g.loc, SCHEME_RANGE).filter((id) => s.castles[id].owner === PLAYER)
+      .filter((id) => !hasFac(s, id, 'tower') || Math.random() < 0.5);
+    if (!targets.length) return;
     // 忠誠の低い家臣がいれば引き抜き、いなければ流言か離間
     const lurable = targets.flatMap((id) => gensAt(s, id)).filter((x) => !x.lord && x.loyal < 55)
       .sort((a, b) => a.loyal - b.loyal);

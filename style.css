@@ -669,6 +669,20 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 .gstats i.loyal-bar { background: linear-gradient(90deg, #7fb070, #2f8a55); }
 .gstats i.loyal-bar.low { background: linear-gradient(90deg, #e0603a, #b8262f); }
 
+/* ---------- 特色・施設 ---------- */
+.facline { margin: -2px 0 6px; font-size: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.facline .trait { font-weight: 800; color: #fff; border-radius: 3px; padding: 0 6px; font-family: var(--mincho); }
+.trait.t-sports { background: #b8562f; }
+.trait.t-academic { background: #2d5fb4; }
+.trait.t-arts { background: #9a3f8a; }
+.trait.t-traditional { background: #6b5a3a; }
+.facline .fac { font-weight: 800; background: #fff3cf; border: 1px solid var(--gold); border-radius: 3px; padding: 0 5px; }
+.facline .facnote { color: var(--muted); font-size: 11px; width: 100%; }
+#map .castle .facmark {
+  font-family: var(--mincho); font-weight: 800; font-size: 10px; text-anchor: middle; fill: #7a4a10;
+  paint-order: stroke; stroke: #fff4d0; stroke-width: 3px;
+}
+
 /* ---------- 計略 ---------- */
 .scheme-list { display: grid; gap: 8px; }
 .scheme-row {

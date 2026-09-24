@@ -371,6 +371,12 @@ function showHelp() {
       <li><b>褒美</b>（金${LOYAL.rewardCost}）で忠誠が上がります。合戦で勝つ、合宿や文化祭の演劇でも上がります</li>
       <li>忠誠が${LOYAL.leaveBelow}未満だと<b>出奔</b>、${LOYAL.rebelBelow}未満だと城ごと<b>謀反</b>を起こすことがあります。捕虜から登用した武将は忠誠が低めです</li>
     </ul>
+    <h3>学校の特色と施設</h3>
+    <ul>
+      <li>学校には<b>特色</b>があります：${Object.values(TRAITS).map((t) => `<b>${t.name}</b>（${t.desc}）`).join('、')}</li>
+      <li>城の命令「建設」で<b>施設</b>を${FAC_SLOTS}つまで建てられます：${Object.values(FACILITIES).map((f) => `${f.name}（${f.desc}）`).join('、')}</li>
+      <li>特色と施設は、城を落とすとそのまま引き継げます</li>
+    </ul>
     <h3>計略</h3>
     <ul>
       <li>城の命令「計略」で、道${SCHEME_RANGE}本先までの城に仕掛けられます</li>
@@ -476,6 +482,7 @@ function drawMap() {
         </g>
         <g class="deleg" transform="translate(${-w / 2 - 7},27)"><circle r="7.5"/><text>委</text></g>
         <g class="gbadge" transform="translate(17,-19)"><circle r="8"/><text></text></g>
+        <text class="facmark" x="-14" y="-22"></text>
         <text class="troops" y="48"></text>`;
       g.addEventListener('click', () => onCastleTap(n.id));
     });
@@ -556,6 +563,7 @@ function render() {
     const total = own ? gensAt(S, id).length : 0;
     g.style.setProperty('--c', CLANS[c.owner].color);
     g.querySelector('.troops').textContent = fmt(c.troops);
+    g.querySelector('.facmark').textContent = (c.fac || []).map((f) => FACILITIES[f].name[0]).join('');
     g.classList.toggle('acted', own && (idle === 0 || !!S.delegate[id]));
     g.classList.toggle('selected', id === selected);
     g.classList.toggle('delegated', own && !!S.delegate[id]);
@@ -623,6 +631,9 @@ function renderPanel() {
       <div class="stat"><span class="n">${c.def.toFixed(1)}</span><span class="l">防 御</span></div>
       <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span></div>
     </div>
+    <p class="facline"><span class="trait t-${traitOf(selected)}" title="${TRAITS[traitOf(selected)].desc}">${TRAITS[traitOf(selected)].name}</span>
+      ${(c.fac || []).map((f) => `<span class="fac">${FACILITIES[f].name}</span>`).join('')}
+      <span class="facnote">${TRAITS[traitOf(selected)].desc}${own && (c.fac || []).length < FAC_SLOTS ? `・施設の空き ${FAC_SLOTS - (c.fac || []).length}` : ''}</span></p>
     ${gens.length ? `<p class="glabel">武将 ${gens.length}人${own ? `（命令できる ${gens.filter((g) => !S.acted[g.id]).length}人）` : ''}<span class="scroll-hint">${gens.length > 2 ? '横にスクロール →' : ''}</span></p>` : ''}
     <div class="glist">${gens.length ? gens.map((g) => genCard(g, { acted: own && !!S.acted[g.id] })).join('') : '<p class="hint">この城に武将はいない</p>'}</div>`;
 
@@ -643,9 +654,10 @@ function renderPanel() {
         <button class="btn" id="c-recruit" ${dis(canRecruit(S, selected))}><span class="k">兵</span>徴兵<small>金${RULES.recruitCost}</small></button>
         <button class="btn" id="c-develop" ${dis(canDevelop(S, selected))}><span class="k">商</span>開発<small>金${RULES.developCost}</small></button>
         <button class="btn" id="c-fortify" ${dis(canFortify(S, selected))}><span class="k">城</span>築城<small>金${RULES.fortifyCost}</small></button>
+        <button class="btn" id="c-build" ${dis((c.fac || []).length < FAC_SLOTS && Object.keys(FACILITIES).some((f) => canBuild(S, selected, f)))}><span class="k">建</span>建設<small>施設を建てる</small></button>
         <button class="btn" id="c-reward" ${gens.some((g) => canReward(S, g)) ? '' : 'disabled'}><span class="k">賞</span>褒美<small>金${LOYAL.rewardCost}・忠誠+</small></button>
         <button class="btn" id="c-scheme" ${dis(S.gold[PLAYER] >= 150)}><span class="k">謀</span>計略<small>流言・引き抜き…</small></button>
-        <button class="btn plain" id="c-close">閉じる</button>
+        <button class="btn plain wide" id="c-close">閉じる</button>
       </div>`;
   } else {
     const srcs = attackSources(selected);
@@ -820,6 +832,35 @@ function bulk(kind) {
   toast(n ? `${n}城で${kind === 'recruit' ? '徴兵' : '開発'}しました` : '命令できる城がありません');
 }
 
+// ---------- 建設 ----------
+function showBuild(id) {
+  const c = S.castles[id];
+  const g = bestBy(idleGensAt(S, id), 'pol');
+  const rows = Object.entries(FACILITIES).map(([k, f]) => {
+    const built = hasFac(S, id, k);
+    const ok = g && canBuild(S, id, k);
+    const why = built ? '建設済み' : (c.fac || []).length >= FAC_SLOTS ? '空きがない' : S.gold[PLAYER] < f.cost ? '金が足りない' : '';
+    return `<button class="scheme-row" data-fac="${k}" ${ok ? '' : 'disabled'}>
+      <b>${f.name}</b><span class="cost">${built ? '✔' : `金${f.cost}`}</span><small>${f.desc}</small>${why ? `<em>${why}</em>` : ''}</button>`;
+  }).join('');
+  openModal(`<h2>建 設</h2>
+    <p class="hint" style="text-align:center">${MAP.byId[id].name}（${TRAITS[traitOf(id)].name}）・ 施設は${FAC_SLOTS}つまで（空き ${FAC_SLOTS - (c.fac || []).length}）<br>
+    ${g ? `担当：${esc(g.name)}（政治${g.pol}）` : '命令できる武将がいません'}</p>
+    <div class="scheme-list">${rows}</div>
+    <button class="btn plain" data-close>やめる</button>`);
+  modalBody.querySelectorAll('[data-fac]').forEach((b) => {
+    b.onclick = () => {
+      const f = b.dataset.fac;
+      build(S, id, f, g);
+      Sound.win();
+      save();
+      closeModal();
+      render();
+      toast(`${portrait(g, 30)}<span>${esc(g.name)}：${FACILITIES[f].name}を建てた！<br><b>${FACILITIES[f].desc}</b></span>`);
+    };
+  });
+}
+
 // ---------- 計略 ----------
 // 仕掛ける武将：その計略に向いた能力がいちばん高い、命令できる武将
 function schemeAgent(from, kind) {
@@ -956,6 +997,7 @@ function bindPanel() {
   on('c-fortify', () => act(fortify, 'int', '築城'));
   on('c-reward', () => { Sound.tap(); showReward(gensAt(S, selected), '褒美'); });
   on('c-scheme', () => { Sound.tap(); showSchemeMenu(selected); });
+  on('c-build', () => { Sound.tap(); showBuild(selected); });
   on('c-strike', () => { Sound.tap(); openAttack(null, selected); });
   const d = $('c-deleg');
   if (d) d.onchange = () => {

@@ -167,6 +167,23 @@ const DUEL_MOVES = {
   block: { name: '受ける', beats: 'slash' },
 };
 
+// 学校の特色（プログラムで割り当てた架空の設定。実在の学校とは関係ない）
+const TRAITS = {
+  sports: { name: '体育会系', desc: '徴兵+20%・統率が伸びやすい', stat: 'str' },
+  academic: { name: '進学校', desc: '開発+20%・知略が伸びやすい', stat: 'int' },
+  arts: { name: '芸術系', desc: '収入+10%・魅力が伸びやすい', stat: 'cha' },
+  traditional: { name: '伝統校', desc: '守りが固い・築城+50%・政治が伸びやすい', stat: 'pol' },
+};
+
+// 城に建てられる施設（1城に2つまで）
+const FACILITIES = {
+  gym: { name: '体育館', cost: 400, desc: '徴兵+30%' },
+  library: { name: '図書館', cost: 400, desc: '武将の政治・知略が伸びやすい' },
+  shop: { name: '購買部', cost: 500, desc: 'この城の収入+25%' },
+  tower: { name: '物見やぐら', cost: 350, desc: '敵の計略を防ぐ' },
+};
+const FAC_SLOTS = 2;
+
 // 難易度
 const DIFFICULTY = {
   easy: { name: '初級', desc: '資金が多く、敵はおとなしい', gold: 1200, aiGold: 0.7, aiRatio: 1.6, aiIncome: 0.8, neutralGrowth: 10 },

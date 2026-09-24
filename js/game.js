@@ -135,6 +135,49 @@ function makeGeneral(s, school, clan, { strong = false, title, grade } = {}) {
   return g;
 }
 
+// ---------- 学校の特色と施設 ----------
+function traitOf(id) {
+  const keys = Object.keys(TRAITS);
+  return keys[hashStr(`${id}-trait`) % keys.length];
+}
+function hasFac(s, id, f) {
+  return (s.castles[id].fac || []).includes(f);
+}
+function canBuild(s, id, f) {
+  const c = s.castles[id];
+  return (c.fac || []).length < FAC_SLOTS && !hasFac(s, id, f) && s.gold[c.owner] >= FACILITIES[f].cost;
+}
+function build(s, id, f, g) {
+  const c = s.castles[id];
+  s.gold[c.owner] -= FACILITIES[f].cost;
+  c.fac = [...(c.fac || []), f];
+  if (g) { s.acted[g.id] = true; grow(g, 'pol'); }
+}
+
+// 季節ごとに、城の特色と図書館で武将が少し育つ
+function traitTick(s) {
+  Object.keys(s.castles).forEach((id) => {
+    const stat = TRAITS[traitOf(id)].stat;
+    const lib = hasFac(s, id, 'library');
+    gensAt(s, id).forEach((g) => {
+      if (g[stat] < 100 && Math.random() < 0.2) g[stat]++;
+      if (lib && Math.random() < 0.3) { const k = pick(['pol', 'int']); if (g[k] < 100) g[k]++; }
+    });
+  });
+}
+
+// 他家と委任した城の建設：金に余裕があるときに、役に立つ施設を建てる
+function autoBuild(s, clan, id, reserve) {
+  const c = s.castles[id];
+  if ((c.fac || []).length >= FAC_SLOTS) return false;
+  const front = hostileNeighbors(s, id).some((n) => s.castles[n].owner !== 'none');
+  const order = front ? ['gym', 'tower', 'shop'] : ['shop', 'library', 'gym'];
+  const f = order.find((x) => !hasFac(s, id, x));
+  if (!f || s.gold[clan] < FACILITIES[f].cost + reserve) return false;
+  build(s, id, f, null);
+  return true;
+}
+
 // ---------- ゲームの状態 ----------
 function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu' } = {}) {
   scenario = setScenario(scenario);
@@ -147,11 +190,17 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
   MAP.nodes.forEach((n) => {
     const r = seeded(hashStr(n.id));
     const capital = n.clan !== 'none';
+    // 乱数を引く順番（兵→防御→経済）は変えないこと。変えると各校の初期値が入れ替わってしまう
+    const troops = capital ? 1500 : Math.round((400 + r() * 700) / 10) * 10;
+    const baseDef = capital ? 1.5 : Math.round((1 + r() * 0.5) * 10) / 10;
+    const eco = capital ? 120 : Math.round(40 + r() * 60);
     s.castles[n.id] = {
       owner: n.clan,
-      troops: capital ? 1500 : Math.round((400 + r() * 700) / 10) * 10,
-      def: capital ? 1.5 : Math.round((1 + r() * 0.5) * 10) / 10,
-      eco: capital ? 120 : Math.round(40 + r() * 60),
+      troops,
+      // 伝統校は守りが固い
+      def: traitOf(n.id) === 'traditional' ? Math.min(RULES.defCap, Math.round((baseDef + 0.2) * 10) / 10) : baseDef,
+      eco,
+      fac: [],
     };
     if (n.clan === PLAYER) {
       const lord = makeGeneral(s, n.id, PLAYER, { strong: true, title: '当主', grade: 2 });
@@ -195,6 +244,7 @@ function migrate(s) {
     if (g.loyal === undefined) g.loyal = g.lord ? 100 : 72;
   });
   s.rewarded = s.rewarded || {};
+  Object.values(s.castles).forEach((c) => { if (!c.fac) c.fac = []; });
   if (!s.kakun) { const l = lordOf(s); s.kakun = l ? kakunOf(l) : 'cha'; }
   if (!s.lords) { const l = lordOf(s); s.lords = l ? [{ name: l.name, from: 0, kakun: s.kakun }] : []; }
   s.stats = Object.assign({ battlesWon: 0, tacticWins: 0, recruited: 0, diplo: 0, minCastles: 99 }, s.stats || {});
@@ -365,7 +415,9 @@ function lordOf(s) {
 function castleIncome(s, id) {
   const c = s.castles[id];
   const merchant = gensAt(s, id).some((g) => g.skill === 'shousai');
-  return Math.round(c.eco * (merchant ? 1.2 : 1));
+  const shop = hasFac(s, id, 'shop') ? 1.25 : 1;
+  const arts = traitOf(id) === 'arts' ? 1.1 : 1;
+  return Math.round(c.eco * (merchant ? 1.2 : 1) * shop * arts);
 }
 
 function income(s, clan) {
@@ -412,7 +464,9 @@ function canRecruit(s, id) {
 function recruit(s, id, g) {
   const c = s.castles[id];
   s.gold[c.owner] -= RULES.recruitCost;
-  const n = Math.round((recruitAmount(g) * (c.owner === PLAYER && s.kakun === 'cha' ? 1.2 : 1)) / 10) * 10;
+  const mult = (c.owner === PLAYER && s.kakun === 'cha' ? 1.2 : 1) *
+    (hasFac(s, id, 'gym') ? 1.3 : 1) * (traitOf(id) === 'sports' ? 1.2 : 1);
+  const n = Math.round((recruitAmount(g) * mult) / 10) * 10;
   c.troops = Math.min(RULES.troopCap, c.troops + n);
   return { text: `兵+${n}`, grew: grow(g, 'cha') };
 }
@@ -422,7 +476,7 @@ function canDevelop(s, id) {
 function develop(s, id, g) {
   const c = s.castles[id];
   s.gold[c.owner] -= RULES.developCost;
-  const n = developAmount(g);
+  const n = Math.round(developAmount(g) * (traitOf(id) === 'academic' ? 1.2 : 1));
   c.eco = Math.min(RULES.ecoCap, c.eco + n);
   return { text: `経済+${n}`, grew: grow(g, 'pol') };
 }
@@ -432,7 +486,7 @@ function canFortify(s, id) {
 function fortify(s, id, g) {
   const c = s.castles[id];
   s.gold[c.owner] -= RULES.fortifyCost;
-  const n = fortifyAmount(g);
+  const n = Math.round(fortifyAmount(g) * (traitOf(id) === 'traditional' ? 1.5 : 1) * 100) / 100;
   c.def = Math.round(Math.min(RULES.defCap, c.def + n) * 10) / 10;
   return { text: `防御+${n.toFixed(1)}`, grew: grow(g, 'int') };
 }
@@ -766,6 +820,11 @@ function aiTurn(s, log) {
     mine
       .sort((a, b) => (dist[a] ?? 99) - (dist[b] ?? 99) || Math.random() - 0.5)
       .forEach((id) => autoCastle(s, clan, id, { ratio: D.aiRatio, reserve: 0, noGeneral: true }, dist, log));
+    // ときどき施設を建てる
+    if (Math.random() < 0.15) {
+      const id = pick(castlesOf(s, clan));
+      if (id) autoBuild(s, clan, id, 500);
+    }
   }
   // 独立校は少しずつ兵が増える
   Object.values(s.castles).forEach((c) => {
@@ -801,6 +860,8 @@ function runDelegated(s, log) {
       // 委任した城では、忠誠の低い家臣に自動で褒美を与える
       gensAt(s, id).filter((g) => g.loyal < 50 && canReward(s, g) && s.gold[PLAYER] >= LOYAL.rewardCost + RULES.delegateReserve)
         .forEach((g) => reward(s, g.id));
+      // 金に十分な余裕があれば、施設も建てる
+      if (s.castles[id].owner === PLAYER) autoBuild(s, PLAYER, id, 400);
     });
 }
 
@@ -977,6 +1038,7 @@ function endTurn(s) {
   tickDiplomacy(s, log);
   loyaltyTick(s, log);
   aiLoyaltyTick(s, log);
+  traitTick(s);
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
