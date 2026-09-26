@@ -162,7 +162,7 @@ function meetingRoom(clan) {
   const shoji = (x) => `<rect x="${x}" y="12" width="78" height="98" fill="#fbf6e6"/>
     ${[1, 2, 3].map((i) => `<line x1="${x + i * 19.5}" y1="12" x2="${x + i * 19.5}" y2="110" stroke="#8a6a44" stroke-width="1"/>`).join('')}
     ${[1, 2, 3, 4, 5].map((i) => `<line x1="${x}" y1="${12 + i * 16.3}" x2="${x + 78}" y2="${12 + i * 16.3}" stroke="#8a6a44" stroke-width="1"/>`).join('')}
-    <rect x="${x}" y="12" width="78" height="98" fill="none" stroke="#5b3f22" stroke-width="3"/>`;
+    <rect x="${x}" y="12" width="78" height="98" fill="none" stroke="#1c1a17" stroke-width="3"/>`;
   return `<svg class="mt-room" viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
       <linearGradient id="mt-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9dbb8"/><stop offset="1" stop-color="#d9c79d"/></linearGradient>
@@ -173,7 +173,7 @@ function meetingRoom(clan) {
     <rect x="0" y="0" width="320" height="12" fill="#4a3220"/>
     <rect x="0" y="108" width="320" height="4" fill="#4a3220"/>
     <rect x="98" y="16" width="124" height="92" fill="#cbb488"/>
-    <rect x="98" y="16" width="124" height="92" fill="none" stroke="#4a3220" stroke-width="3"/>
+    <rect x="98" y="16" width="124" height="92" fill="none" stroke="#1c1a17" stroke-width="3"/>
     <rect x="96" y="100" width="128" height="8" fill="#6b4a2c"/>
     <!-- 掛け軸 -->
     <rect x="140" y="20" width="40" height="3" rx="1.5" fill="#3a2a1a"/>
