@@ -449,10 +449,13 @@ function drawMap() {
         <stop offset="0" stop-color="#4a4a52" stop-opacity="0.55"/><stop offset="1" stop-color="#4a4a52" stop-opacity="0"/>
       </linearGradient>
       <pattern id="waves" width="36" height="18" patternUnits="userSpaceOnUse">
-        <g fill="none" stroke="#e8f1f6" stroke-opacity="0.55" stroke-width="1.2">
+        <g fill="none" stroke="#f1e6cc" stroke-opacity="0.7" stroke-width="1.6">
           <path d="M0,18 A18,18 0 0,1 36,18 M6,18 A12,12 0 0,1 30,18 M12,18 A6,6 0 0,1 24,18"/>
           <path d="M-18,9 A18,18 0 0,1 18,9 M18,9 A18,18 0 0,1 54,9" stroke-opacity="0.3"/>
         </g>
+      </pattern>
+      <pattern id="kinpaku" width="14" height="14" patternUnits="userSpaceOnUse">
+        <rect width="14" height="14" fill="#e3b94e"/><rect width="7" height="7" fill="#ecc660"/><rect x="7" y="7" width="7" height="7" fill="#d9ad3f"/>
       </pattern>
     </defs>
     <g>${sceneryMarkup()}</g>
@@ -479,8 +482,9 @@ function drawMap() {
         <ellipse class="ring" cx="0" cy="14" rx="27" ry="10"/>
         <g class="keep">${castleMarkup(n.clan !== 'none')}</g>
         <g class="plate" transform="translate(0,27)">
-          <rect x="${-w / 2}" y="-8.5" width="${w}" height="17" rx="3"/>
-          <text>${n.short}</text>
+          <rect x="${-w / 2}" y="-8.5" width="${w}" height="17"/>
+          <rect class="bar" x="${-w / 2}" y="-8.5" width="4" height="17"/>
+          <text x="2">${n.short}</text>
         </g>
         <g class="deleg" transform="translate(${-w / 2 - 7},27)"><circle r="7.5"/><text>委</text></g>
         <g class="gbadge" transform="translate(17,-19)"><circle r="8"/><text></text></g>

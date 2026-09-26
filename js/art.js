@@ -41,28 +41,28 @@ function duelScene(clanA, clanD) {
     const c = CLANS[clan] ? CLANS[clan].color : '#777';
     const d = flip ? -1 : 1;
     return `<g class="du-flag" transform="translate(${x},0)">
-      <line x1="0" y1="62" x2="0" y2="128" stroke="#3a2616" stroke-width="2"/>
-      <path d="M0,62 Q${9 * d},60 ${18 * d},64 L${18 * d},96 Q${9 * d},92 0,96 Z" fill="${c}"/>
+      <line x1="0" y1="62" x2="0" y2="128" stroke="#1c1a17" stroke-width="2.4"/>
+      <path d="M0,62 Q${9 * d},60 ${18 * d},64 L${18 * d},96 Q${9 * d},92 0,96 Z" fill="${c}" stroke="#1c1a17" stroke-width="1.4"/>
     </g>`;
   };
+  // 武者絵の背景：朱の地に山吹の集中線、墨の地面。両軍の旗が風になびく
+  const rays = Array.from({ length: 18 }, (_, i) => {
+    const a = (i / 18) * Math.PI * 2;
+    return `<path d="M160,96 L${(160 + Math.cos(a) * 260).toFixed(0)},${(96 + Math.sin(a) * 260).toFixed(0)} L${(160 + Math.cos(a + 0.09) * 260).toFixed(0)},${(96 + Math.sin(a + 0.09) * 260).toFixed(0)} Z"/>`;
+  }).join('');
   return `<svg class="du-scene" viewBox="0 0 320 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
-      <linearGradient id="du-sky" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#3b2446"/><stop offset="0.45" stop-color="#c1553a"/><stop offset="0.8" stop-color="#f2a65a"/>
-      </linearGradient>
-      <radialGradient id="du-sun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff2c4"/><stop offset="0.6" stop-color="#f7c35f"/><stop offset="1" stop-color="#f7c35f" stop-opacity="0"/></radialGradient>
+      <linearGradient id="du-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#22406b"/><stop offset="1" stop-color="#22406b" stop-opacity="0"/></linearGradient>
     </defs>
-    <rect width="320" height="160" fill="url(#du-sky)"/>
-    <circle cx="160" cy="104" r="46" fill="url(#du-sun)"/>
-    <circle cx="160" cy="104" r="22" fill="#fde7a6"/>
-    <path d="M0,112 L40,94 L78,106 L120,88 L160,104 L205,86 L250,102 L290,90 L320,100 L320,160 L0,160 Z" fill="#5a2f35" opacity="0.8"/>
-    <path d="M0,124 Q80,112 160,120 Q240,128 320,116 L320,160 L0,160 Z" fill="#2d2019"/>
-    <g stroke="#4b3a22" stroke-width="1.2" opacity="0.8">${Array.from({ length: 26 }, (_, i) => {
+    <rect width="320" height="160" fill="#c8372d"/>
+    <g fill="#e0a526" opacity="0.9">${rays}</g>
+    <rect width="320" height="46" fill="url(#du-sky)" opacity="0.85"/>
+    <path d="M0,124 Q80,114 160,120 Q240,126 320,116 L320,160 L0,160 Z" fill="#3a2c20" stroke="#1c1a17" stroke-width="2.5"/>
+    <g stroke="#6b5a3a" stroke-width="1.4">${Array.from({ length: 26 }, (_, i) => {
       const x = 6 + i * 12.4, h = 5 + (i * 7) % 8;
-      return `<path d="M${x},${140 + (i % 3) * 5} q2,-${h} 5,-${h + 2}"/>`;
+      return `<path d="M${x},${140 + (i % 3) * 5} q2,-${h} 5,-${h + 2}" fill="none"/>`;
     }).join('')}</g>
     ${flag(22, clanA, false)}${flag(40, clanA, false)}${flag(298, clanD, true)}${flag(280, clanD, true)}
-    <g class="du-birds" fill="none" stroke="#2a1a24" stroke-width="1.2"><path d="M110,34 q4,-4 8,0 q4,-4 8,0"/><path d="M200,24 q3,-3 6,0 q3,-3 6,0"/></g>
   </svg>`;
 }
 
@@ -198,43 +198,47 @@ function meetingRoom(clan) {
 }
 
 // ---------- 天守閣 ----------
+// 学園城：校舎に天守（時計台）を載せた城。墨の輪郭、屋根が家の色になる。本拠には金の飾り
 function castleMarkup(capital) {
-  const shachi = capital
-    ? '<circle cx="-5.5" cy="-24.5" r="1.8" fill="#e8c55a"/><circle cx="5.5" cy="-24.5" r="1.8" fill="#e8c55a"/>'
+  const gold = capital
+    ? '<path class="shachi" d="M-5,-31 Q0,-38 5,-31"/><circle class="shachi-dot" cx="0" cy="-35" r="1.6"/>'
     : '';
   return `
-    <ellipse class="shadow" cx="0" cy="15" rx="19" ry="4.5"/>
-    <path class="stone" d="M-17,14 L17,14 L13,3 L-13,3 Z"/>
-    <path class="stone-line" d="M-15,9 L15,9 M-8,3 L-9,14 M0,3 L0,14 M8,3 L9,14"/>
-    <rect class="wall" x="-11" y="-4" width="22" height="8"/>
-    <path class="roof" d="M-17,-2 Q-13,-4 -11,-9 L11,-9 Q13,-4 17,-2 Z"/>
-    <rect class="wall" x="-7" y="-15" width="14" height="7"/>
-    <rect class="window" x="-3" y="-13" width="6" height="3"/>
-    <path class="roof" d="M-12,-13 Q-8,-15 -6,-22 L6,-22 Q8,-15 12,-13 Z"/>
-    ${shachi}`;
+    <ellipse class="shadow" cx="0" cy="17" rx="24" ry="4.5"/>
+    <path class="stone" d="M-22,8 L22,8 L26,16 L-26,16 Z"/>
+    <path class="stone-line" d="M-24,12 L24,12 M-12,8 L-13,16 M0,8 L0,16 M12,8 L13,16"/>
+    <rect class="wall" x="-16" y="-6" width="32" height="14"/>
+    <rect class="window" x="-12.5" y="-3" width="5" height="5"/><rect class="window" x="7.5" y="-3" width="5" height="5"/>
+    <rect class="window" x="-3" y="0" width="6" height="8"/>
+    <path class="roof" d="M-21,-5 L0,-15 L21,-5 Z"/>
+    <rect class="wall" x="-7" y="-24" width="14" height="10"/>
+    <circle class="clock" cx="0" cy="-19" r="3.2"/>
+    <path class="roof" d="M-12,-23 L0,-31 L12,-23 Z"/>
+    ${gold}`;
 }
 
 // ---------- 合戦の絵 ----------
 // 季節の空・遠くの山・攻める城を背景に、足軽の隊列がぶつかり合う
+// 季節ごとの「ぼかし」の色と、遠くの山の色（春：桜 / 夏：藍 / 秋：朱 / 冬：鉄色）
 const BATTLE_SKY = [
-  ['#f3b9c6', '#fbe4d6', '#8d6a86'], // 春：桜色の夕空
-  ['#6fa5d8', '#f3d59e', '#4d6a8a'], // 夏：夏の夕方
-  ['#e07a4a', '#f6cf98', '#7a4a3a'], // 秋：夕焼け
-  ['#8497ad', '#dfe6ec', '#5a6878'], // 冬：雪空
+  ['#e9a3a8', '#b7a3c4'],
+  ['#3c6aa3', '#8aa0bd'],
+  ['#c8372d', '#b58a6a'],
+  ['#6a7a92', '#a9b6c6'],
 ];
 
-// 足軽1人（右向き）。flip で左向き
+// 足軽1人（右向き）。陣笠に、家の色の旗指物を背負う。flip で左向き
 function soldier(color, flip) {
   return `<g class="sol-art" transform="scale(${flip ? -1 : 1},1)">
-    <line x1="1" y1="-4" x2="1" y2="-30" stroke="#5a3a1a" stroke-width="0.9"/>
-    <rect x="1" y="-30" width="6" height="9" fill="${color}" stroke="#2a1a10" stroke-width="0.4"/>
-    <line x1="4" y1="-10" x2="17" y2="-24" stroke="#6b5a40" stroke-width="1"/>
-    <path d="M16,-25 L19,-27 L17.5,-23.5 Z" fill="#cfd6dc"/>
-    <path d="M-3.5,0 L-1.5,-6 L1.5,-6 L3.5,0" stroke="#2a2420" stroke-width="1.6" fill="none"/>
-    <path d="M-4,-6 L-3.5,-14 L3.5,-14 L4,-6 Z" fill="#3a2e28"/>
-    <rect x="-4" y="-10.5" width="8" height="2" fill="${color}"/>
-    <circle cx="0" cy="-16.5" r="2.6" fill="#e9c19e"/>
-    <path d="M-5.5,-17 L0,-21 L5.5,-17 Z" fill="#2b2b2b"/>
+    <line x1="-1.5" y1="-12" x2="-1.5" y2="-33" stroke="#1c1a17" stroke-width="1"/>
+    <rect x="-1.5" y="-33" width="7" height="10" fill="${color}" stroke="#1c1a17" stroke-width="0.8"/>
+    <line x1="3" y1="-9" x2="17" y2="-26" stroke="#6b5a40" stroke-width="1.1"/>
+    <path d="M16,-27 L19.5,-29 L17.8,-25 Z" fill="#dfe6ea" stroke="#1c1a17" stroke-width="0.4"/>
+    <path d="M-3,-4 L-4,0 M3,-4 L4,0" stroke="#1c1a17" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M-4.5,-4 L-4,-12 L4,-12 L4.5,-4 Z" fill="#2b2b36" stroke="#1c1a17" stroke-width="0.8"/>
+    <rect x="-4.2" y="-8.6" width="8.4" height="1.8" fill="${color}"/>
+    <circle cx="0" cy="-14.5" r="2.6" fill="#fbe7cc" stroke="#1c1a17" stroke-width="0.6"/>
+    <path d="M-6,-15 L0,-19.5 L6,-15 Z" fill="#1c1a17"/>
   </g>`;
 }
 
@@ -253,13 +257,13 @@ function armyMarkup(side, n, color) {
 }
 
 function battleScene(r, season) {
-  const [skyTop, skyBottom, mount] = BATTLE_SKY[season % 4];
+  const [sky, mount] = BATTLE_SKY[season % 4];
   const ca = CLANS[r.attacker].color, cd = CLANS[r.defender].color;
   const na = clamp(Math.round(r.rounds[0].a / 180), 4, 18);
   const nd = clamp(Math.round(r.rounds[0].d / 180), 3, 15);
   const banner = (x, y, h, clan, flip) => `<g transform="translate(${x},${y})">
-      <line x1="0" y1="0" x2="0" y2="${-h}" stroke="#3a200c" stroke-width="1.6"/>
-      <rect x="${flip ? -12 : 0}" y="${-h}" width="12" height="${h * 0.62}" fill="${CLANS[clan].color}"/>
+      <line x1="0" y1="0" x2="0" y2="${-h}" stroke="#1c1a17" stroke-width="2"/>
+      <rect x="${flip ? -12 : 0}" y="${-h}" width="12" height="${h * 0.62}" fill="${CLANS[clan].color}" stroke="#1c1a17" stroke-width="1.2"/>
       <svg x="${flip ? -11 : 1}" y="${-h + 2}" width="10" height="10" viewBox="-30 -30 60 60">${crestInner(CLANS[clan].crest, '#fff')}</svg>
     </g>`;
   const snow = season % 4 === 3
@@ -270,23 +274,25 @@ function battleScene(r, season) {
     : '';
   return `<svg class="bf" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
     <defs>
-      <linearGradient id="bf-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${skyTop}"/><stop offset="1" stop-color="${skyBottom}"/></linearGradient>
-      <linearGradient id="bf-ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c6a45"/><stop offset="1" stop-color="#4a3d28"/></linearGradient>
-      <clipPath id="bf-clip"><rect width="400" height="220" rx="10"/></clipPath>
+      <linearGradient id="bf-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky}"/><stop offset="1" stop-color="${sky}" stop-opacity="0"/></linearGradient>
+      <pattern id="bf-kin" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#e3b94e"/><rect width="5" height="5" fill="#ecc660"/><rect x="5" y="5" width="5" height="5" fill="#d9ad3f"/></pattern>
+      <clipPath id="bf-clip"><rect width="400" height="220"/></clipPath>
     </defs>
     <g clip-path="url(#bf-clip)">
-    <rect width="400" height="220" fill="url(#bf-sky)"/>
-    <circle cx="80" cy="52" r="20" fill="#fff4d0" opacity="0.75"/>
+    <rect width="400" height="220" fill="#f1e6cc"/>
+    <rect width="400" height="110" fill="url(#bf-sky)"/>
+    <circle cx="84" cy="56" r="22" fill="#c8372d"/><circle cx="81" cy="53" r="22" fill="none" stroke="#1c1a17" stroke-width="2"/>
     ${snow}${petalsBg}
-    <path d="M0,130 L40,96 L70,112 L110,78 L150,110 L190,90 L230,118 L270,86 L320,114 L360,92 L400,118 L400,150 L0,150 Z" fill="${mount}" opacity="0.55"/>
-    <path d="M0,142 Q60,120 120,138 T240,134 T400,130 L400,160 L0,160 Z" fill="${mount}" opacity="0.8"/>
+    <path d="M0,130 L40,96 L70,112 L110,78 L150,110 L190,90 L230,118 L270,86 L320,114 L360,92 L400,118 L400,160 L0,160 Z" fill="${mount}" stroke="#1c1a17" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M150,40 Q146,30 158,29 Q161,20 174,23 Q183,16 194,23 Q208,20 211,30 Q222,31 219,40 Z" fill="url(#bf-kin)" stroke="#1c1a17" stroke-width="1.6"/>
+    <path d="M0,142 Q60,120 120,138 T240,134 T400,130 L400,160 L0,160 Z" fill="#6f8a5a" stroke="#1c1a17" stroke-width="1.6"/>
     <g transform="translate(340,118) scale(2.1)" class="bf-castle" style="--c:${cd}">${castleMarkup(false)}</g>
     <g class="bf-fire" id="bf-fire">
       <path d="M322,96 Q326,80 331,92 Q334,74 340,90 Q345,78 348,95 Z" fill="#ff8a2a"/>
       <path d="M328,98 Q331,88 335,95 Q338,84 342,96 Z" fill="#ffd34a"/>
     </g>
-    <rect y="150" width="400" height="70" fill="url(#bf-ground)"/>
-    <path d="M0,158 L400,154 M0,176 L400,170 M0,198 L400,194" stroke="#8d7a52" stroke-width="0.6" opacity="0.5"/>
+    <path d="M0,152 Q200,146 400,150 L400,220 L0,220 Z" fill="#b69a6a" stroke="#1c1a17" stroke-width="1.8"/>
+    <path d="M0,172 Q200,166 400,170 M0,196 Q200,190 400,194" fill="none" stroke="#8d7550" stroke-width="1.2"/>
     ${banner(30, 160, 58, r.attacker, false)}${banner(58, 164, 50, r.attacker, false)}
     ${banner(372, 160, 50, r.defender, true)}
     <g class="army" id="army-a">${armyMarkup('a', na, ca)}</g>
@@ -296,7 +302,7 @@ function battleScene(r, season) {
     <g id="bf-fx"></g>
     <g class="dust" id="bf-dust"><circle cx="190" cy="185" r="16"/><circle cx="205" cy="178" r="12"/><circle cx="178" cy="176" r="10"/></g>
     </g>
-    <rect x="1.5" y="1.5" width="397" height="217" rx="9" fill="none" stroke="#d4a93c" stroke-width="3"/>
+    <rect x="1.5" y="1.5" width="397" height="217" fill="none" stroke="#1c1a17" stroke-width="3"/>
   </svg>`;
 }
 
@@ -454,9 +460,9 @@ function sceneryMarkup() {
   const hachi = MAP.byId.hachioji;
   const mx = hachi ? hachi.x - 40 : -9999, my = hachi ? hachi.y - 150 : -9999;
   if (hachi) s += `<g class="mountains" transform="translate(${mx},${my})">
-    <path d="M-80,120 C-40,60 -20,20 20,0 C50,30 70,60 120,120 Z" fill="url(#mtn)"/>
-    <path d="M40,120 C80,50 100,30 130,15 C160,45 190,80 230,120 Z" fill="url(#mtn)" opacity="0.8"/>
-    <path d="M-20,120 C10,80 30,65 60,55 C90,75 110,95 140,120 Z" fill="url(#mtn)" opacity="0.6"/>
+    <path d="M-80,120 C-40,60 -20,20 20,0 C50,30 70,60 120,120 Z" fill="#8aa0bd"/>
+    <path d="M40,120 C80,50 100,30 130,15 C160,45 190,80 230,120 Z" fill="#9fb0c8" opacity="0.9"/>
+    <path d="M-20,120 C10,80 30,65 60,55 C90,75 110,95 140,120 Z" fill="#b7c4d6"/>
   </g>`;
 
   // 東京湾
@@ -480,8 +486,8 @@ function sceneryMarkup() {
   // 金の霞（すやり霞）
   const clouds = [[W * 0.02, H * 0.82, 260], [W * 0.55, H * 0.03, 300], [W * 0.78, H * 0.22, 220], [W * 0.25, H * 0.06, 200]];
   clouds.forEach(([x, y, w]) => {
-    s += `<g class="kasumi" transform="translate(${x.toFixed(0)},${y.toFixed(0)})">
-      <rect x="0" y="0" width="${w}" height="22" rx="11"/><rect x="${w * 0.25}" y="16" width="${w * 0.6}" height="18" rx="9"/></g>`;
+    s += `<g class="kasumi" transform="translate(${x.toFixed(0)},${y.toFixed(0)}) scale(${(w / 100).toFixed(2)})">
+      <path transform="translate(0,34)" d="M0,0 Q-6,-14 10,-16 Q14,-28 32,-24 Q44,-34 60,-24 Q80,-28 84,-14 Q100,-12 96,0 Z"/></g>`;
   });
 
   // 地域名

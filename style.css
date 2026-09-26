@@ -173,54 +173,59 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
-  background: var(--fiber), var(--washi), radial-gradient(ellipse at 50% 40%, #f6eed8, #e6d6ae);
+  background: var(--fiber), var(--washi), #efe2c2;
   background-attachment: local;
 }
 #map { display: block; }
 
-/* 地図の風景 */
-#map .bay { fill: #9dbdd1; }
+/* 地図の風景（名所絵図：墨の輪郭、藍の水、金雲） */
+#map .bay { fill: #3c6aa3; stroke: var(--ink); stroke-width: 3; }
 #map .bay-waves { fill: url(#waves); }
-#map .river { fill: none; stroke: #8fb3cc; stroke-width: 9; stroke-linecap: round; opacity: 0.85; }
-#map .river-hi { fill: none; stroke: #cfe1ec; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 10 14; }
-#map .kasumi rect { fill: #e8c96c; opacity: 0.45; }
-#map .map-label { font-family: var(--mincho); font-weight: 800; text-anchor: middle; pointer-events: none; }
-#map .map-label.region { font-size: 28px; fill: rgba(90, 60, 20, 0.28); letter-spacing: 0.2em; }
-#map .map-label.sea { font-size: 24px; fill: rgba(40, 80, 110, 0.5); letter-spacing: 0.3em; }
-#map .map-label.river-name { font-size: 12px; fill: #4f7894; }
+#map .river { fill: none; stroke: var(--ink); stroke-width: 13; stroke-linecap: round; }
+#map .river-hi { fill: none; stroke: #3c6aa3; stroke-width: 8; stroke-linecap: round; }
+#map .mountains path { stroke: var(--ink); stroke-width: 2.5; }
+#map .kasumi path { fill: url(#kinpaku); stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; opacity: 0.95; }
+#map .map-label { font-family: var(--brush); font-weight: 400; text-anchor: middle; pointer-events: none; }
+#map .map-label.region { font-size: 34px; fill: rgba(28, 26, 23, 0.22); letter-spacing: 0.25em; }
+#map .map-label.sea { font-size: 28px; fill: rgba(241, 230, 204, 0.85); letter-spacing: 0.3em; }
+#map .map-label.river-name { font-size: 13px; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
 
-#map .cell { fill-opacity: 0.2; transition: fill 0.6s; }
-#map .road { stroke: #9a8158; stroke-width: 2.2; stroke-dasharray: 2 5; stroke-linecap: round; fill: none; }
-#map .road.lit { stroke: var(--gold); stroke-width: 3.5; stroke-dasharray: none; }
-#map .road.hot { stroke: var(--red); stroke-width: 4; stroke-dasharray: 8 6; animation: march 0.6s linear infinite; }
+#map .cell { fill-opacity: 0.24; stroke: rgba(28, 26, 23, 0.22); stroke-width: 1.2; transition: fill 0.6s; }
+#map .road { stroke: #8a6a44; stroke-width: 3; stroke-dasharray: 1 6; stroke-linecap: round; fill: none; }
+#map .road.lit { stroke: var(--gold); stroke-width: 4; stroke-dasharray: none; }
+#map .road.hot { stroke: var(--red); stroke-width: 4.5; stroke-dasharray: 8 6; animation: march 0.6s linear infinite; }
 @keyframes march { to { stroke-dashoffset: -14; } }
 
-/* 城 */
+/* 学園城 */
 #map .castle { cursor: pointer; }
 #map .castle .hit { fill: transparent; }
-#map .castle .shadow { fill: rgba(60, 40, 10, 0.25); }
-#map .castle .stone { fill: #9b9384; stroke: #5d574c; stroke-width: 1; }
-#map .castle .stone-line { stroke: #6f685c; stroke-width: 0.7; fill: none; }
-#map .castle .wall { fill: #fbf7ea; stroke: #6d6252; stroke-width: 0.8; }
-#map .castle .window { fill: #3a3228; }
-#map .castle .roof { fill: var(--c); stroke: rgba(0, 0, 0, 0.45); stroke-width: 1; }
-#map .castle .plate rect { fill: #fbf5e4; stroke: var(--c); stroke-width: 2; }
+#map .castle .shadow { fill: rgba(28, 26, 23, 0.22); }
+#map .castle .stone { fill: #8a8170; stroke: var(--ink); stroke-width: 1.6; }
+#map .castle .stone-line { stroke: rgba(28, 26, 23, 0.55); stroke-width: 0.8; fill: none; }
+#map .castle .wall { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; }
+#map .castle .window { fill: var(--ink); }
+#map .castle .clock { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
+#map .castle .roof { fill: var(--c); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+#map .castle .shachi { fill: none; stroke: var(--gold); stroke-width: 2.4; stroke-linecap: round; }
+#map .castle .shachi-dot { fill: var(--gold); }
+#map .castle .plate rect { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; }
+#map .castle .plate rect.bar { fill: var(--c); stroke: none; }
 #map .castle .plate text {
-  font-family: var(--mincho); font-weight: 800; font-size: 11.5px; fill: var(--text);
+  font-family: var(--gothic); font-weight: 900; font-size: 11.5px; fill: var(--ink);
   text-anchor: middle; dominant-baseline: central;
 }
 #map .castle .troops {
-  font-size: 10.5px; font-weight: 800; text-anchor: middle; fill: var(--c);
-  paint-order: stroke; stroke: #f6eed8; stroke-width: 3px;
+  font-family: var(--gothic); font-size: 11px; font-weight: 900; text-anchor: middle; fill: var(--ink);
+  paint-order: stroke; stroke: var(--paper); stroke-width: 3px;
   font-variant-numeric: tabular-nums;
 }
 #map .castle .keep { transition: transform 0.2s; }
 #map .castle.acted .keep, #map .castle.acted .plate { opacity: 0.5; }
 #map .castle.acted .plate::after { content: ''; }
 #map .castle .ring { fill: none; stroke: none; }
-#map .castle .ring.sel { stroke: var(--gold); stroke-width: 3; stroke-dasharray: 6 4; animation: spin 4s linear infinite; }
-#map .castle .ring.target { stroke: var(--red); stroke-width: 3.5; animation: pulse 0.9s ease-in-out infinite; }
-#map .castle .ring.friend { stroke: #3f8f55; stroke-width: 3.5; animation: pulse 0.9s ease-in-out infinite; }
+#map .castle .ring.sel { stroke: var(--gold); stroke-width: 3.5; stroke-dasharray: 6 4; animation: spin 4s linear infinite; }
+#map .castle .ring.target { stroke: var(--red); stroke-width: 4; animation: pulse 0.9s ease-in-out infinite; }
+#map .castle .ring.friend { stroke: var(--wakatake); stroke-width: 4; animation: pulse 0.9s ease-in-out infinite; }
 #map .castle.selected .keep { transform: translateY(-4px) scale(1.12); }
 #map .castle .done { font-size: 11px; fill: #fff; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
 #map .castle .done-bg { fill: #6d6252; }
@@ -886,10 +891,12 @@ svg.bf {
 .bf .sol { transition: transform 0.5s ease-in, opacity 0.5s; transform-box: fill-box; transform-origin: 50% 100%; }
 .bf #army-a .sol.down { transform: rotate(-85deg) translateY(3px); opacity: 0.35; }
 .bf #army-d .sol.down { transform: rotate(85deg) translateY(3px); opacity: 0.35; }
-.bf .bf-castle .roof { fill: var(--c); stroke: rgba(0, 0, 0, 0.5); stroke-width: 0.6; }
-.bf .bf-castle .stone { fill: #6e685e; stroke: #3a352e; stroke-width: 0.5; }
+.bf .bf-castle .roof { fill: var(--c); stroke: var(--ink); stroke-width: 0.9; }
+.bf .bf-castle .clock { fill: var(--paper); stroke: var(--ink); stroke-width: 0.7; }
+.bf .bf-castle .shachi { fill: none; stroke: var(--gold); stroke-width: 1.2; }
+.bf .bf-castle .stone { fill: #8a8170; stroke: var(--ink); stroke-width: 0.9; }
 .bf .bf-castle .stone-line { stroke: #4a453c; stroke-width: 0.5; fill: none; }
-.bf .bf-castle .wall { fill: #ebe4d1; stroke: #3a352e; stroke-width: 0.5; }
+.bf .bf-castle .wall { fill: var(--paper); stroke: var(--ink); stroke-width: 0.9; }
 .bf .bf-castle .window { fill: #2a241c; }
 .bf .bf-castle .shadow { fill: rgba(0, 0, 0, 0.35); }
 .bf .bf-fire { opacity: 0; }
@@ -1274,3 +1281,14 @@ svg.bf {
 .kb-cols small { display: block; color: var(--muted); font-size: 11px; }
 .kb-seal { position: absolute; right: 10px; bottom: 10px; width: 36px; height: 36px; border-radius: 3px; background: var(--red); color: var(--paper);
   font-family: var(--brush); font-size: 11px; line-height: 1.05; display: grid; place-items: center; text-align: center; box-shadow: inset 0 0 0 2px var(--red), inset 0 0 0 3px var(--paper); }
+
+/* 合戦の命令の札：命令ごとに色版を変える（見本帳どおり） */
+.cmd-grid .btn[data-cmd="attack"] { --plate: var(--paper-2); color: var(--ink); }
+.cmd-grid .btn[data-cmd="charge"] { --plate: var(--red); }
+.cmd-grid .btn[data-cmd="guard"] { --plate: var(--ai); }
+.cmd-grid .btn[data-cmd="scheme"] { --plate: #6b3a5e; }
+.cmd-grid .btn[data-cmd="retreat"] { --plate: transparent; color: var(--paper); }
+.cmd-grid .btn.art { --plate: var(--gold); color: var(--ink); }
+.cmd-grid .btn.art small { color: var(--ink); }
+.du-moves .btn[data-mv]:not(.du-sp) { --plate: var(--paper-2); color: var(--ink); }
+.du-moves .btn.du-sp { --plate: var(--red); color: var(--paper); }
