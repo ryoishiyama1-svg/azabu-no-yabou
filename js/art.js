@@ -533,41 +533,38 @@ function buildCells() {
 
 // ---------- タイトルの屏風絵 ----------
 function titleArt() {
+  // 錦絵学園のタイトル：一文字ぼかしの空、朱の日輪（版ずれ）、霞、富士、学園城、北斎風の大波
+  const K = '#1c1a17', P = '#f1e6cc';
   return `<svg class="byobu" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <defs>
-      <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#f3dc92"/><stop offset="0.45" stop-color="#d9b04a"/>
-        <stop offset="0.7" stop-color="#e9c96e"/><stop offset="1" stop-color="#b8892c"/>
-      </linearGradient>
-      <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#1f2233"/><stop offset="1" stop-color="#1f2233" stop-opacity="0.55"/>
-      </linearGradient>
-      <pattern id="leaf" width="40" height="40" patternUnits="userSpaceOnUse">
-        <rect width="40" height="40" fill="none" stroke="#a37a22" stroke-opacity="0.18" stroke-width="1"/>
-      </pattern>
-    </defs>
-    <rect width="400" height="800" fill="url(#gold)"/>
-    <rect width="400" height="800" fill="url(#leaf)"/>
-    <circle cx="300" cy="170" r="62" fill="#c0303a"/>
-    <g fill="#fff4d0" opacity="0.85">
-      <rect x="-40" y="120" width="230" height="30" rx="15"/><rect x="40" y="140" width="160" height="26" rx="13"/>
-      <rect x="230" y="245" width="220" height="28" rx="14"/><rect x="-30" y="600" width="260" height="30" rx="15"/>
-      <rect x="200" y="640" width="240" height="26" rx="13"/>
+    <rect width="400" height="800" fill="${P}"/>
+    <rect width="400" height="260" fill="url(#bokashi)"/>
+    <circle cx="300" cy="206" r="110" fill="#c8372d"/>
+    <circle cx="293" cy="199" r="110" fill="none" stroke="${K}" stroke-width="5"/>
+    <g stroke="${K}" stroke-width="3.5">
+      <path d="M-10,286 H200 a16,16 0 0 1 0,32 H150 a9,9 0 0 0 0,18 H240 a9,9 0 0 1 0,18 H60 a9,9 0 0 1 0,-18 H100 a9,9 0 0 0 0,-18 H-10Z" fill="#e9a3a8"/>
+      <path d="M250,378 H410 V410 H290 a16,16 0 0 1 0,-32Z" fill="#e0a526"/>
     </g>
-    <path d="M-20,560 L120,380 Q150,350 175,372 L330,560 Z" fill="url(#ink)"/>
-    <path d="M112,392 Q150,345 185,385 L170,395 L158,382 L146,398 L132,384 L120,400 Z" fill="#fbf7ea"/>
-    <path d="M180,560 L300,440 L420,560 Z" fill="#2a2d42" opacity="0.7"/>
-    <g transform="translate(290,560) scale(3.2)" class="title-castle">
-      <path d="M-17,14 L17,14 L13,3 L-13,3 Z" fill="#1f2233"/>
-      <rect x="-11" y="-4" width="22" height="8" fill="#1f2233"/>
-      <path d="M-17,-2 Q-13,-4 -11,-9 L11,-9 Q13,-4 17,-2 Z" fill="#1f2233"/>
-      <rect x="-7" y="-15" width="14" height="7" fill="#1f2233"/>
-      <path d="M-12,-13 Q-8,-15 -6,-22 L6,-22 Q8,-15 12,-13 Z" fill="#1f2233"/>
-      <circle cx="-5.5" cy="-24.5" r="1.8" fill="#f3dc92"/><circle cx="5.5" cy="-24.5" r="1.8" fill="#f3dc92"/>
+    <g transform="translate(0,-70)">
+    <path d="M44,560 L174,382 L304,560Z" fill="#3c6aa3"/>
+    <path d="M38,554 L168,376 L298,554Z" fill="none" stroke="${K}" stroke-width="5"/>
+    <path d="M136,420 L168,376 L200,420 L186,413 L177,427 L168,413 L157,427 L148,413Z" fill="${P}" stroke="${K}" stroke-width="3.5"/>
+    <g transform="translate(236,430)" stroke="${K}" stroke-width="3.5">
+      <rect x="-2" y="90" width="160" height="70" fill="#c8372d" stroke="none"/>
+      <rect x="-8" y="84" width="160" height="70" fill="${P}"/>
+      <g fill="#22406b" stroke-width="2.5">
+        <rect x="6" y="98" width="16" height="16"/><rect x="30" y="98" width="16" height="16"/><rect x="98" y="98" width="16" height="16"/><rect x="122" y="98" width="16" height="16"/>
+        <rect x="6" y="124" width="16" height="16"/><rect x="30" y="124" width="16" height="16"/><rect x="98" y="124" width="16" height="16"/><rect x="122" y="124" width="16" height="16"/>
+      </g>
+      <rect x="56" y="108" width="32" height="46" fill="${K}"/>
+      <path d="M-20,86 L72,58 L164,86Z" fill="#22406b"/>
+      <rect x="50" y="24" width="44" height="36" fill="${P}"/>
+      <circle cx="72" cy="42" r="10" fill="${P}" stroke-width="3"/><path d="M72,42 L72,35 M72,42 L78,44" stroke-width="2.5"/>
+      <path d="M34,28 L72,2 L110,28Z" fill="#22406b"/>
+      <path d="M62,4 Q72,-10 82,4" fill="none" stroke="#e0a526" stroke-width="5"/>
     </g>
-    <rect y="600" width="400" height="200" fill="#1f2233" opacity="0.9"/>
-    <g fill="#fff4d0" opacity="0.9">
-      <rect x="-30" y="588" width="250" height="24" rx="12"/><rect x="190" y="596" width="260" height="20" rx="10"/>
     </g>
+    <path d="M0,610 Q48,550 96,588 Q132,526 192,578 Q240,518 300,572 Q348,532 400,576 L400,800 L0,800Z" fill="#22406b" stroke="${K}" stroke-width="5"/>
+    <path d="M96,588 q-8,-12 5,-20 q-3,10 8,12 M192,578 q-8,-12 5,-20 q-3,10 8,12 M300,572 q-8,-12 5,-20 q-3,10 8,12" fill="${P}" stroke="${K}" stroke-width="2.5"/>
+    <path d="M0,650 Q48,614 96,640 T192,636 T300,630 T400,636 M0,690 Q48,660 96,682 T192,676 T300,670 T400,676 M0,732 Q48,704 96,724 T192,718 T300,712 T400,718" fill="none" stroke="#3c6aa3" stroke-width="5"/>
   </svg>`;
 }

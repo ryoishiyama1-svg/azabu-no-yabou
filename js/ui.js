@@ -901,7 +901,7 @@ function drawMeeting(M) {
       <p class="mt-place">${esc(hostSchool)} 生徒会室 ・ ${PROPOSALS[M.proposal].name}の会談</p>
       <div class="mt-stage">
         ${meetingRoom(M.clan)}
-        <div class="mt-p left">${portrait(envoy, 84, M.over === 'deal' ? 'happy' : M.over ? 'think' : null)}<span>${esc(envoy.name)}<small>${pName()}の使者</small></span></div>
+        <div class="mt-p left">${portrait(envoy, 84, M.over === 'deal' ? 'happy' : M.over ? 'think' : null, 'R')}<span>${esc(envoy.name)}<small>${pName()}の使者</small></span></div>
         ${host ? `<div class="mt-p right">${portrait(host, 84, M.mood)}<span>${esc(host.name)}<small>${CLANS[M.clan].name}・${personaOf(M.clan).name}</small></span></div>` : ''}
         ${M.over ? `<div class="mt-stamp ${M.over}">${M.over === 'deal' ? '締 結' : '決 裂'}</div>` : ''}
         ${M.delta ? `<div class="mt-delta ${M.delta > 0 ? 'up' : 'down'}">${M.delta > 0 ? '+' : ''}${M.delta}</div>` : ''}
@@ -1012,7 +1012,7 @@ function envoyScene(ev, title, mood, line, stamp = null) {
       <p class="mt-place">${esc(MAP.byId[home].name)} 生徒会室にて ・ ${esc(title)}</p>
       <div class="mt-stage">
         ${meetingRoom(PLAYER)}
-        ${lord ? `<div class="mt-p left">${portrait(lord, 84, stamp === 'deal' ? 'happy' : null)}<span>${esc(lord.name)}<small>${pName()}当主</small></span></div>` : ''}
+        ${lord ? `<div class="mt-p left">${portrait(lord, 84, stamp === 'deal' ? 'happy' : null, 'R')}<span>${esc(lord.name)}<small>${pName()}当主</small></span></div>` : ''}
         ${g ? `<div class="mt-p right">${portrait(g, 84, mood)}<span>${esc(g.name)}<small>${CLANS[p.clan].name}の使者</small></span></div>` : ''}
         ${stamp ? `<div class="mt-stamp ${stamp}">${stamp === 'deal' ? '締 結' : p.kind === 'tribute' ? '拒 絶' : '謝 絶'}</div>` : ''}
       </div>
@@ -1506,7 +1506,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const gen = sd === 'a' ? g : dg;
     const clan = B[sd].clan;
     const info = gen
-      ? `${sd === 'd' ? '' : portrait(gen, 40)}<div><b>${esc(gen.name)}</b><small>統率${gen.str}${sd === 'a' && supNames.length ? `・援軍${supNames.length}` : ''}</small></div>${sd === 'd' ? portrait(gen, 40) : ''}`
+      ? `${sd === 'd' ? '' : portrait(gen, 40, null, 'R')}<div><b>${esc(gen.name)}</b><small>統率${gen.str}${sd === 'a' && supNames.length ? `・援軍${supNames.length}` : ''}</small></div>${sd === 'd' ? portrait(gen, 40) : ''}`
       : '<div><b>守将なし</b><small>&nbsp;</small></div>';
     return `<div class="b-side ${sd === 'a' ? 'left' : 'right'}" style="--c:${CLANS[clan].color}">
       <div class="b-gen">${info}</div>
@@ -1747,7 +1747,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
       <div class="du-title">一 騎 打 ち${started ? `<small>${roundName}／${DUEL.maxTurns}合</small>` : ''}</div>
       <div class="du-stage" id="du-stage">
         ${duelScene(B[my].clan, B[fo].clan)}
-        <div class="du-p left ${du.entered ? '' : 'enter'}" id="du-pL">${portrait(myGen, 84, du.mood[my] || null)}</div>
+        <div class="du-p left ${du.entered ? '' : 'enter'}" id="du-pL">${portrait(myGen, 84, du.mood[my] || null, 'R')}</div>
         <div class="du-p right ${du.entered ? '' : 'enter'}" id="du-pR">${portrait(foeGen, 84, du.mood[fo] || null)}</div>
         <svg class="du-fx" id="du-fx" viewBox="0 0 320 160" preserveAspectRatio="none" aria-hidden="true"></svg>
         <div class="du-flash" id="du-flash"></div>
@@ -2137,14 +2137,24 @@ function showNewspaper(news, log, gain) {
   const ranks = Object.keys(CLANS).filter((k) => k !== 'none' && castlesOf(S, k).length)
     .sort((a, b) => castlesOf(S, b).length - castlesOf(S, a).length);
   const maxN = Math.max(1, ...ranks.map((k) => castlesOf(S, k).length));
-  const paper = '東京学園新聞';
-  openModal(`<div class="paper" data-lock>
-      <div class="np-mast"><span class="np-no">第${S.turn}号</span><b>${paper}</b><span class="np-date">${dateLabel(S.turn)}</span></div>
-      <div class="np-top">
-        <h2 class="np-head">${esc(head.head)}</h2>
-        ${head.sub ? `<p class="np-sub">${esc(head.sub)}</p>` : ''}
+  // 挿絵：見出しが自分の家のことなら当主の顔（負けた話なら悔しがる顔）、そうでなければ家紋
+  const lord = lordOf(S);
+  const aboutMe = head.head.includes(pName());
+  const lost = /奪う|破棄|包囲網/.test(head.head) && aboutMe;
+  const pic = lord && (aboutMe || !top)
+    ? portrait(lord, 92, lost ? 'frustrated' : top ? 'laugh' : null)
+    : crestBadge(ranks[0] || PLAYER, 80);
+  const caption = lord && (aboutMe || !top) ? `${esc(lord.name)}${lost ? ' 無念' : top ? ' 大手柄' : ''}` : '諸国の動き';
+  // 瓦版：右から左へ、縦書きで読む
+  openModal(`<div class="paper kawaraban" data-lock>
+      <div class="kb-top">
+        <div class="kb-mast"><b>学園瓦版</b><small>第${S.turn}号<br>${dateLabel(S.turn)}</small></div>
+        <div class="kb-head"><h2>${esc(head.head)}</h2>${head.sub ? `<p>${esc(head.sub)}</p>` : ''}</div>
+        <div class="kb-side">
+          <div class="kb-pic">${pic}<span>${caption}</span></div>
+          ${rest.length ? `<div class="kb-cols">${rest.slice(0, 3).map((n) => `<p><b>${esc(n.head)}</b>${n.sub ? `<small>${esc(n.sub)}</small>` : ''}</p>`).join('')}</div>` : ''}
+        </div>
       </div>
-      ${rest.length ? `<div class="np-cols">${rest.slice(0, 3).map((n) => `<div class="np-art"><b>${esc(n.head)}</b>${n.sub ? `<small>${esc(n.sub)}</small>` : ''}</div>`).join('')}</div>` : ''}
       <div class="np-row">
         <div class="np-box np-wx"><em>天気予報</em><span class="np-wxi">${wx.icon}</span><b>${wx.name}</b><small>${wx.desc}</small></div>
         <div class="np-box np-rank"><em>勢力番付</em>${ranks.slice(0, 6).map((k, i) => `<div class="np-r ${k === PLAYER ? 'me' : ''}">
@@ -2153,6 +2163,7 @@ function showNewspaper(news, log, gain) {
       <p class="np-gold">💰 ${pName()}の収支 <b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
       <details class="np-log"><summary>諸国の動きをすべて見る（${log.length}件）</summary>
         <ul class="log">${log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li>諸国に大きな動きはなかった。</li>'}</ul></details>
+      <div class="kb-seal">瓦版<br>之印</div>
     </div>
     <button class="btn red" id="ok">承 知</button>`);
 }

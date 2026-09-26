@@ -15,10 +15,29 @@
   <link rel="apple-touch-icon" href="icons/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&family=Shippori+Mincho+B1:wght@600;800&display=swap">
-  <link rel="stylesheet" href="style.css?v=25">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Boku&family=Yuji+Syuku&family=Zen+Maru+Gothic:wght@500;700;900&family=Shippori+Mincho+B1:wght@600;800&display=swap">
+  <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
+  <!-- 武将の絵で使う柄（js/ukiyo.js）。家の色の亀甲柄は #ukiyo-defs に自動で足される -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs id="ukiyo-defs">
+      <linearGradient id="bokashi" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#22406b"/><stop offset="0.55" stop-color="#22406b" stop-opacity="0.35"/><stop offset="1" stop-color="#22406b" stop-opacity="0"/>
+      </linearGradient>
+      <pattern id="seigaiha" width="30" height="15" patternUnits="userSpaceOnUse">
+        <rect width="30" height="15" fill="#2d5288"/>
+        <g fill="none" stroke="#f1e6cc" stroke-width="1.6"><circle cx="15" cy="15" r="13"/><circle cx="15" cy="15" r="8"/><circle cx="15" cy="15" r="3"/><circle cx="0" cy="7.5" r="13"/><circle cx="30" cy="7.5" r="13"/></g>
+      </pattern>
+      <pattern id="asanoha" width="40" height="46" patternUnits="userSpaceOnUse">
+        <rect width="40" height="46" fill="#f3d5d6"/>
+        <g stroke="#e9a3a8" stroke-width="1.4" fill="none"><path d="M20,0 L20,46 M0,11.5 L40,34.5 M40,11.5 L0,34.5 M20,23 L0,0 M20,23 L40,0 M20,23 L0,46 M20,23 L40,46"/></g>
+      </pattern>
+      <pattern id="ichimatsu" width="24" height="24" patternUnits="userSpaceOnUse">
+        <rect width="24" height="24" fill="#d8e0c8"/><rect width="12" height="12" fill="#b8c9a4"/><rect x="12" y="12" width="12" height="12" fill="#b8c9a4"/>
+      </pattern>
+    </defs>
+  </svg>
   <!-- タイトル -->
   <section id="title" class="screen">
     <div id="title-art"></div>
@@ -26,9 +45,13 @@
     <button class="title-sound" id="title-sound" aria-label="音楽"></button>
     <div class="title-inner">
       <div class="title-crest" id="title-crest"></div>
-      <h1><span>麻布</span><small>の</small><span>野望</span></h1>
-      <p class="tagline">都内高校 国盗り絵巻</p>
-      <div class="seal">天下<br>統一</div>
+      <div class="title-head">
+        <h1 class="title-tanzaku">麻布の野望</h1>
+        <div class="title-side">
+          <p class="tagline">都内高校国盗り絵巻</p>
+          <div class="seal">麻布<br>之印</div>
+        </div>
+      </div>
       <div class="title-buttons">
         <button class="btn fuda" id="btn-resume" hidden>つづきから</button>
         <button class="btn fuda red" id="btn-new">天下統一をめざす</button>
@@ -93,17 +116,18 @@
     <div class="sheet"><div class="sheet-body" id="confirm-body"></div></div>
   </div>
 
-  <script src="js/data.js?v=25"></script>
-  <script src="js/game.js?v=25"></script>
-  <script src="js/events.js?v=25"></script>
-  <script src="js/battle.js?v=25"></script>
-  <script src="js/schemes.js?v=25"></script>
-  <script src="js/diplo.js?v=25"></script>
-  <script src="js/records.js?v=25"></script>
-  <script src="js/saves.js?v=25"></script>
-  <script src="js/art.js?v=25"></script>
-  <script src="js/portrait.js?v=25"></script>
-  <script src="js/sound.js?v=25"></script>
-  <script src="js/ui.js?v=25"></script>
+  <script src="js/data.js?v=26"></script>
+  <script src="js/game.js?v=26"></script>
+  <script src="js/events.js?v=26"></script>
+  <script src="js/battle.js?v=26"></script>
+  <script src="js/schemes.js?v=26"></script>
+  <script src="js/diplo.js?v=26"></script>
+  <script src="js/records.js?v=26"></script>
+  <script src="js/saves.js?v=26"></script>
+  <script src="js/art.js?v=26"></script>
+  <script src="js/ukiyo.js?v=26"></script>
+  <script src="js/portrait.js?v=26"></script>
+  <script src="js/sound.js?v=26"></script>
+  <script src="js/ui.js?v=26"></script>
 </body>
 </html>

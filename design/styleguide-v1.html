@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>錦絵学園 見本帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Yuji+Boku&family=Zen+Maru+Gothic:wght@500;700;900&family=Shippori+Mincho+B1:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ai: #22406b;      /* 藍 */
+  --ai-2: #3c6aa3;    /* 薄藍 */
+  --shu: #c8372d;     /* 朱 */
+  --kinari: #f1e6cc;  /* 生成り（紙） */
+  --kinari-2: #e6d6b0;
+  --sumi: #1c1a17;    /* 墨 */
+  --yamabuki: #e0a526;/* 山吹 */
+  --wakatake: #5d8a4a;/* 若竹 */
+  --sakura: #e9a3a8;  /* 桜 */
+  --brush: 'Yuji Boku', serif;
+  --maru: 'Zen Maru Gothic', sans-serif;
+  --mincho: 'Shippori Mincho B1', serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: #d9ccb0; color: var(--sumi); font-family: var(--maru);
+  background-image: radial-gradient(rgba(120, 90, 40, 0.08) 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+h1 { font-family: var(--brush); font-size: 44px; margin: 0; letter-spacing: 0.1em; }
+h2 { font-family: var(--brush); font-size: 28px; margin: 40px 0 6px; display: flex; align-items: center; gap: 10px; }
+h2::before { content: ''; width: 14px; height: 28px; background: var(--shu); box-shadow: 3px 3px 0 var(--sumi); }
+.lead { font-family: var(--mincho); font-size: 16px; line-height: 1.9; max-width: 760px; }
+.note { font-size: 13px; line-height: 1.7; color: #4a4030; max-width: 760px; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background: var(--kinari); border: 3px solid var(--sumi); padding: 14px; position: relative; box-shadow: 5px 5px 0 var(--ai); }
+.card h3 { font-family: var(--brush); font-size: 20px; margin: 0 0 6px; }
+.card p { margin: 0; font-size: 13px; line-height: 1.7; }
+
+/* 色版 */
+.swatches { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.sw { border: 3px solid var(--sumi); background: var(--kinari); }
+.sw i { display: block; height: 70px; border-bottom: 3px solid var(--sumi); }
+.sw b { display: block; font-family: var(--brush); font-size: 20px; padding: 4px 8px 0; }
+.sw small { display: block; font-size: 11px; padding: 0 8px 6px; color: #5a4a36; }
+
+/* 版ずれ札（ボタン） */
+.fuda {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 132px; padding: 10px 18px; font-family: var(--maru); font-weight: 900; font-size: 17px; letter-spacing: 0.15em;
+  color: var(--kinari); background: transparent; border: 0; cursor: pointer; isolation: isolate;
+}
+.fuda::before { content: ''; position: absolute; inset: 0; background: var(--c, var(--shu)); transform: translate(4px, 4px); z-index: -2; }
+.fuda::after { content: ''; position: absolute; inset: 0; border: 3px solid var(--sumi); z-index: -1; }
+.fuda.ai { --c: var(--ai); }
+.fuda.ki { --c: var(--kinari-2); color: var(--sumi); }
+.fuda.yama { --c: var(--yamabuki); color: var(--sumi); }
+.fuda small { font-size: 11px; letter-spacing: 0; font-weight: 700; opacity: 0.9; }
+.fuda:active::before { transform: translate(1px, 1px); }
+.row { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin: 10px 0; }
+
+/* 短冊・札 */
+.tanzaku { display: inline-block; writing-mode: vertical-rl; font-family: var(--brush); font-size: 22px; padding: 10px 6px; background: var(--kinari); border: 3px solid var(--sumi); box-shadow: 4px 4px 0 var(--shu); }
+.nafuda { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; background: var(--kinari); border: 2.5px solid var(--sumi); font-weight: 900; font-size: 14px; box-shadow: 3px 3px 0 var(--ai); }
+.nafuda .mon { width: 22px; height: 22px; border-radius: 50%; background: var(--shu); border: 2px solid var(--sumi); }
+.banzuke { border: 3px solid var(--sumi); background: var(--kinari); font-size: 13px; }
+.banzuke div { display: grid; grid-template-columns: 3em 1fr 2.5em; align-items: center; gap: 6px; padding: 4px 8px; border-bottom: 1.5px solid var(--sumi); }
+.banzuke div:last-child { border-bottom: 0; }
+.banzuke span { font-family: var(--brush); font-size: 16px; }
+.banzuke i { height: 10px; background: var(--c); border: 2px solid var(--sumi); box-shadow: 2px 2px 0 rgba(0,0,0,0.15); }
+.banzuke b { text-align: right; font-weight: 900; }
+.kasumi { height: 26px; margin: 14px 0; background:
+  radial-gradient(circle at 12px 13px, var(--shu) 11px, transparent 12px) 0 0 / 60px 26px repeat-x,
+  linear-gradient(var(--shu), var(--shu)) 12px 2px / calc(100% - 24px) 22px no-repeat;
+  border-radius: 13px; opacity: 0.9; }
+
+/* 画面見本 */
+.screens { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); justify-items: center; }
+.phone { width: 100%; max-width: 330px; border: 4px solid var(--sumi); border-radius: 26px; overflow: hidden; background: var(--sumi); box-shadow: 8px 8px 0 var(--ai); }
+.phone svg { display: block; width: 100%; height: auto; }
+.cap { font-family: var(--brush); font-size: 20px; text-align: center; margin: 10px 0 0; }
+.rules li { margin: 6px 0; font-size: 14px; line-height: 1.7; }
+.rules b { font-family: var(--brush); font-size: 16px; color: var(--shu); margin-right: 4px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>錦絵学園 見本帳</h1>
+<p class="lead">「麻布の野望」の新しい見た目の決まりごと。浮世絵（錦絵）の木版画の手触りを土台に、切り絵・ポップ和柄の見やすさと親しみやすさを混ぜる。<br>
+ひと目で「学園なのに浮世絵」とわかること、そしてスマホの小さな画面でも読みやすいことを、いちばん大事にする。</p>
+
+<h2>一、決まりごと</h2>
+<div class="grid">
+  <div class="card"><h3>墨の輪郭</h3><p>すべての絵と部品は、太い墨の線（3px前後）でふちどる。細い線は使わない。遠くのもの（山・雲）だけ線を細くして奥行きを出す。</p></div>
+  <div class="card"><h3>版ずれ</h3><p>色の版を、墨の輪郭から右下へ少しずらして刷ったように見せる。ボタン・枠・キャラ・城まで一貫して使う、このゲームの目印。</p></div>
+  <div class="card"><h3>平塗りと色数</h3><p>グラデーションは使わず、平らな色で塗る。影は一段だけ（濃い色で塗るか、斜線）。一枚の絵で使う色は、紙の色を除いて5色まで。</p></div>
+  <div class="card"><h3>和柄で埋める</h3><p>広い面は、青海波・麻の葉・市松・霞などの和柄で埋める。柄は色版と同じ色で、細かくしすぎない。</p></div>
+</div>
+
+<h2>二、色版</h2>
+<p class="note">木版の色版をもとにした7色。家の色もこの中から選ぶ（麻布＝朱、開成＝藍、筑駒＝若竹、日比谷＝山吹、早稲田＝葡萄、西＝鉄紺 など）。</p>
+<div class="swatches">
+  <div class="sw"><i style="background:var(--ai)"></i><b>藍</b><small>#22406b 主役の色・水・夜</small></div>
+  <div class="sw"><i style="background:var(--shu)"></i><b>朱</b><small>#c8372d 決定・危険・太陽</small></div>
+  <div class="sw"><i style="background:var(--kinari)"></i><b>生成り</b><small>#f1e6cc 紙・背景</small></div>
+  <div class="sw"><i style="background:var(--sumi)"></i><b>墨</b><small>#1c1a17 輪郭・文字</small></div>
+  <div class="sw"><i style="background:var(--yamabuki)"></i><b>山吹</b><small>#e0a526 金・勝利・強調</small></div>
+  <div class="sw"><i style="background:var(--wakatake)"></i><b>若竹</b><small>#5d8a4a 野・味方の勢い</small></div>
+  <div class="sw"><i style="background:var(--sakura)"></i><b>桜</b><small>#e9a3a8 春・頬・かわいさ</small></div>
+</div>
+
+<h2>三、文字</h2>
+<div class="grid">
+  <div class="card"><h3 style="font-family:var(--brush);font-size:38px;margin:0">天下統一</h3><p>見出し：Yuji Boku（太い筆文字）。題・合戦名・技の名に使う。</p></div>
+  <div class="card"><p style="font-family:var(--maru);font-weight:900;font-size:26px;margin:0 0 6px">兵 2,500　士気 81</p><p>ボタン・数字：Zen Maru Gothic（丸ゴシックの太字）。小さくても読める。</p></div>
+  <div class="card"><p style="font-family:var(--mincho);font-weight:800;font-size:20px;margin:0 0 6px">「ここは開成の本拠。一歩も通さぬ」</p><p>セリフ・物語：しっぽり明朝。武将の言葉や新聞の本文に使う。</p></div>
+</div>
+
+<h2>四、部品</h2>
+<div class="row">
+  <button class="fuda">出 陣</button>
+  <button class="fuda ai">輸 送</button>
+  <button class="fuda ki">閉じる</button>
+  <button class="fuda yama">必殺<small>一番槍</small></button>
+</div>
+<p class="note">札のボタン：墨の枠に、色版を右下へずらして刷る。押すとずれが小さくなって「押し込んだ」感じになる。</p>
+<svg viewBox="0 0 600 70" style="width:100%;max-width:600px;display:block;margin:12px 0">
+  <path d="M40,14 H420 Q444,14 444,28 Q444,42 420,42 H300 Q284,42 284,52 Q284,62 300,62 H560 Q576,62 576,52" fill="none" stroke="none"/>
+  <g transform="translate(4,4)" fill="#c8372d">
+    <path d="M30,10 H400 a14,14 0 0 1 0,28 H340 a8,8 0 0 0 0,16 H540 a8,8 0 0 1 0,16 H250 a8,8 0 0 1 0,-16 H300 a8,8 0 0 0 0,-16 H30 a14,14 0 0 1 0,-28 Z"/>
+  </g>
+  <path d="M30,10 H400 a14,14 0 0 1 0,28 H340 a8,8 0 0 0 0,16 H540 a8,8 0 0 1 0,16 H250 a8,8 0 0 1 0,-16 H300 a8,8 0 0 0 0,-16 H30 a14,14 0 0 1 0,-28 Z" fill="none" stroke="#1c1a17" stroke-width="3"/>
+</svg>
+<p class="note">霞（すやり霞）：画面の区切りや、地図の雲に使う帯。</p>
+<div class="row" style="align-items:flex-start">
+  <span class="tanzaku">麻布の野望</span>
+  <span class="nafuda"><span class="mon"></span>麻布家</span>
+  <div class="banzuke" style="width:240px">
+    <div style="--c:var(--shu)"><span>統率</span><i style="width:80%"></i><b>80</b></div>
+    <div style="--c:var(--ai)"><span>知略</span><i style="width:65%"></i><b>65</b></div>
+    <div style="--c:var(--yamabuki)"><span>魅力</span><i style="width:72%"></i><b>72</b></div>
+  </div>
+</div>
+<p class="note">左から、短冊（題や城の名）、名札（家の名）、番付（能力表）。</p>
+
+<h2>五、人物（大首絵）</h2>
+<p class="note">役者絵の「大首絵」にならって、胸から上を大きく描く。目は切れ長、眉は太く、口は小さく朱をさす。強い武将には、隈取のような朱の線を目じりに入れる。顔は少し丸くして（ポップ寄り）、親しみやすくする。</p>
+<div class="screens">
+<div>
+<svg viewBox="0 0 300 300" width="300" style="max-width:100%;border:3px solid var(--sumi);background:var(--kinari);box-shadow:6px 6px 0 var(--shu)">
+  <defs>
+    <pattern id="seigaiha" width="30" height="15" patternUnits="userSpaceOnUse">
+      <rect width="30" height="15" fill="#2d5288"/>
+      <g fill="none" stroke="#f1e6cc" stroke-width="1.6">
+        <circle cx="15" cy="15" r="13"/><circle cx="15" cy="15" r="8"/><circle cx="15" cy="15" r="3"/>
+        <circle cx="0" cy="7.5" r="13"/><circle cx="30" cy="7.5" r="13"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="300" height="300" fill="url(#seigaiha)"/>
+  <circle cx="220" cy="80" r="56" fill="#c8372d"/><circle cx="216" cy="76" r="56" fill="none" stroke="#1c1a17" stroke-width="3"/>
+  <!-- 体（学ラン） -->
+  <path d="M40,300 Q44,214 150,200 Q256,214 260,300Z" fill="#1c2640" transform="translate(4,4)"/>
+  <path d="M40,300 Q44,214 150,200 Q256,214 260,300Z" fill="#23315a" stroke="#1c1a17" stroke-width="4"/>
+  <path d="M118,204 L150,236 L182,204 L182,216 L150,250 L118,216Z" fill="#1c1a17"/>
+  <circle cx="150" cy="262" r="5" fill="#e0a526" stroke="#1c1a17" stroke-width="2"/><circle cx="150" cy="286" r="5" fill="#e0a526" stroke="#1c1a17" stroke-width="2"/>
+  <!-- 首と顔 -->
+  <path d="M130,180 L130,210 Q150,220 170,210 L170,180Z" fill="#e8c7a2" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M96,118 Q94,64 150,60 Q206,64 204,118 Q204,172 172,192 Q150,204 128,192 Q96,172 96,118Z" fill="#f6dcbc" transform="translate(4,4)" opacity="0.6"/>
+  <path d="M96,118 Q94,64 150,60 Q206,64 204,118 Q204,172 172,192 Q150,204 128,192 Q96,172 96,118Z" fill="#fbe7cc" stroke="#1c1a17" stroke-width="4"/>
+  <!-- 髪 -->
+  <path d="M88,120 Q80,52 150,40 Q222,46 214,122 Q206,92 188,84 L178,100 L168,78 L150,96 L136,74 L120,98 L112,82 Q94,92 88,120Z" fill="#1c1a17"/>
+  <!-- 鉢巻（版ずれ） -->
+  <path d="M92,92 Q150,76 210,92 L212,108 Q150,92 90,108Z" fill="#c8372d" transform="translate(3,3)"/>
+  <path d="M92,92 Q150,76 210,92 L212,108 Q150,92 90,108Z" fill="none" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M208,96 Q240,86 262,104 L256,114 Q236,100 210,108Z M210,104 Q236,114 250,140 L240,144 Q228,120 208,110Z" fill="#c8372d" stroke="#1c1a17" stroke-width="3"/>
+  <!-- 眉・目（切れ長）・隈取 -->
+  <path d="M106,126 Q124,112 142,122 L140,128 Q124,122 108,132Z" fill="#1c1a17"/>
+  <path d="M194,126 Q176,112 158,122 L160,128 Q176,122 192,132Z" fill="#1c1a17"/>
+  <path d="M110,142 Q126,132 142,142 Q126,148 110,142Z" fill="#fff" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M190,142 Q174,132 158,142 Q174,148 190,142Z" fill="#fff" stroke="#1c1a17" stroke-width="3"/>
+  <circle cx="128" cy="141" r="4.5" fill="#1c1a17"/><circle cx="172" cy="141" r="4.5" fill="#1c1a17"/>
+  <path d="M104,136 Q98,146 108,156" fill="none" stroke="#c8372d" stroke-width="4" stroke-linecap="round"/>
+  <path d="M196,136 Q202,146 192,156" fill="none" stroke="#c8372d" stroke-width="4" stroke-linecap="round"/>
+  <!-- 鼻・口 -->
+  <path d="M150,148 L145,166 L154,166" fill="none" stroke="#1c1a17" stroke-width="3" stroke-linecap="round"/>
+  <path d="M138,180 Q150,174 162,180 Q150,186 138,180Z" fill="#c8372d" stroke="#1c1a17" stroke-width="2.5"/>
+  <!-- 名の短冊 -->
+  <rect x="16" y="20" width="36" height="130" fill="#c8372d" transform="translate(4,4)"/>
+  <rect x="16" y="20" width="36" height="130" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+  <text x="34" y="85" font-family="Yuji Boku" font-size="22" text-anchor="middle" writing-mode="tb" fill="#1c1a17">宮崎慎之介</text>
+</svg>
+<p class="cap">統率型の武将（強い武将は隈取）</p>
+</div>
+<div>
+<svg viewBox="0 0 300 300" width="300" style="max-width:100%;border:3px solid var(--sumi);background:var(--kinari);box-shadow:6px 6px 0 var(--ai)">
+  <defs>
+    <pattern id="asanoha" width="40" height="46" patternUnits="userSpaceOnUse">
+      <rect width="40" height="46" fill="#f3d5d6"/>
+      <g stroke="#e9a3a8" stroke-width="1.4" fill="none">
+        <path d="M20,0 L20,46 M0,11.5 L40,34.5 M40,11.5 L0,34.5 M20,23 L0,0 M20,23 L40,0 M20,23 L0,46 M20,23 L40,46"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="300" height="300" fill="url(#asanoha)"/>
+  <!-- 桜の枝 -->
+  <path d="M300,40 Q250,50 220,90 Q200,70 180,74" fill="none" stroke="#1c1a17" stroke-width="4"/>
+  <g fill="#fff" stroke="#1c1a17" stroke-width="2">
+    <circle cx="222" cy="88" r="9"/><circle cx="184" cy="72" r="8"/><circle cx="256" cy="54" r="9"/>
+  </g>
+  <g fill="#e9a3a8"><circle cx="222" cy="88" r="3.5"/><circle cx="184" cy="72" r="3"/><circle cx="256" cy="54" r="3.5"/></g>
+  <!-- 体（セーラー服） -->
+  <path d="M44,300 Q48,216 150,204 Q252,216 256,300Z" fill="#1c2640" transform="translate(4,4)"/>
+  <path d="M44,300 Q48,216 150,204 Q252,216 256,300Z" fill="#26325c" stroke="#1c1a17" stroke-width="4"/>
+  <path d="M86,222 L150,268 L214,222 L200,214 L150,250 L100,214Z" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M134,256 L166,256 L158,266 L166,290 L150,276 L134,290 L142,266Z" fill="#c8372d" stroke="#1c1a17" stroke-width="3"/>
+  <!-- 後ろ髪 -->
+  <path d="M84,120 Q80,52 150,44 Q220,52 216,120 L224,230 Q200,210 190,190 L110,190 Q100,210 76,230Z" fill="#1c1a17"/>
+  <!-- 首と顔 -->
+  <path d="M132,182 L132,212 Q150,220 168,212 L168,182Z" fill="#e8c7a2" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M100,120 Q98,70 150,66 Q202,70 200,120 Q200,170 172,190 Q150,202 128,190 Q100,170 100,120Z" fill="#fbe7cc" stroke="#1c1a17" stroke-width="4"/>
+  <!-- 前髪（ぱっつん） -->
+  <path d="M96,118 Q94,58 150,56 Q206,58 204,118 L196,118 L190,96 L180,116 L170,94 L160,114 L150,92 L140,114 L130,94 L120,116 L110,96 L104,118Z" fill="#1c1a17"/>
+  <!-- 簪（かんざし） -->
+  <path d="M190,70 L230,40" stroke="#1c1a17" stroke-width="3"/>
+  <circle cx="232" cy="38" r="8" fill="#e0a526" stroke="#1c1a17" stroke-width="2.5"/>
+  <!-- 眉・目 -->
+  <path d="M114,128 Q126,122 140,126" fill="none" stroke="#1c1a17" stroke-width="3" stroke-linecap="round"/>
+  <path d="M186,128 Q174,122 160,126" fill="none" stroke="#1c1a17" stroke-width="3" stroke-linecap="round"/>
+  <path d="M112,146 Q126,134 142,144 Q126,152 112,146Z" fill="#fff" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M188,146 Q174,134 158,144 Q174,152 188,146Z" fill="#fff" stroke="#1c1a17" stroke-width="3"/>
+  <circle cx="128" cy="144" r="5" fill="#1c1a17"/><circle cx="172" cy="144" r="5" fill="#1c1a17"/>
+  <circle cx="130" cy="142" r="1.6" fill="#fff"/><circle cx="174" cy="142" r="1.6" fill="#fff"/>
+  <!-- 頬・口 -->
+  <ellipse cx="116" cy="164" rx="9" ry="5" fill="#e9a3a8"/><ellipse cx="184" cy="164" rx="9" ry="5" fill="#e9a3a8"/>
+  <path d="M150,152 L147,164 L153,164" fill="none" stroke="#1c1a17" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M140,178 Q150,186 160,178" fill="#c8372d" stroke="#1c1a17" stroke-width="2.5"/>
+  <!-- 名の短冊 -->
+  <rect x="16" y="20" width="36" height="110" fill="#22406b" transform="translate(4,4)"/>
+  <rect x="16" y="20" width="36" height="110" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+  <text x="34" y="75" font-family="Yuji Boku" font-size="22" text-anchor="middle" writing-mode="tb" fill="#1c1a17">石川紬</text>
+</svg>
+<p class="cap">知略・魅力型の武将（隈取なし、頬に桜）</p>
+</div>
+</div>
+
+<h2>六、画面の見本</h2>
+<div class="screens">
+
+<!-- タイトル -->
+<div>
+<div class="phone">
+<svg viewBox="0 0 330 640">
+  <defs>
+    <pattern id="paper" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#f1e6cc"/><circle cx="2" cy="3" r="0.6" fill="#d9c79e"/><circle cx="6" cy="6" r="0.5" fill="#d9c79e"/></pattern>
+  </defs>
+  <rect width="330" height="640" fill="url(#paper)"/>
+  <!-- 朱の日輪（版ずれ） -->
+  <circle cx="232" cy="150" r="96" fill="#c8372d"/>
+  <circle cx="226" cy="144" r="96" fill="none" stroke="#1c1a17" stroke-width="4"/>
+  <!-- 霞 -->
+  <g>
+    <rect x="-20" y="210" width="210" height="30" rx="15" fill="#e9a3a8" transform="translate(4,4)"/>
+    <rect x="-20" y="210" width="210" height="30" rx="15" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <rect x="180" y="250" width="190" height="26" rx="13" fill="#e0a526" transform="translate(4,4)"/>
+    <rect x="180" y="250" width="190" height="26" rx="13" fill="none" stroke="#1c1a17" stroke-width="3"/>
+  </g>
+  <!-- 富士 -->
+  <path d="M40,410 L150,262 L260,410Z" fill="#3c6aa3" stroke="#1c1a17" stroke-width="4"/>
+  <path d="M122,300 L150,262 L178,300 L166,294 L158,306 L150,294 L140,306 L132,294Z" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+  <!-- 学園城（校舎に天守） -->
+  <g transform="translate(180,300)">
+    <rect x="-6" y="70" width="140" height="60" fill="#c8372d" transform="translate(4,4)"/>
+    <rect x="-6" y="70" width="140" height="60" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+    <g fill="#22406b" stroke="#1c1a17" stroke-width="2">
+      <rect x="6" y="82" width="14" height="14"/><rect x="28" y="82" width="14" height="14"/><rect x="86" y="82" width="14" height="14"/><rect x="108" y="82" width="14" height="14"/>
+      <rect x="6" y="104" width="14" height="14"/><rect x="28" y="104" width="14" height="14"/><rect x="86" y="104" width="14" height="14"/><rect x="108" y="104" width="14" height="14"/>
+    </g>
+    <rect x="50" y="90" width="28" height="40" fill="#1c1a17"/>
+    <path d="M-16,72 L64,48 L144,72Z" fill="#22406b" stroke="#1c1a17" stroke-width="3"/>
+    <rect x="44" y="20" width="40" height="30" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+    <circle cx="64" cy="35" r="9" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2.5"/>
+    <path d="M64,35 L64,29 M64,35 L69,37" stroke="#1c1a17" stroke-width="2"/>
+    <path d="M30,24 L64,2 L98,24Z" fill="#22406b" stroke="#1c1a17" stroke-width="3"/>
+    <path d="M56,4 Q64,-8 72,4" fill="none" stroke="#e0a526" stroke-width="4"/>
+  </g>
+  <!-- 大波 -->
+  <path d="M0,470 Q40,420 80,452 Q110,400 160,440 Q200,392 250,436 Q290,404 330,440 L330,640 L0,640Z" fill="#22406b" stroke="#1c1a17" stroke-width="4"/>
+  <g fill="#f1e6cc" stroke="#1c1a17" stroke-width="1.5">
+    <circle cx="80" cy="452" r="5"/><circle cx="68" cy="446" r="4"/><circle cx="160" cy="440" r="5"/><circle cx="148" cy="432" r="4"/><circle cx="250" cy="436" r="5"/><circle cx="238" cy="428" r="4"/>
+  </g>
+  <path d="M0,500 Q40,470 80,492 T160,488 T250,484 T330,488" fill="none" stroke="#3c6aa3" stroke-width="4"/>
+  <path d="M0,530 Q40,504 80,522 T160,518 T250,514 T330,518" fill="none" stroke="#3c6aa3" stroke-width="4"/>
+  <!-- 題の短冊（縦書き） -->
+  <rect x="30" y="40" width="66" height="250" fill="#c8372d" transform="translate(6,6)"/>
+  <rect x="30" y="40" width="66" height="250" fill="#f1e6cc" stroke="#1c1a17" stroke-width="4"/>
+  <text x="63" y="165" font-family="Yuji Boku" font-size="46" text-anchor="middle" writing-mode="tb" fill="#1c1a17">麻布の野望</text>
+  <rect x="100" y="60" width="24" height="120" fill="#1c1a17"/>
+  <text x="112" y="120" font-family="Zen Maru Gothic" font-weight="900" font-size="13" text-anchor="middle" writing-mode="tb" fill="#f1e6cc">都内高校国盗り</text>
+  <!-- 札 -->
+  <g font-family="Zen Maru Gothic" font-weight="900" font-size="18" text-anchor="middle">
+    <rect x="70" y="552" width="190" height="42" fill="#c8372d" transform="translate(4,4)"/>
+    <rect x="70" y="552" width="190" height="42" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <text x="165" y="580" fill="#f1e6cc" letter-spacing="4">天下統一をめざす</text>
+    <rect x="70" y="600" width="90" height="30" fill="#e6d6b0" transform="translate(3,3)"/>
+    <rect x="70" y="600" width="90" height="30" fill="none" stroke="#1c1a17" stroke-width="2.5"/>
+    <text x="115" y="621" font-size="14" fill="#1c1a17">つづきから</text>
+    <rect x="170" y="600" width="90" height="30" fill="#e6d6b0" transform="translate(3,3)"/>
+    <rect x="170" y="600" width="90" height="30" fill="none" stroke="#1c1a17" stroke-width="2.5"/>
+    <text x="215" y="621" font-size="14" fill="#1c1a17">遊び方</text>
+  </g>
+</svg>
+</div>
+<p class="cap">タイトル</p>
+</div>
+
+<!-- 地図 -->
+<div>
+<div class="phone">
+<svg viewBox="0 0 330 640">
+  <defs>
+    <pattern id="paper2" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#efe2c2"/><circle cx="2" cy="3" r="0.6" fill="#d9c79e"/></pattern>
+    <pattern id="hatchShu" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="#e7a38f"/><line x1="0" y1="0" x2="0" y2="8" stroke="#c8372d" stroke-width="3"/></pattern>
+    <pattern id="hatchAi" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="8" height="8" fill="#a9bcd6"/><line x1="0" y1="0" x2="0" y2="8" stroke="#22406b" stroke-width="3"/></pattern>
+    <g id="gakuen">
+      <rect x="-14" y="-8" width="28" height="16" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2.2"/>
+      <path d="M-18,-7 L0,-16 L18,-7Z" stroke="#1c1a17" stroke-width="2.2"/>
+      <rect x="-6" y="-24" width="12" height="9" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2"/>
+      <path d="M-10,-22 L0,-30 L10,-22Z" stroke="#1c1a17" stroke-width="2"/>
+      <rect x="-3" y="0" width="6" height="8" fill="#1c1a17"/>
+    </g>
+  </defs>
+  <rect width="330" height="640" fill="url(#paper2)"/>
+  <!-- 上の帯（木札） -->
+  <rect x="0" y="0" width="330" height="54" fill="#1c1a17"/>
+  <text x="14" y="34" font-family="Yuji Boku" font-size="22" fill="#f1e6cc">二〇二七年 秋</text>
+  <g font-family="Zen Maru Gothic" font-weight="900" font-size="14">
+    <rect x="178" y="14" width="66" height="26" fill="#e0a526" transform="translate(2,2)"/>
+    <rect x="178" y="14" width="66" height="26" fill="none" stroke="#f1e6cc" stroke-width="2"/>
+    <text x="211" y="32" text-anchor="middle" fill="#1c1a17">金 726</text>
+    <rect x="252" y="14" width="66" height="26" fill="#c8372d" transform="translate(2,2)"/>
+    <rect x="252" y="14" width="66" height="26" fill="none" stroke="#f1e6cc" stroke-width="2"/>
+    <text x="285" y="32" text-anchor="middle" fill="#f1e6cc">城 5/61</text>
+  </g>
+  <!-- 川 -->
+  <path d="M250,54 Q220,180 290,260 Q340,320 300,420 L330,420 L330,54Z" fill="#3c6aa3" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M268,120 q10,-6 20,0 M280,200 q10,-6 20,0 M300,300 q10,-6 20,0" stroke="#f1e6cc" stroke-width="2.5" fill="none"/>
+  <!-- 勢力（斜線の版） -->
+  <path d="M30,120 Q70,90 140,110 Q170,160 130,220 Q70,240 40,200Z" fill="url(#hatchShu)" stroke="#1c1a17" stroke-width="3"/>
+  <path d="M150,240 Q210,220 250,260 Q260,330 200,350 Q140,340 140,290Z" fill="url(#hatchAi)" stroke="#1c1a17" stroke-width="3"/>
+  <!-- 道 -->
+  <g stroke="#1c1a17" stroke-width="2.5" stroke-dasharray="2 6" stroke-linecap="round" fill="none">
+    <path d="M80,160 L150,190 L200,290 M150,190 L110,300 M200,290 L230,370 M80,160 L60,280"/>
+  </g>
+  <!-- 霞 -->
+  <rect x="-20" y="68" width="170" height="22" rx="11" fill="#e9a3a8" opacity="0.9"/>
+  <rect x="200" y="400" width="160" height="22" rx="11" fill="#e0a526" opacity="0.85"/>
+  <!-- 学園城 -->
+  <use href="#gakuen" x="80" y="160" fill="#c8372d"/>
+  <use href="#gakuen" x="150" y="190" fill="#c8372d"/>
+  <use href="#gakuen" x="200" y="290" fill="#22406b"/>
+  <use href="#gakuen" x="110" y="300" fill="#8a8170"/>
+  <use href="#gakuen" x="60" y="280" fill="#8a8170"/>
+  <use href="#gakuen" x="230" y="370" fill="#22406b"/>
+  <!-- 城の名札 -->
+  <g font-family="Zen Maru Gothic" font-weight="900" font-size="11" text-anchor="middle">
+    <rect x="58" y="172" width="44" height="17" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2"/><text x="80" y="185">麻布</text>
+    <rect x="128" y="202" width="44" height="17" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2"/><text x="150" y="215">広尾</text>
+    <rect x="178" y="302" width="44" height="17" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2"/><text x="200" y="315">開成</text>
+    <rect x="88" y="312" width="44" height="17" fill="#f1e6cc" stroke="#1c1a17" stroke-width="2"/><text x="110" y="325">青山</text>
+  </g>
+  <!-- 選んだ城の輪 -->
+  <circle cx="80" cy="152" r="30" fill="none" stroke="#e0a526" stroke-width="4" stroke-dasharray="8 6"/>
+  <!-- 下の軍議の札 -->
+  <rect x="0" y="440" width="330" height="200" fill="#f1e6cc" stroke="#1c1a17" stroke-width="4"/>
+  <rect x="0" y="440" width="330" height="10" fill="#c8372d"/>
+  <text x="18" y="484" font-family="Yuji Boku" font-size="26" fill="#1c1a17">麻布高校</text>
+  <g font-family="Zen Maru Gothic" font-weight="900">
+    <rect x="18" y="498" width="90" height="46" fill="#fff8e6" stroke="#1c1a17" stroke-width="2.5"/>
+    <text x="63" y="524" text-anchor="middle" font-size="20" fill="#1c1a17">3,029</text><text x="63" y="539" text-anchor="middle" font-size="10" fill="#5a4a36">兵力</text>
+    <rect x="120" y="498" width="90" height="46" fill="#fff8e6" stroke="#1c1a17" stroke-width="2.5"/>
+    <text x="165" y="524" text-anchor="middle" font-size="20" fill="#1c1a17">1.2</text><text x="165" y="539" text-anchor="middle" font-size="10" fill="#5a4a36">防御</text>
+    <rect x="222" y="498" width="90" height="46" fill="#fff8e6" stroke="#1c1a17" stroke-width="2.5"/>
+    <text x="267" y="524" text-anchor="middle" font-size="20" fill="#1c1a17">89</text><text x="267" y="539" text-anchor="middle" font-size="10" fill="#5a4a36">経済</text>
+    <rect x="18" y="560" width="92" height="40" fill="#c8372d" transform="translate(4,4)"/>
+    <rect x="18" y="560" width="92" height="40" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <text x="64" y="586" text-anchor="middle" font-size="16" fill="#f1e6cc">出 陣</text>
+    <rect x="120" y="560" width="92" height="40" fill="#22406b" transform="translate(4,4)"/>
+    <rect x="120" y="560" width="92" height="40" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <text x="166" y="586" text-anchor="middle" font-size="16" fill="#f1e6cc">輸 送</text>
+    <rect x="222" y="560" width="92" height="40" fill="#e6d6b0" transform="translate(4,4)"/>
+    <rect x="222" y="560" width="92" height="40" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <text x="268" y="586" text-anchor="middle" font-size="16" fill="#1c1a17">徴 兵</text>
+  </g>
+</svg>
+</div>
+<p class="cap">地図</p>
+</div>
+
+<!-- 一騎打ち -->
+<div>
+<div class="phone">
+<svg viewBox="0 0 330 640">
+  <rect width="330" height="640" fill="#1c1a17"/>
+  <!-- 集中線（武者絵の背景） -->
+  <g>
+    <rect x="0" y="60" width="330" height="300" fill="#c8372d"/>
+    <g stroke="#e0a526" stroke-width="10" opacity="0.9">
+      <line x1="165" y1="210" x2="-20" y2="60"/><line x1="165" y1="210" x2="80" y2="60"/><line x1="165" y1="210" x2="250" y2="60"/><line x1="165" y1="210" x2="350" y2="60"/>
+      <line x1="165" y1="210" x2="350" y2="200"/><line x1="165" y1="210" x2="-20" y2="220"/><line x1="165" y1="210" x2="-20" y2="360"/><line x1="165" y1="210" x2="100" y2="360"/><line x1="165" y1="210" x2="230" y2="360"/><line x1="165" y1="210" x2="350" y2="360"/>
+    </g>
+    <rect x="0" y="60" width="330" height="300" fill="none" stroke="#1c1a17" stroke-width="4"/>
+  </g>
+  <!-- 題 -->
+  <text x="165" y="44" font-family="Yuji Boku" font-size="32" text-anchor="middle" fill="#f1e6cc" letter-spacing="10">一騎打</text>
+  <!-- 左の武将（見得） -->
+  <g transform="translate(-10,120)">
+    <path d="M20,240 Q24,170 90,160 Q156,170 160,240Z" fill="#23315a" stroke="#1c1a17" stroke-width="4"/>
+    <path d="M44,90 Q44,40 90,38 Q136,40 136,90 Q136,140 90,158 Q44,140 44,90Z" fill="#fbe7cc" stroke="#1c1a17" stroke-width="4"/>
+    <path d="M38,92 Q30,30 90,22 Q150,30 142,92 L130,64 L118,80 L104,56 L90,76 L76,54 L64,78Z" fill="#1c1a17"/>
+    <path d="M40,64 Q90,50 140,64 L140,76 Q90,62 40,76Z" fill="#c8372d" stroke="#1c1a17" stroke-width="2.5"/>
+    <path d="M56,96 Q70,86 84,94 Q70,100 56,96Z M124,96 Q110,86 96,94 Q110,100 124,96Z" fill="#fff" stroke="#1c1a17" stroke-width="3"/>
+    <circle cx="72" cy="94" r="3.5"/><circle cx="108" cy="94" r="3.5"/>
+    <path d="M52,84 L82,90 M128,84 L98,90" stroke="#1c1a17" stroke-width="5"/>
+    <path d="M52,100 Q48,110 56,118 M128,100 Q132,110 124,118" stroke="#c8372d" stroke-width="4" fill="none"/>
+    <path d="M80,128 Q90,122 100,128" stroke="#1c1a17" stroke-width="3" fill="#c8372d"/>
+    <!-- 刀 -->
+    <path d="M140,200 L230,40" stroke="#1c1a17" stroke-width="9" stroke-linecap="round"/>
+    <path d="M140,200 L230,40" stroke="#f1e6cc" stroke-width="4" stroke-linecap="round"/>
+    <rect x="126" y="196" width="26" height="10" fill="#e0a526" stroke="#1c1a17" stroke-width="2.5" transform="rotate(-60 139 201)"/>
+  </g>
+  <!-- 右の武将 -->
+  <g transform="translate(340,130) scale(-1,1)">
+    <path d="M20,230 Q24,164 90,154 Q156,164 160,230Z" fill="#3a2350" stroke="#1c1a17" stroke-width="4"/>
+    <path d="M44,90 Q44,42 90,40 Q136,42 136,90 Q136,138 90,154 Q44,138 44,90Z" fill="#fbe7cc" stroke="#1c1a17" stroke-width="4"/>
+    <path d="M40,90 Q34,32 90,28 Q146,32 140,90 Q132,60 90,58 Q48,60 40,90Z" fill="#1c1a17"/>
+    <rect x="52" y="82" width="32" height="20" rx="4" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <rect x="96" y="82" width="32" height="20" rx="4" fill="none" stroke="#1c1a17" stroke-width="3"/>
+    <path d="M84,90 L96,90" stroke="#1c1a17" stroke-width="3"/>
+    <circle cx="68" cy="92" r="3.5"/><circle cx="112" cy="92" r="3.5"/>
+    <path d="M56,74 L80,80 M124,74 L100,80" stroke="#1c1a17" stroke-width="4"/>
+    <path d="M80,124 L100,124" stroke="#1c1a17" stroke-width="3"/>
+    <path d="M150,200 L240,70" stroke="#1c1a17" stroke-width="9" stroke-linecap="round"/>
+    <path d="M150,200 L240,70" stroke="#cfd6dc" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <!-- 火花 -->
+  <g transform="translate(165,150)" stroke="#1c1a17" stroke-width="3" fill="#f1e6cc">
+    <path d="M0,-30 L8,-8 L30,0 L8,8 L0,30 L-8,8 L-30,0 L-8,-8Z"/>
+  </g>
+  <!-- 名札 -->
+  <g font-family="Zen Maru Gothic" font-weight="900" font-size="13">
+    <rect x="10" y="370" width="140" height="56" fill="#f1e6cc" stroke="#f1e6cc" stroke-width="0"/>
+    <rect x="10" y="370" width="140" height="56" fill="none" stroke="#c8372d" stroke-width="3"/>
+    <text x="20" y="390" fill="#1c1a17">宮崎 慎之介</text>
+    <g fill="#c8372d"><rect x="20" y="398" width="16" height="10"/><rect x="40" y="398" width="16" height="10"/><rect x="60" y="398" width="16" height="10"/><rect x="80" y="398" width="16" height="10"/></g>
+    <rect x="100" y="398" width="16" height="10" fill="none" stroke="#c8372d" stroke-width="2"/>
+    <rect x="20" y="413" width="120" height="7" fill="#5a4a36"/><rect x="20" y="413" width="84" height="7" fill="#e0a526"/>
+    <rect x="180" y="370" width="140" height="56" fill="#f1e6cc"/>
+    <rect x="180" y="370" width="140" height="56" fill="none" stroke="#22406b" stroke-width="3"/>
+    <text x="310" y="390" text-anchor="end" fill="#1c1a17">太田 康介</text>
+    <g fill="#22406b"><rect x="294" y="398" width="16" height="10"/><rect x="274" y="398" width="16" height="10"/></g>
+    <g fill="none" stroke="#22406b" stroke-width="2"><rect x="254" y="398" width="16" height="10"/><rect x="234" y="398" width="16" height="10"/><rect x="214" y="398" width="16" height="10"/></g>
+    <rect x="190" y="413" width="120" height="7" fill="#5a4a36"/><rect x="250" y="413" width="60" height="7" fill="#e0a526"/>
+  </g>
+  <!-- セリフ -->
+  <rect x="10" y="436" width="310" height="54" fill="#f1e6cc" stroke="#1c1a17" stroke-width="3"/>
+  <text x="22" y="460" font-family="Shippori Mincho B1" font-weight="800" font-size="14" fill="#1c1a17">「その太刀筋、すでに見えておる！」</text>
+  <text x="22" y="480" font-family="Zen Maru Gothic" font-weight="700" font-size="12" fill="#22406b">🔍 見えた！ 次は「斬る」で来る</text>
+  <!-- 手の札 -->
+  <g font-family="Zen Maru Gothic" font-weight="900" font-size="17" text-anchor="middle">
+    <rect x="10" y="502" width="148" height="40" fill="#e6d6b0" transform="translate(4,4)"/><rect x="10" y="502" width="148" height="40" fill="none" stroke="#f1e6cc" stroke-width="3"/><text x="84" y="528" fill="#1c1a17">斬 る</text>
+    <rect x="172" y="502" width="148" height="40" fill="#e6d6b0" transform="translate(4,4)"/><rect x="172" y="502" width="148" height="40" fill="none" stroke="#f1e6cc" stroke-width="3"/><text x="246" y="528" fill="#1c1a17">払 う</text>
+    <rect x="10" y="550" width="148" height="40" fill="#e6d6b0" transform="translate(4,4)"/><rect x="10" y="550" width="148" height="40" fill="none" stroke="#f1e6cc" stroke-width="3"/><text x="84" y="576" fill="#1c1a17">受ける</text>
+    <rect x="172" y="550" width="148" height="40" fill="#e6d6b0" transform="translate(4,4)"/><rect x="172" y="550" width="148" height="40" fill="none" stroke="#f1e6cc" stroke-width="3"/><text x="246" y="576" fill="#1c1a17">溜める</text>
+    <rect x="10" y="598" width="310" height="34" fill="#c8372d" transform="translate(4,4)"/><rect x="10" y="598" width="310" height="34" fill="none" stroke="#f1e6cc" stroke-width="3"/><text x="165" y="621" fill="#f1e6cc" font-family="Yuji Boku" font-size="20">必殺「一番槍」</text>
+  </g>
+</svg>
+</div>
+<p class="cap">一騎打ち</p>
+</div>
+</div>
+
+<h2>七、これから決めること</h2>
+<ul class="rules">
+  <li><b>家の色</b>7色の色版の中で、6つの家をどう塗り分けるか（見分けやすさ）</li>
+  <li><b>学園城</b>校舎に天守を載せた城の形を、家ごと・大きさごとに何種類作るか</li>
+  <li><b>人物</b>顔の型・髪型・制服の組み合わせを、この絵柄で描き直す（今の顔はそのまま使わない）</li>
+  <li><b>地図</b>実際の東京の地形をどこまで残すか（架空の学園都市にするか）</li>
+  <li><b>動き</b>版ずれを、押したときや登場したときの動きにも使うか</li>
+</ul>
+
+</main>
+</body>
+</html>
