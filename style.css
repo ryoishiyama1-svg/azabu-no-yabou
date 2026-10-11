@@ -1577,3 +1577,11 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
   .hud .icon { width: 30px; height: 30px; font-size: 14px; }
   .hud #hud-crest svg { width: 26px; height: 26px; }
 }
+
+/* 出陣：勝つ見込み */
+#odds.odds { display: grid; justify-items: center; gap: 4px; margin: 6px 0 10px; font-family: inherit; font-size: inherit; }
+.odds .o-lab { font-family: var(--brush); font-size: 28px; line-height: 1; }
+.odds .o-bar { width: 100%; height: 12px; border: 2px solid var(--ink); background: #fffaf0; position: relative; }
+.odds .o-bar i { position: absolute; inset: 0 auto 0 0; transition: width 0.25s, background 0.25s; }
+.odds .o-bar::after { content: ''; position: absolute; left: 50%; top: -4px; bottom: -4px; border-left: 1.5px dashed var(--ink); }
+.odds small { font-size: 11.5px; color: var(--muted); }

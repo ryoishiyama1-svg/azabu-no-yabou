@@ -422,7 +422,7 @@ function helpChapters() {
         `勝ったら相手を<b>捕らえる・説得する・見逃す</b>から選べます`,
       ])}
       <h3>コツ</h3>
-      <p>守る側は「兵力×防御×守将」で戦います。<b>勝算大</b>と出るまで兵や援軍を集めましょう。</p>` },
+      <p>守る側は「兵力×防御×守将」で戦います。出陣の画面に<b>勝つ見込み</b>が出るので、<b>勝算大</b>（9割以上）と出るまで兵や援軍を集めましょう。敵の構えを読めたら、それに強い作戦を選ぶと見込みが上がります。</p>` },
     { k: '謀', t: '計略', name: '計略・舌戦', body: `
       <h3>計略</h3>
       ${li([
@@ -1688,6 +1688,27 @@ function doMoveGeneral(gid, to) {
 }
 
 // ---------- 出陣 ----------
+// 兵力比から、おまかせで戦ったときの勝つ見込み（多くの合戦を試して測った値をつないだもの）
+const ODDS_CURVE = [[0.4, 0.02], [0.6, 0.1], [0.7, 0.16], [0.8, 0.32], [0.9, 0.48], [1.0, 0.7], [1.1, 0.85], [1.2, 0.89], [1.3, 0.96], [1.4, 0.98], [1.5, 0.995]];
+function winChance(ratio) {
+  const c = ODDS_CURVE;
+  if (ratio <= c[0][0]) return c[0][1];
+  for (let i = 1; i < c.length; i++) {
+    if (ratio <= c[i][0]) {
+      const [x0, y0] = c[i - 1], [x1, y1] = c[i];
+      return y0 + ((y1 - y0) * (ratio - x0)) / (x1 - x0);
+    }
+  }
+  return c[c.length - 1][1];
+}
+function oddsLabel(p) {
+  if (p >= 0.93) return ['勝算大', 'var(--wakatake)'];
+  if (p >= 0.8) return ['勝算あり', '#6f8f2e'];
+  if (p >= 0.6) return ['やや有利', 'var(--gold)'];
+  if (p >= 0.4) return ['五分五分', '#c46a1a'];
+  if (p >= 0.2) return ['不利', 'var(--red)'];
+  return ['勝ち目うすし', '#8c1c18'];
+}
 function openAttack(from, to) {
   tutAdvance(4);
   const srcs = from ? [from] : attackSources(to);
@@ -1717,11 +1738,16 @@ function openAttack(from, to) {
     const g = S.gens[gid];
     const total = amount + supportParts().reduce((a, p) => a + p.n, 0);
     const ratio = (total * atkMult(g) * atkKakun(S, PLAYER)) / Math.max(1, power);
-    const odds = ratio >= 1.3 ? ['勝算大', '#2e7d32'] : ratio >= 1.1 ? ['勝算あり', '#8a6d00'] : ratio >= 0.9 ? ['五分五分', '#b35c00'] : ['勝ち目うすし', '#b8262f'];
+    // 作戦：読みが当たっている前提で、読み勝ちなら有利、読み負けなら不利に見積もる
+    const gs = guessOf(g);
+    const tr = tactic !== 'auto' && gs ? tacticResult(tactic, gs) : 0;
+    const p = winChance(ratio + (tr > 0 ? 0.15 : tr < 0 ? -0.1 : 0));
+    const odds = oddsLabel(p);
     $('amt-v').textContent = fmt(amount);
     $('total-v').textContent = fmt(total);
-    $('odds').textContent = odds[0];
-    $('odds').style.color = odds[1];
+    $('odds').innerHTML = `<span class="o-lab" style="color:${odds[1]}">${odds[0]}</span>
+      <span class="o-bar"><i style="width:${Math.round(p * 100)}%;background:${odds[1]}"></i></span>
+      <small>おまかせで戦ったときの見込み 約${p >= 0.99 ? "99" : Math.max(1, Math.round(p * 20) * 5)}%${tr > 0 ? "（読みどおりなら作戦で有利）" : tr < 0 ? "（この作戦は敵の構えに弱い）" : ""}</small>`;
   }
 
   function draw() {
@@ -1753,7 +1779,7 @@ function openAttack(from, to) {
           : '敵の作戦は読めない（知略の高い大将なら読めることがある）';
       })()}</p>
       <p class="total">総勢 <b id="total-v"></b> 兵</p>
-      <p class="odds" id="odds"></p>
+      <div class="odds" id="odds"></div>
       ${S.tut === 4 ? `<div class="tut-hint">${portrait(SENSEI, 32)}<span>${TUT[4].text}</span></div>` : ''}
       <button class="btn red" id="go">出 陣 ！</button>
       <button class="btn plain" data-close>やめる</button>`);
