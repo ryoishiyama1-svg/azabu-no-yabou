@@ -2455,6 +2455,49 @@ function afterDefenses() {
   });
 }
 
+// エンディング：その回の戦いを絵巻にして振り返る（名場面・功労者・宿敵・数字）
+const fameOf = (r) => (r ? r.w + r.cap + r.dw * 2 + r.def : 0);
+function endingSaga() {
+  const saga = (S.saga || []).slice();
+  const top = saga.slice().sort((a, b) => b.weight - a.weight).slice(0, 10);
+  const scenes = saga.filter((e) => top.includes(e)); // 時の流れの順に戻す
+  const first = S.lords[0];
+  const rows = [{ turn: first ? first.from : 0, head: `${pName()}、天下へ名乗りを上げる`, sub: `初代当主 ${first ? first.name : ''}`, weight: 60 }, ...scenes];
+  const end = S.result === 'win'
+    ? { turn: S.turn, head: '天下統一', sub: `${MAP.nodes.length}校をすべて制覇`, weight: 99 }
+    : { turn: S.turn, head: '落日', sub: '最後の城が落ちる', weight: 99 };
+  rows.push(end);
+  return rows.map((e, i) => `<li class="${e.weight >= 88 ? 'big' : ''}" style="--d:${i * 0.08}s">
+      <span class="em-date">${dateLabel(e.turn).replace(' ', '<br>')}</span>
+      <div><b>${esc(e.head)}</b>${e.sub ? `<small>${esc(e.sub)}</small>` : ''}</div></li>`).join('');
+}
+function endingHeroes() {
+  const alive = gensOf(S, PLAYER).map((g) => ({ g, r: recOf(g), nick: nickOf(g) }));
+  const past = (S.hall || []).map((h) => ({ g: h, r: h.rec, nick: h.nick, grad: true }));
+  const list = [...alive, ...past].filter((x) => fameOf(x.r) > 0).sort((a, b) => fameOf(b.r) - fameOf(a.r)).slice(0, 3);
+  if (!list.length) return '';
+  const rank = ['一', '二', '三'];
+  return `<h3>功労者</h3><div class="em-heroes">${list.map((x, i) => `<div class="em-hero ${i === 0 ? 'first' : ''}">
+      <span class="em-rank">${rank[i]}</span>${portrait(x.g, 60)}
+      <div><b>${esc(x.g.name)}</b>${x.nick ? `<i>「${esc(x.nick)}」</i>` : ''}
+      <small>勝${x.r.w}・攻略${x.r.cap}・守り${x.r.def}・一騎打ち${x.r.dw}勝${x.grad ? '・卒業' : ''}</small></div></div>`).join('')}</div>`;
+}
+function endingRival() {
+  const book = Object.values(S.rivalBook || {}).sort((a, b) => b.n - a.n)[0];
+  if (!book) return '';
+  const me = S.gens[book.meId], foe = S.gens[book.foeId];
+  const pic = (g, dir) => (g ? portrait(g, 56, 'angry', dir) : '<span class="em-gone">卒</span>');
+  return `<h3>宿敵</h3><div class="em-rival">
+      <div>${pic(me, 'R')}<b>${esc(book.me)}</b></div>
+      <div class="em-vs"><span>対</span><small>${book.n}度の激突</small></div>
+      <div>${pic(foe, 'L')}<b>${esc(book.foe)}</b><small>${CLANS[book.foeClan] ? CLANS[book.foeClan].name : ''}</small></div></div>`;
+}
+function endingNumbers() {
+  const st = S.stats || {};
+  const tr = gensOf(S, PLAYER).filter((g) => g.treasure).length + (S.vault || []).length;
+  const n = [['合戦の勝利', st.battlesWon || 0], ['一騎打ち', st.duelWins || 0], ['舌戦の開城', st.debateWins || 0], ['家宝', tr], ['当主', S.lords.length], ['家臣', gensOf(S, PLAYER).length]];
+  return `<div class="stats em-nums">${n.map(([l, v]) => `<div class="stat"><span class="n">${v}</span><span class="l">${l}</span></div>`).join('')}</div>`;
+}
 function showEnding() {
   const win = S.result === 'win';
   Sound.bgmStart(win ? 'win' : 'lose');
@@ -2462,15 +2505,21 @@ function showEnding() {
   save();
   const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord);
   openModal(`<div class="ending ${win ? 'win' : 'lose'}" data-lock>
-      ${lord ? portrait(lord, 84) : crestBadge(PLAYER, 72)}
+      ${lord ? portrait(lord, 84, win ? 'laugh' : 'frustrated') : crestBadge(PLAYER, 72)}
       <div class="big">${win ? '天下統一' : '落 日'}</div>
       <p>${win
-        ? `${dateLabel(S.turn)}、${pName()} ${S.lords.length}代目当主 ${esc(lord.name)} は${MAP.nodes.length}校をすべて制覇した！`
+        ? `${dateLabel(S.turn)}、${pName()} ${S.lords.length}代目当主 ${esc(lord ? lord.name : S.lords[S.lords.length - 1].name)} は${MAP.nodes.length}校をすべて制覇した！`
         : `${dateLabel(S.turn)}、${pName()}の城はすべて奪われた…`}</p>
-      <p class="hint">${SCENARIOS[S.scenario].name} ・ 難易度：${diffOf(S).name} ・ ${S.turn}季 ・ 家臣 ${gensOf(S, PLAYER).length}人${S.debugUsed ? '<br>（デバッグを使ったため記録されません）' : ''}</p>
+      <p class="hint">${SCENARIOS[S.scenario].name} ・ 難易度：${diffOf(S).name} ・ ${S.turn}季${S.debugUsed ? '<br>（デバッグを使ったため記録されません）' : ''}</p>
     </div>
     ${unlockedNow ? '<p class="result">🔓 すべての家で遊べるようになった！</p>' : ''}
-    ${got.length ? `<h3>新しい実績</h3><div class="ach-list">${got.map((a) => achCard(a)).join('')}</div>` : ''}
+    ${got.length ? `<h3>新しい実績</h3><div class="seal-grid">${got.map((a) => achSeal(a, true)).join('')}</div>` : ''}
+    <h3>${pShort()}${win ? "天下" : "興亡"}絵巻</h3>
+    <ol class="emaki">${endingSaga()}</ol>
+    ${endingHeroes()}
+    ${endingRival()}
+    <h3>数字で見る</h3>
+    ${endingNumbers()}
     <h3>歴代当主</h3>
     ${lordsHistory()}
     <button class="btn red" id="again">もう一度</button>

@@ -912,6 +912,15 @@ function addNews(s, head, sub = '', weight = 50) {
   s.news = s.news || [];
   s.news.push({ head, sub, weight });
   if (s.news.length > 60) s.news.shift();
+  // 大きな出来事は、エンディングの絵巻のために残しておく
+  if (weight >= 42 && !(s.saga || []).some((e) => e.turn === s.turn && e.head === head)) {
+    s.saga = s.saga || [];
+    s.saga.push({ turn: s.turn, head, sub, weight });
+    if (s.saga.length > 100) {
+      const i = s.saga.reduce((m, e, j) => (e.weight < s.saga[m].weight ? j : m), 0);
+      s.saga.splice(i, 1);
+    }
+  }
 }
 // 合戦の結果を記事にする（attack() と endBattle() の結果に共通）
 function battleNews(s, r) {
@@ -1412,6 +1421,12 @@ function addClash(s, ga, gb, n = 1) {
   s.rivals[k] = before + n;
   if (before < RIVAL_AT && s.rivals[k] >= RIVAL_AT && (ga.clan === PLAYER || gb.clan === PLAYER)) {
     addNews(s, `宿命の対決！ ${ga.name}と${gb.name}`, `${s.rivals[k]}度目の激突、ついに宿敵に`, 42);
+  }
+  // 宿敵の名は、卒業していなくなってもエンディングで語れるよう残す
+  if (s.rivals[k] >= RIVAL_AT) {
+    const [me, foe] = ga.clan === PLAYER ? [ga, gb] : [gb, ga];
+    s.rivalBook = s.rivalBook || {};
+    s.rivalBook[k] = { me: me.name, foe: foe.name, foeClan: foe.clan, n: s.rivals[k], meId: me.id, foeId: foe.id };
   }
 }
 const clashes = (s, a, b) => (s.rivals && a && b ? s.rivals[rivalKey(a.id, b.id)] || 0 : 0);
