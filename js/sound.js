@@ -577,6 +577,37 @@ const Sound = (() => {
     },
   };
 
+  // ---------- 舌戦BGM ----------
+  // 張りつめた座敷：低い琴の刻み（都節）に鼓、四小節ごとに拍子木が入る
+  const DEBATE_STEP = 60 / 112 / 4;
+  const DEBATE_KOTO = [50, 51, 55, 51, 50, 51, 57, 55];
+  const DEBATE_TSUZUMI = ['P.....o...P.p...', 'P.....o...o.P.p.'];
+  const DEBATE_SHO = [[50, 57, 62], [51, 58, 63], [50, 55, 62], [49, 56, 61]];
+  function bgmHyoshigi(c, out, t, vol = 0.3) {
+    noise = noise || noiseBuffer(c);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    n.buffer = noise; f.type = 'bandpass'; f.frequency.value = 2300; f.Q.value = 9;
+    env(c, g, t, vol * 2.2, 0.001, 0.07);
+    n.connect(f).connect(g).connect(out);
+    n.start(t); n.stop(t + 0.1);
+    const o = c.createOscillator(), og = c.createGain();
+    o.type = 'sine'; o.frequency.value = 1750;
+    env(c, og, t, vol * 0.5, 0.001, 0.09);
+    o.connect(og).connect(out);
+    o.start(t); o.stop(t + 0.12);
+  }
+  TRACKS.debate = {
+    step: DEBATE_STEP, loop: 16 * 8, vol: 0.5,
+    play(c, out, s, t) {
+      const bar = Math.floor(s / 16), b = s % 16;
+      const k = DEBATE_TSUZUMI[bar % 2][b];
+      if (k !== '.') bgmTsuzumi(c, out, t, k);
+      if (b % 2 === 0) bgmKoto(c, out, t, DEBATE_KOTO[(b / 2 + bar) % 8] - (bar % 4 === 3 ? 1 : 0), b % 8 === 0 ? 0.11 : 0.06);
+      if (b === 0 && bar % 2 === 0) bgmSho(c, out, t, DEBATE_SHO[(bar / 2) % 4], DEBATE_STEP * 32);
+      if (bar % 4 === 3 && (b === 12 || b === 14)) bgmHyoshigi(c, out, t, b === 14 ? 0.3 : 0.2);
+    },
+  };
+
   function bgmStart(kind = 'battle') {
     const c = ensure(); if (!c) return;
     if (bgm && bgm.kind === kind) return; // すでに流れている
@@ -628,6 +659,57 @@ const Sound = (() => {
     return { peak: +peak.toFixed(3), rms: +Math.sqrt(sum / d.length).toFixed(4) };
   }
 
+  // ---------- 場面の効果音 ----------
+  // 拍子木：「チョン、チョン」と打って、見得を切る
+  function hyoshigi(times = 2) {
+    const c = ensure(); if (!c) return;
+    for (let i = 0; i < times; i++) bgmHyoshigi(c, c.destination, c.currentTime + 0.02 + i * 0.22, 0.32);
+  }
+  // 落款を押す：鈍い「トン」と紙のこすれ
+  function stamp(delay = 0) {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime + delay;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.12);
+    env(c, g, t, 0.45, 0.002, 0.16);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + 0.2);
+    noise = noise || noiseBuffer(c);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), ng = c.createGain();
+    n.buffer = noise; f.type = 'lowpass'; f.frequency.value = 1400;
+    env(c, ng, t, 0.2, 0.002, 0.06);
+    n.connect(f).connect(ng).connect(c.destination);
+    n.start(t); n.stop(t + 0.1);
+  }
+  // きらめき：家宝を手にしたときの鈴のような音
+  function kira() {
+    const c = ensure(); if (!c) return;
+    [88, 91, 95, 100, 96, 103].forEach((m, i) => {
+      const t = c.currentTime + i * 0.07;
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = midi(m);
+      env(c, g, t, 0.09, 0.002, 0.7);
+      o.connect(g).connect(c.destination);
+      o.start(t); o.stop(t + 0.8);
+    });
+  }
+  // さくら：琴で「さくら さくら」の出だし（日本古謡）
+  function sakura() {
+    const c = ensure(); if (!c) return;
+    const N = [[69, 2], [69, 2], [71, 4], [69, 2], [69, 2], [71, 4], [69, 2], [71, 2], [72, 2], [71, 2], [69, 2], [71, 1], [69, 1], [65, 4]];
+    let t = c.currentTime + 0.05;
+    N.forEach(([m, d]) => { bgmKoto(c, c.destination, t, m, 0.16); t += d * 0.16; });
+    bgmKoto(c, c.destination, c.currentTime + 0.05, 45, 0.12);
+  }
+  // 舌戦の一手：効いた／ふつう／反発
+  function debateHit(kind) {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime;
+    if (kind === 'weak') { bgmHyoshigi(c, c.destination, t, 0.32); taiko(0.08, 0.8); bgmKoto(c, c.destination, t + 0.1, 74, 0.14); bgmKoto(c, c.destination, t + 0.18, 79, 0.12); }
+    else if (kind === 'resist') { bgmKoto(c, c.destination, t, 51, 0.16); bgmKoto(c, c.destination, t + 0.02, 52, 0.12); taiko(0, 0.5); }
+    else bgmTsuzumi(c, c.destination, t, 'P');
+  }
+
   // アプリが裏に回ったら音を止め、戻ったら再開する
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
@@ -658,6 +740,11 @@ const Sound = (() => {
     hooves,
     fire,
     horagai,
+    hyoshigi,
+    stamp,
+    kira,
+    sakura,
+    debateHit,
     win() { koto([587, 659, 784, 880, 1175], 0.11); },   // 陽音階で上る
     lose() { koto([440, 392, 330, 294, 220], 0.2); },
     season() { taiko(0, 0.8); taiko(0.28, 0.8); taiko(0.62, 1); },

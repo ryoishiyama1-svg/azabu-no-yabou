@@ -1146,8 +1146,8 @@ function stanceLine(M) {
 }
 
 function meetingSound(res) {
-  if (res === 'deal') { Sound.win(); }
-  else if (res === 'fail') { Sound.lose(); }
+  if (res === 'deal') { Sound.win(); Sound.stamp(0.35); }
+  else if (res === 'fail') { Sound.lose(); Sound.stamp(0.35); }
   else Sound.taiko(0, 0.5);
 }
 
@@ -1187,7 +1187,7 @@ function showFreshmen(then) {
       ${list.length > 9 ? `<p class="hint">ほか${list.length - 9}人</p>` : ''}
     </div>
     <button class="btn red" id="fresh-ok">迎え入れる</button>`);
-  Sound.win();
+  Sound.sakura();
   $('fresh-ok').onclick = () => { Sound.tap(); then(); };
 }
 
@@ -1223,6 +1223,7 @@ function runEvents(done) {
       save();
       render();
       if (ev.id === 'succession') Sound.win();
+      if (ev.id === 'treasure' && result.includes('蔵に納めた')) Sound.kira();
       achievementToast(checkAchievements(S));
       if (ev.id === 'spring' && freshmen().length) { showFreshmen(() => runEvents(done)); return; }
       if (!result) { runEvents(done); return; }
@@ -1450,7 +1451,7 @@ function openDebate(id) {
   if (!envoy || !canDebate(S, id)) return;
   const Dt = startDebate(S, id, envoy);
   save();
-  Sound.bgmStart('meeting');
+  Sound.bgmStart('debate');
   drawDebate(Dt);
 }
 
@@ -1485,9 +1486,10 @@ function drawDebate(Dt) {
   modalBody.querySelectorAll('[data-arg]').forEach((b) => {
     b.onclick = () => {
       const r = debateStep(S, Dt, b.dataset.arg);
-      if (r.kind === 'weak') Sound.taiko(0, 0.7); else Sound.tap();
+      Sound.debateHit(r.kind);
       if (Dt.done === 'win') Sound.win();
       if (Dt.done === 'lose') Sound.lose();
+      if (Dt.done) Sound.stamp(0.35);
       save();
       drawDebate(Dt);
     };
@@ -1530,7 +1532,7 @@ function showKime(g, title, line, then, mood = 'smile') {
       <p class="kime-tap">画面をタップ</p>
     </div>`;
   box.hidden = false;
-  Sound.taiko(0, 1); Sound.taiko(0.18, 0.8); Sound.slash(0.32, true);
+  Sound.hyoshigi(2); Sound.taiko(0.46, 1); Sound.slash(0.5, true);
   let closed = false;
   const close = () => {
     if (closed) return;
@@ -1624,7 +1626,7 @@ function showGeneral(gid) {
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('[data-equip]').forEach((b) => {
     b.onclick = () => {
-      Sound.win();
+      Sound.kira();
       equipTreasure(S, gid, b.dataset.equip);
       save(); render(); showGeneral(gid);
       toast(`${esc(g.name)}に「${TREASURES[g.treasure].name}」を持たせた`);
@@ -2293,6 +2295,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const stamp = $('stamp');
     stamp.textContent = r.won ? '落城' : defense ? '撃退' : '撤退';
     stamp.className = 'stamp go ' + (good ? 'win' : 'lose');
+    Sound.stamp(0.3);
     if (r.won) {
       fall('army-d', 0);
       $('bf-fire').classList.add('on');
@@ -2674,7 +2677,7 @@ function achievementToast(list) {
   t.innerHTML = list.map((a) => `<div>🏆 実績「<b>${a.name}</b>」を達成！</div>`).join('');
   t.hidden = false;
   t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
-  Sound.win();
+  Sound.stamp(); Sound.stamp(0.12);
   clearTimeout(achTimer);
   achTimer = setTimeout(() => { t.hidden = true; }, 3200);
 }
