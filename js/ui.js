@@ -1749,7 +1749,7 @@ function openAttack(from, to) {
     $('total-v').textContent = fmt(total);
     $('odds').innerHTML = `<span class="o-lab" style="color:${odds[1]}">${odds[0]}</span>
       <span class="o-bar"><i style="width:${Math.round(p * 100)}%;background:${odds[1]}"></i></span>
-      <small>おまかせで戦ったときの見込み 約${p >= 0.99 ? "99" : Math.max(1, Math.round(p * 20) * 5)}%${tr > 0 ? "（読みどおりなら作戦で有利）" : tr < 0 ? "（この作戦は敵の構えに弱い）" : ""}</small>`;
+      <small>おまかせで戦ったときの見込み 約${Math.min(99, Math.max(1, Math.round(p * 20) * 5))}%${tr > 0 ? "（読みどおりなら作戦で有利）" : tr < 0 ? "（この作戦は敵の構えに弱い）" : ""}</small>`;
   }
 
   function draw() {
@@ -2357,6 +2357,14 @@ function processDefenses(done) {
       <p class="ev-text">${CLANS[p.attacker].name}の${esc(ag.name)}が、${fmt(total)}兵で<b>${MAP.byId[p.to].name}</b>に攻めてきた！\n守備 ${fmt(c.troops)} 兵 ・ 防御 ${c.def.toFixed(1)}</p>
       <div class="glist pick">${genCard(ag)}</div>
       <p class="hint">守将：${dg ? esc(dg.name) : 'なし（士気が下がりやすい）'}</p>
+      ${(() => {
+        // 守り切る見込み：攻め手の勝つ見込みの裏返し
+        const keep = 1 - winChance((total * atkMult(ag) * atkKakun(S, p.attacker)) / Math.max(1, defensePower(S, p.to)));
+        const lab = oddsLabel(keep);
+        return `<div class="odds" id="odds"><span class="o-lab" style="color:${lab[1]}">${keep >= 0.93 ? '守り堅し' : keep >= 0.6 ? '守れる見込みあり' : keep >= 0.4 ? '五分五分' : '危うし'}</span>
+          <span class="o-bar"><i style="width:${Math.round(keep * 100)}%;background:${lab[1]}"></i></span>
+          <small>おまかせで守ったときの見込み 約${Math.min(99, Math.max(1, Math.round(keep * 20) * 5))}%${keep < 0.6 ? '・采配で巻き返そう' : ''}</small></div>`;
+      })()}
     </div>
     <button class="btn red" id="df-cmd">采配で迎え撃つ</button>
     <button class="btn plain" id="df-auto">おまかせで守る</button>
