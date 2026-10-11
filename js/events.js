@@ -114,6 +114,20 @@ const EVENTS = {
   },
 
   // ---------- ランダムな出来事 ----------
+  treasure: {
+    icon: '宝', title: '家宝の発見', weight: 1.5,
+    cond: (s) => freeTreasures(s).length > 0,
+    init: (s) => ({ tid: pick(freeTreasures(s)), where: pick(['旧校舎の倉庫', '図書室の奥の書庫', '剣道場の神棚', 'OB会館の蔵']) }),
+    text: (s, p) => `${p.where}から、古い桐箱が見つかった。中には「${TREASURES[p.tid].name}」が納められていた。\n${TREASURE_KINDS[TREASURES[p.tid].kind].name}：${TREASURE_KINDS[TREASURES[p.tid].kind].desc}`,
+    choices: (s, p) => [{ label: '蔵に納める', sub: '武将の詳細画面から持たせられる' }],
+    apply(s, p) {
+      if (!freeTreasures(s).includes(p.tid)) return '……と思ったが、中身はよく似たまがい物だった。';
+      s.vault = s.vault || [];
+      s.vault.push(p.tid);
+      addNews(s, `${pName()}、家宝「${TREASURES[p.tid].name}」を発見`, p.where, 45);
+      return `「${TREASURES[p.tid].name}」を蔵に納めた。武将に持たせると力を発揮する。`;
+    },
+  },
   donation: {
     icon: '寄', title: 'OB会からの寄付', weight: 3,
     init: () => ({ amount: randInt(4, 10) * 50 }),

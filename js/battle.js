@@ -208,7 +208,8 @@ function stepBattle(s, B, cmds) {
   B.rounds.push({ a: B.a.troops, d: B.d.troops, ma: B.a.morale, md: B.d.morale });
 
   // 一騎打ち：2合目以降、大将どうしがいるとときどき起こる
-  if (!B.over && !B.duelDone && B.round >= 2 && leader.a && leader.d && (B.decisive || Math.random() < 0.07)) {
+  // 宿敵どうしは一騎打ちになりやすい
+  if (!B.over && !B.duelDone && B.round >= 2 && leader.a && leader.d && (B.decisive || Math.random() < (areRivals(s, leader.a, leader.d) ? 0.35 : 0.07))) {
     B.duelDone = true;
     B.duel = { challenger: leader.a.str >= leader.d.str ? 'a' : 'd' };
   }
@@ -224,9 +225,11 @@ function checkBattleEnd(B, lines, name) {
 }
 
 // ---------- 一騎打ち ----------
-function startDuel(B) {
+function startDuel(B, s) {
+  // 名刀を持つ者は、はじめから気合が高い
+  const ki0 = (sd) => (s && treasureKind(duelGen(s, B, sd)) === 'katana' ? 30 : 0);
   B.duel = Object.assign(B.duel || {}, {
-    hp: { a: DUEL.hp, d: DUEL.hp }, ki: { a: 0, d: 0 }, turn: 0, done: null, log: [], next: null,
+    hp: { a: DUEL.hp, d: DUEL.hp }, ki: { a: ki0('a'), d: ki0('d') }, turn: 0, done: null, log: [], next: null,
   });
   return B.duel;
 }
@@ -298,7 +301,8 @@ function duelStep(s, B, moves) {
   const specials = [];
   const guard = { a: false, d: false };
   const basic = (m) => m === 'slash' || m === 'sweep' || m === 'block';
-  const bonus = (w, l) => (gen[w].str - gen[l].str >= 20 && Math.random() < 0.5 ? 1 : 0);
+  // 統率の差が大きいと深手。名槍を持つ者も、ときどき深手を負わせる
+  const bonus = (w, l) => (gen[w].str - gen[l].str >= 20 && Math.random() < 0.5 ? 1 : 0) + (treasureKind(gen[w]) === 'yari' && Math.random() < 0.5 ? 1 : 0);
 
   // 必殺技
   ['a', 'd'].forEach((sd) => {
@@ -388,6 +392,7 @@ function endDuel(s, B) {
   const lines = [`一騎打ちは${s.gens[w === 'a' ? B.gid : B.dgid].name}の勝ち！ ${shortName(B[l].clan)}の士気が大きく下がった`];
   if (B.duelCapture) lines.push(`${loserGen.name}は捕らえられた！`);
   const winGen = s.gens[w === 'a' ? B.gid : B.dgid];
+  recordDuel(s, winGen, loserGen);
   if (B[w].clan === PLAYER || B[l].clan === PLAYER) {
     addNews(s, `一騎打ち！ ${winGen.name}、${loserGen.name}を破る`, `${MAP.byId[B.to].name}の戦いにて${B.duelCapture ? '。敗れた将は捕縛' : ''}`, 45);
   }
@@ -410,7 +415,7 @@ function autoDuel(s, B) {
   const target = other(B.duel.challenger);
   const gt = s.gens[target === 'a' ? B.gid : B.dgid], gc = s.gens[B.duel.challenger === 'a' ? B.gid : B.dgid];
   if (gt.str + 10 >= gc.str) {
-    startDuel(B);
+    startDuel(B, s);
     while (!B.duel.done) duelStep(s, B, { a: aiDuelMove(s, B, 'a'), d: aiDuelMove(s, B, 'd') });
     return endDuel(s, B);
   }
@@ -441,11 +446,13 @@ function endBattle(s, B, log) {
   const captureGen = (gen, captor, at) => {
     if (!gen || gen.lord) return;
     if (captor === PLAYER) {
+      lootTreasure(s, gen, log);
       gen.clan = 'captive'; gen.loc = null; gen.capturedAt = at;
       result.captured.push(gen.id);
     } else if (Math.random() < 0.5) {
       gen.clan = captor; gen.loc = at;
     } else {
+      passOnTreasure(s, gen, 'none');
       gen.clan = 'ronin'; gen.loc = null;
     }
   };
@@ -472,6 +479,18 @@ function endBattle(s, B, log) {
     });
     if (dg && dg.clan === B.defender) grow(dg, 'int');
   }
+  recordBattle(s, result);
   battleNews(s, result);
   return result;
+}
+
+// 宿敵との一騎打ちでは、特別な名乗りになる
+const RIVAL_CALLS = [
+  'また貴様か、{foe}！ 今日こそ決着をつける！',
+  '{foe}……{n}度目の勝負だな。待っていたぞ',
+  'この日のために腕を磨いてきた。覚悟しろ、{foe}！',
+];
+function duelCallVs(s, g, foe) {
+  if (!areRivals(s, g, foe)) return duelCall(g);
+  return pick(RIVAL_CALLS).replace('{foe}', foe.name).replace('{n}', clashes(s, g, foe) + 1);
 }

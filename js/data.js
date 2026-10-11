@@ -237,3 +237,24 @@ const DIFFICULTY = {
   normal: { name: '中級', desc: '標準的な難しさ', gold: 800, aiGold: 1.2, aiRatio: 1.25, aiIncome: 1.15, neutralGrowth: 15 },
   hard: { name: '上級', desc: '資金が少なく、敵は好戦的', gold: 600, aiGold: 1.6, aiRatio: 1.1, aiIncome: 1.5, neutralGrowth: 20 },
 };
+
+// ---------- 家宝：名のある道具。世に一つずつ。武将に持たせると効く ----------
+const TREASURE_KINDS = {
+  katana: { name: '名刀', icon: '刀', desc: '一騎打ちの始めから気合+30' },
+  yari: { name: '名槍', icon: '槍', desc: '一騎打ちで打ち勝つと、ときどき傷を1つ増やす' },
+  gunbai: { name: '軍配', icon: '配', desc: '大将として率いる合戦で、攻める力+10%' },
+  kabuto: { name: '兜', icon: '兜', desc: '城を守る合戦で、守りの力+12%' },
+  ougi: { name: '扇', icon: '扇', desc: '計略が決まりやすく（+15%）、会談の心証+10' },
+};
+const TREASURES = {
+  sakura: { name: '名刀「桜吹雪」', kind: 'katana' },
+  tsukikage: { name: '名刀「月影」', kind: 'katana' },
+  raimei: { name: '名槍「雷鳴」', kind: 'yari' },
+  tonbo: { name: '名槍「蜻蛉切」', kind: 'yari' },
+  tenka: { name: '軍配「天下布武」', kind: 'gunbai' },
+  nichigetsu: { name: '軍配「日月」', kind: 'gunbai' },
+  kongou: { name: '兜「金剛」', kind: 'kabuto' },
+  yata: { name: '兜「八咫」', kind: 'kabuto' },
+  senri: { name: '扇「千里眼」', kind: 'ougi' },
+  kasumi: { name: '扇「霞」', kind: 'ougi' },
+};

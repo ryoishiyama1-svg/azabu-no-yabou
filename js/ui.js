@@ -74,11 +74,11 @@ function loyalTag(g) {
   return `<span class="loyal ${cls}">忠${g.loyal}</span>`;
 }
 function genCard(g, { acted = false, extra = '' } = {}) {
-  return `<div class="gcard ${acted ? 'acted' : ''}" data-gid="${g.id}">
+  return `<div class="gcard ${acted ? 'acted' : ''} ${isLegend(g) && g.clan === PLAYER ? 'kira' : ''}" data-gid="${g.id}">
     ${portrait(g, 46)}
     <div class="gi">
-      <div class="gn">${esc(g.name)}${g.lord ? '<span class="lord">当主</span>' : ''}${loyalTag(g)}</div>
-      <div class="gt">${gradeTag(g)}${esc(g.title)} ${skillTag(g)}</div>
+      <div class="gn">${esc(g.name)}${g.lord ? '<span class="lord">当主</span>' : ''}${g.treasure && TREASURES[g.treasure] ? `<span class="ttag">${TREASURE_KINDS[TREASURES[g.treasure].kind].icon}</span>` : ''}${loyalTag(g)}</div>
+      <div class="gt">${gradeTag(g)}${nickOf(g) ? `<span class="nick">「${esc(nickOf(g))}」</span>` : esc(g.title)} ${skillTag(g)}</div>
       <div class="gs">${statLine(g)}</div>
     </div>${extra}
   </div>`;
@@ -1096,6 +1096,11 @@ function runEvents(done) {
         if (v.scene && !(S.pending[0] && S.pending[0].id === 'envoy')) Sound.bgmStart('map');
         runEvents(done);
       };
+      // 家督相続：新しい当主の決め絵を、結果の上に重ねて見せる
+      if (ev.id === 'succession' && lordOf(S)) {
+        showKime(lordOf(S), `${S.lords.length}代目当主、見参`,
+          pick(['先代の志、しかと受け継いだ', 'この家、必ず天下に導いてみせる', '皆の者、ついてまいれ！']));
+      }
     };
   });
 }
@@ -1286,12 +1291,105 @@ function bindPanel() {
   panel.querySelectorAll('.gcard').forEach((c) => { c.onclick = () => showGeneral(c.dataset.gid); });
 }
 
+// ---------- 決め絵：ここぞの場面で、武将の大きな一枚絵を出す。タップで閉じる ----------
+function showKime(g, title, line, then, mood = 'smile') {
+  if (!g) { if (then) then(); return; }
+  let box = $('kime');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'kime';
+    box.className = 'kime';
+    document.body.appendChild(box);
+  }
+  const nick = nickOf(g);
+  box.innerHTML = `<div class="kime-card">
+      <div class="kime-title">${esc(title)}</div>
+      <div class="kime-frame">
+        ${portrait(g, 300, mood)}
+        <div class="kime-name"><span>${esc(g.name)}</span>${nick ? `<small>「${esc(nick)}」</small>` : ''}</div>
+        <div class="kime-seal">${esc(CLANS[g.clan] ? CLANS[g.clan].name.replace('家', '') : '浪人')}<br>之印</div>
+      </div>
+      ${line ? `<p class="kime-line">「${esc(line)}」</p>` : ''}
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.taiko(0, 1); Sound.taiko(0.18, 0.8); Sound.slash(0.32, true);
+  let closed = false;
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    box.hidden = true;
+    if (then) then();
+  };
+  setTimeout(() => { box.onclick = () => { Sound.tap(); close(); }; }, 600); // 出てすぐの誤タップを防ぐ
+}
+
+// 雲母摺りの札にする武将：当主と、手柄の多い武将
+function isLegend(g) {
+  if (!g) return false;
+  const r = recOf(g);
+  return !!g.lord || r.w + r.cap + r.dw * 2 + r.def >= 10;
+}
+
+// 家宝の欄：持っている家宝と、蔵の家宝を持たせるボタン
+function treasureBox(g) {
+  const mine = g.clan === PLAYER;
+  const t = g.treasure && TREASURES[g.treasure];
+  const vault = (S.vault || []).filter((id) => TREASURES[id]);
+  if (!t && !(mine && vault.length)) return '';
+  const kind = (id) => TREASURE_KINDS[TREASURES[id].kind];
+  return `<div class="tbox">
+    <h3>家宝</h3>
+    ${t ? `<div class="titem"><span class="ticon">${kind(g.treasure).icon}</span><div><b>${t.name}</b><small>${kind(g.treasure).desc}</small></div>
+      ${mine ? '<button class="btn plain tbtn" id="gd-unequip">外す</button>' : ''}</div>` : ''}
+    ${mine && vault.length ? `<p class="hint">蔵の家宝を持たせる：</p>
+      <div class="tvault">${vault.map((id) => `<button class="btn tbtn" data-equip="${id}">${TREASURES[id].name}<small class="sub">${kind(id).desc}</small></button>`).join('')}</div>` : ''}
+  </div>`;
+}
+
+// 列伝：戦歴の番付
+function chronicleTable(g, until) {
+  const r = recOf(g);
+  const seasons = Math.max(0, (until !== undefined ? until : S.turn) - (g.since || 0));
+  const cell = (label, v) => `<div><span>${label}</span><b>${v}</b></div>`;
+  return `<div class="chron">
+    <h3>列伝</h3>
+    <div class="chron-grid">
+      ${cell('合戦', `${r.w}勝${r.l}敗`)}${cell('落とした城', r.cap)}${cell('守り抜いた城', r.def)}${cell('一騎打ち', `${r.dw}勝${r.dl}敗`)}
+    </div>
+    <p class="hint">${seasons ? `在籍 ${Math.floor(seasons / 4) ? `${Math.floor(seasons / 4)}年` : ''}${seasons % 4 ? `${seasons % 4}季` : ''}` : 'この季に入学'}</p>
+  </div>`;
+}
+
+// 卒業生の列伝
+function showHall(back) {
+  const hall = (S.hall || []).slice().reverse();
+  const card = (h) => {
+    const g = { ...h, id: 'hall', clan: PLAYER, origin: PLAYER, grade: 3, title: '卒業生', rec: h.rec };
+    return `<div class="hall-row">
+      ${portrait(g, 56, 'smile')}
+      <div>
+        <b>${esc(h.name)}${h.lord ? '<span class="lord">当主</span>' : ''}</b>
+        ${h.nick ? `<span class="nick">「${esc(h.nick)}」</span>` : ''}
+        <small>${dateLabel(h.since)}〜${dateLabel(h.until)}・合戦${h.rec.w}勝${h.rec.l}敗・落城${h.rec.cap}・一騎打ち${h.rec.dw}勝</small>
+        <em>「${esc(h.words)}」</em>
+      </div>
+    </div>`;
+  };
+  openModal(`<h2>卒業生の列伝</h2>
+    ${hall.length ? `<div class="hall">${hall.map(card).join('')}</div>` : '<p class="hint" style="text-align:center">まだ卒業生はいない。春が来るたびに、3年生がここに名を残す。</p>'}
+    <button class="btn plain" id="hall-back">もどる</button>`);
+  $('hall-back').onclick = () => { Sound.tap(); (back || closeModal)(); };
+}
+
 function showGeneral(gid) {
   const g = S.gens[gid];
   Sound.tap();
   openModal(`<div class="gdetail">
       ${portrait(g, 96)}
       <h2>${esc(g.name)}</h2>
+      ${nickOf(g) ? `<p class="nick-big">「${esc(nickOf(g))}」</p>` : ''}
+      ${(() => { const rv = rivalOf(S, g); return rv ? `<p class="rival-line">宿敵：<b>${esc(rv.g.name)}</b>（${CLANS[rv.g.clan] ? CLANS[rv.g.clan].name : '浪人'}・${rv.n}度の対決）</p>` : ''; })()}
       <p class="hint">${esc(g.title)}（${MAP.byId[g.school].name}出身）${g.lord ? `・${pName()}当主` : ''}</p>
       <p class="hint">${gradeTag(g)}${g.grade >= 3 ? '次の春に卒業' : `卒業まであと${4 - g.grade}回の春`}</p>
       <div class="gstats">
@@ -1301,9 +1399,24 @@ function showGeneral(gid) {
         <p class="hint">${g.loyal < LOYAL.rebelBelow ? '謀反を起こすおそれがある！' : g.loyal < LOYAL.leaveBelow ? '出奔するおそれがある' : g.loyal >= 80 ? '忠義に厚い' : 'まずまずの忠誠'}</p>` : ''}
       ${g.skill ? `<p><span class="skill">${SKILLS[g.skill].name}</span> ${SKILLS[g.skill].desc}</p>` : '<p class="hint">特技なし</p>'}
       ${g.skill && ARTS[g.skill] ? `<p class="hint">戦法「${ARTS[g.skill].name}」：${ARTS[g.skill].desc}</p>` : ''}
+      ${treasureBox(g)}
+      ${chronicleTable(g)}
     </div>
     ${canReward(S, g) ? `<button class="btn red" id="gd-reward">褒美を与える（金${LOYAL.rewardCost}）</button>` : ''}
     <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-equip]').forEach((b) => {
+    b.onclick = () => {
+      Sound.win();
+      equipTreasure(S, gid, b.dataset.equip);
+      save(); render(); showGeneral(gid);
+      toast(`${esc(g.name)}に「${TREASURES[g.treasure].name}」を持たせた`);
+    };
+  });
+  if ($('gd-unequip')) $('gd-unequip').onclick = () => {
+    Sound.tap();
+    unequipTreasure(S, gid);
+    save(); render(); showGeneral(gid);
+  };
   if ($('gd-reward')) $('gd-reward').onclick = () => {
     const gain = reward(S, gid);
     save();
@@ -1587,13 +1700,16 @@ function runBattle(B, { auto = false, onClose } = {}) {
     // 決戦：本拠を守る大将の名乗り
     const lordD = dg ? dg.name : '城兵';
     openLines.unshift(`${lordD}「ここは${CLANS[B.defender].name}の本拠・${MAP.byId[B.to].short}！ 一歩たりとも通さぬ！」`);
-    setTimeout(() => {
+    const cutIn = () => setTimeout(() => {
       const cut = $('b-cut');
       cut.textContent = '天下分け目の決戦';
       cut.className = 'b-cut go decisive';
       Sound.horagai();
       setTimeout(() => Sound.horagai(), 900);
     }, 300);
+    // 自分が本拠を攻めるときは、大将の決め絵から始める
+    if (!defense && !auto) showKime(g, '天下分け目の決戦', `${CLANS[B.defender].name}の本拠・${MAP.byId[B.to].short}、もらい受ける！`, cutIn, 'angry');
+    else cutIn();
   }
   report(openLines);
 
@@ -1699,7 +1815,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
       return;
     }
     d.hidden = false;
-    const du = { myGen, foeGen, mood: {}, say: null, busy: false, calls: [duelCall(myGen), duelCall(foeGen)] };
+    const du = { myGen, foeGen, mood: {}, say: null, busy: false, calls: [duelCallVs(S, myGen, foeGen), duelCallVs(S, foeGen, myGen)], rival: areRivals(S, myGen, foeGen) };
     drawDuel(du, mineChallenges);
     Sound.taiko(0, 0.8);
     Sound.taiko(0.25, 0.8);
@@ -1748,7 +1864,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
           <button class="btn red du-sp" data-mv="special" ${canSp ? '' : 'disabled'}><b>必殺「${sp.name}」</b><small>${canSp ? sp.desc : `気合${DUEL.kiMax}で使える`}</small></button></div>`;
     }
     d.innerHTML = `<div class="duel-box du2">
-      <div class="du-title">一 騎 打 ち${started ? `<small>${roundName}／${DUEL.maxTurns}合</small>` : ''}</div>
+      <div class="du-title">一 騎 打 ち${du.rival ? `<span class="du-rival">宿 命 の 対 決</span>` : ""}${started ? `<small>${roundName}／${DUEL.maxTurns}合</small>` : ""}</div>
       <div class="du-stage" id="du-stage">
         ${duelScene(B[my].clan, B[fo].clan)}
         <div class="du-p left ${du.entered ? '' : 'enter'}" id="du-pL">${portrait(myGen, 84, du.mood[my] || null, 'R')}</div>
@@ -1768,7 +1884,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
       $('du-yes').onclick = () => {
         Sound.tap();
         Sound.bgmStart('duel');
-        startDuel(B);
+        startDuel(B, S);
         prepareDuelTurn();
         du.say = null;
         drawDuel(du);
@@ -1787,12 +1903,15 @@ function runBattle(B, { auto = false, onClose } = {}) {
       $('du-end').onclick = () => {
         Sound.tap();
         Sound.bgmStart('battle');
+        const won = D.done === me;
         const lines = endDuel(S, B);
         d.hidden = true;
         carry = lines;
         report(lines);
         updateBars();
-        afterRound();
+        // 一騎打ちに勝ったら、勝者の決め絵を見せてから合戦に戻る
+        if (won) showKime(myGen, '討ち取ったり！', pick(['この勝負、もらった！', `${foeGen.name}、敗れたり！`, 'わが刃に一片の曇りなし']), afterRound, 'laugh');
+        else afterRound();
       };
       return;
     }
@@ -2071,7 +2190,9 @@ function showRoster() {
     })).join('')}</div>
     <h3>歴代当主</h3>
     ${lordsHistory()}
+    <button class="btn" id="roster-hall">卒業生の列伝<small class="sub">${(S.hall || []).length}人</small></button>
     <button class="btn plain" data-close>閉じる</button>`);
+  $('roster-hall').onclick = () => { Sound.tap(); showHall(showRoster); };
   $('roster-reward').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）', showRoster); };
   modalBody.querySelectorAll('.gcard').forEach((c) => {
     c.onclick = () => {

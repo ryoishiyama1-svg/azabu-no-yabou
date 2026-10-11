@@ -128,6 +128,7 @@ function makeGeneral(s, school, clan, { strong = false, title, grade } = {}) {
     str: randInt(lo, hi), pol: randInt(lo, hi), cha: randInt(lo, hi), int: randInt(lo, hi),
     skill: Math.random() < (strong ? 0.55 : 0.25) ? pick(Object.keys(SKILLS)) : null,
     look: randInt(0, 9999),
+    since: s.turn || 0, // 入学（登場）した季
   };
   const best = pick(['str', 'pol', 'cha', 'int']);
   g[best] = Math.min(98, g[best] + randInt(8, 16)); // 得意な能力
@@ -256,6 +257,8 @@ function migrate(s) {
   s.aiRel = s.aiRel || {};
   s.underAttack = s.underAttack || {};
   s.diploLog = s.diploLog || [];
+  s.vault = s.vault || [];
+  initTreasures(s);
   if (!WEATHER[s.weather]) s.weather = s.turn === 0 ? 'sun' : rollWeather(s.turn);
   // 当主が家を離れてしまったセーブ（家督相続の前の合戦で候補が捕らわれた不具合）を直す
   if (castlesOf(s, PLAYER).length && !lordOf(s) && !(s.pending || []).some((ev) => ev.id === 'succession')) {
@@ -651,8 +654,8 @@ function fight(a, d, def, am, dm, o = {}) {
   return { won, rounds, left: a, defLeft: d };
 }
 
-const atkMult = (g) => 0.7 + g.str / 150;
-const defMult = (g) => (g ? 0.8 + (g.str + g.int) / 600 : 0.85);
+const atkMult = (g) => (0.7 + g.str / 150) * (treasureKind(g) === 'gunbai' ? 1.1 : 1);
+const defMult = (g) => (g ? (0.8 + (g.str + g.int) / 600) * (treasureKind(g) === 'kabuto' ? 1.12 : 1) : 0.85);
 const defLeader = (s, id) => bestBy(gensAt(s, id), (g) => g.str + g.int);
 
 // 守りの強さ（兵力×防御×武将）。攻めるかどうかの目安に使う
@@ -711,6 +714,7 @@ function scatterGenerals(s, id, loser, winner, log) {
       return;
     }
     if (winner === PLAYER) {
+      lootTreasure(s, g, log);
       g.clan = 'captive';
       g.loc = null;
       g.capturedAt = id;
@@ -720,6 +724,7 @@ function scatterGenerals(s, id, loser, winner, log) {
       g.loc = id;
       if (loser === PLAYER && log) log.push(`😢 ${g.name}は捕らえられ、${CLANS[winner].name}に寝返った`);
     } else {
+      passOnTreasure(s, g, 'none');
       g.clan = 'ronin';
       g.loc = null;
       if (loser === PLAYER && log) log.push(`😢 ${g.name}は捕らえられ、行方知れずとなった`);
@@ -793,6 +798,7 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
     parts.forEach((p) => { s.castles[p.from].troops += Math.round((r.left * p.n) / n); });
     if (dg) grow(dg, 'int');
   }
+  recordBattle(s, result);
   battleNews(s, result);
   return result;
 }
@@ -1117,6 +1123,7 @@ function loyaltyTick(s, log) {
     changeLoyal(g, Math.floor(drift + Math.random()));
     // 出奔
     if (g.loyal < LOYAL.leaveBelow && Math.random() < (LOYAL.leaveBelow - g.loyal) / 150) {
+      passOnTreasure(s, g, PLAYER);
       g.clan = 'ronin';
       g.loc = null;
       log.push(`🚶 忠誠の薄れた${g.name}が、${pName()}を出奔した…`);
@@ -1158,11 +1165,14 @@ function graduation(s) {
       delete s.gens[g.id];
     }
   });
+  // 消えた武将の因縁も片付ける
+  if (s.rivals) Object.keys(s.rivals).forEach((k) => { const [a, b] = k.split('|'); if (!s.gens[a] || !s.gens[b]) delete s.rivals[k]; });
   Object.values(s.gens).forEach((g) => {
     if (['ronin', 'captive'].includes(g.clan) && g.grade >= 3) { g.clan = 'graduated'; g.gradTurn = s.turn; return; }
     if (g.clan === 'graduated') { if (g.gradTurn === undefined) g.gradTurn = s.turn; return; }
     if (g.grade >= 3) {
-      if (g.clan === PLAYER) info.left.push(g.name);
+      if (g.clan === PLAYER) { info.left.push(g.name); enshrine(s, g); }
+      passOnTreasure(s, g, g.clan);
       if (g.lord && g.clan === PLAYER) info.lordLeft = g.id;
       g.clan = 'graduated';
       g.gradTurn = s.turn;
@@ -1258,4 +1268,161 @@ function checkWin(s) {
   const mine = castlesOf(s, PLAYER).length;
   if (mine === 0) s.result = 'lose';
   else if (mine === MAP.nodes.length) s.result = 'win';
+}
+
+// ---------- 武将列伝：戦歴・あだ名・卒業生 ----------
+// 戦歴 g.rec = { w: 合戦の勝ち, l: 負け, cap: 落とした城, def: 守り抜いた城, dw: 一騎打ちの勝ち, dl: 負け }
+function recOf(g) {
+  if (!g.rec) g.rec = { w: 0, l: 0, cap: 0, def: 0, dw: 0, dl: 0 };
+  return g.rec;
+}
+// 合戦の結果を、攻めた大将と守った大将の戦歴に記す（attack と endBattle の両方から呼ぶ）
+function recordBattle(s, r) {
+  const ga = s.gens[r.gid], gd = r.dgid ? s.gens[r.dgid] : null;
+  if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; } else a.l++; }
+  addClash(s, ga, gd, 1);
+  if (gd) { const d = recOf(gd); if (r.won) d.l++; else { d.w++; d.def++; } }
+}
+function recordDuel(s, winner, loser) {
+  addClash(s, winner, loser, 2);
+  if (winner) recOf(winner).dw++;
+  if (loser) recOf(loser).dl++;
+}
+
+// あだ名：戦歴と能力から、いちばん目立つものをひとつ
+const NICKNAMES = [
+  [(r) => r.dw >= 4, (g) => `${MAP.byId[g.school] ? MAP.byId[g.school].short : ''}の鬼`],
+  [(r) => r.cap >= 8, () => '城喰い'],
+  [(r) => r.def >= 5, () => '不落の盾'],
+  [(r) => r.w >= 8, () => '常勝'],
+  [(r) => r.cap >= 4, () => '一番槍'],
+  [(r) => r.dw >= 2, () => '剣豪'],
+  [(r) => r.def >= 3, () => '鉄壁'],
+  [(r, g) => g.str >= 90, () => '剛勇'],
+  [(r, g) => g.int >= 88, () => '今孔明'],
+  [(r, g) => g.cha >= 88, () => '人たらし'],
+  [(r, g) => g.pol >= 88, () => '名奉行'],
+  [(r) => r.l >= 5 && r.w <= 1, () => '七転び八起き'],
+];
+function nickOf(g) {
+  const r = recOf(g);
+  const hit = NICKNAMES.find(([test]) => test(r, g));
+  return hit ? hit[1](g) : null;
+}
+
+// 卒業の一言（戦歴に合わせて）
+function farewellOf(g) {
+  const r = recOf(g);
+  if (r.dw >= 2) return pick(['この腕、次は大学で試すとしよう', '刀を置く日が来たか']);
+  if (r.cap >= 4) return pick(['落とした城の数だけ、思い出がある', '次の世代も攻め続けろ']);
+  if (r.def >= 3) return pick(['守り抜いたこの学び舎を、頼んだぞ', 'わが盾は後輩に譲る']);
+  if (r.l >= 4) return pick(['負けの数だけ強くなれた', '悔いはない。……少ししかない']);
+  return pick(['三年間、楽しかった', 'この学び舎を忘れない', '後は任せた']);
+}
+
+// 卒業生を列伝に残す（自分の家の武将だけ。多くなりすぎたら古い順に消す）
+function enshrine(s, g) {
+  s.hall = s.hall || [];
+  const r = recOf(g);
+  s.hall.push({
+    name: g.name, nick: nickOf(g), rec: { ...r }, school: g.school, lord: !!g.lord,
+    since: g.since || 0, until: s.turn, look: g.look, female: !!g.female,
+    str: g.str, pol: g.pol, cha: g.cha, int: g.int, clan: PLAYER, words: farewellOf(g),
+  });
+  if (s.hall.length > 80) s.hall.shift();
+  const fame = r.w + r.cap + r.dw * 2 + r.def;
+  if (fame >= 5) {
+    const nick = nickOf(g);
+    addNews(s, `${nick ? `「${nick}」` : ''}${g.name}、卒業`, `「${s.hall[s.hall.length - 1].words}」`, 50);
+  }
+}
+
+// ---------- 家宝 ----------
+// g.treasure = 家宝のid。プレイヤーの家の、誰にも持たせていない家宝は s.vault（蔵）に入る
+const treasureKind = (g) => (g && g.treasure && TREASURES[g.treasure] ? TREASURES[g.treasure].kind : null);
+function ownedTreasures(s) {
+  const owned = new Set(s.vault || []);
+  Object.values(s.gens).forEach((g) => { if (g.treasure && !['graduated'].includes(g.clan)) owned.add(g.treasure); });
+  return owned;
+}
+function freeTreasures(s) {
+  const owned = ownedTreasures(s);
+  return Object.keys(TREASURES).filter((id) => !owned.has(id));
+}
+// はじめは各家の当主（いちばん強い武将）が1つずつ持つ
+function initTreasures(s) {
+  if (s.treasureInit) return;
+  s.treasureInit = true;
+  s.vault = s.vault || [];
+  Object.keys(CLANS).filter((k) => k !== 'none' && castlesOf(s, k).length).forEach((k) => {
+    const free = freeTreasures(s);
+    if (!free.length) return;
+    const gens = gensOf(s, k).filter((g) => g.loc);
+    const holder = gens.find((g) => g.lord) || bestBy(gens, (g) => g.str + g.int + g.cha + g.pol);
+    if (holder && !holder.treasure) holder.treasure = pick(free);
+  });
+}
+// 捕らえた武将の家宝は蔵へ（プレイヤーが捕らえたとき）
+function lootTreasure(s, g, log) {
+  if (!g || !g.treasure) return;
+  s.vault = s.vault || [];
+  s.vault.push(g.treasure);
+  if (log) log.push(`🏺 ${g.name}の家宝「${TREASURES[g.treasure].name}」を手に入れた！`);
+  addNews(s, `${pName()}、家宝「${TREASURES[g.treasure].name}」を得る`, `${g.name}から奪い取る`, 55);
+  g.treasure = null;
+}
+// 卒業や浪人で家を離れるとき：プレイヤーの家なら蔵へ、他家なら家の誰かへ受け継ぐ
+function passOnTreasure(s, g, clan) {
+  if (!g || !g.treasure) return;
+  const t = g.treasure;
+  g.treasure = null;
+  if (clan === PLAYER) { s.vault = s.vault || []; s.vault.push(t); return; }
+  if (!CLANS[clan] || clan === 'none') return; // 持ち主を失った家宝は、世に散る
+  const heir = bestBy(gensOf(s, clan).filter((x) => x.loc && !x.treasure), (x) => x.str + x.int);
+  if (heir) heir.treasure = t;
+}
+function equipTreasure(s, gid, tid) {
+  const g = s.gens[gid];
+  s.vault = s.vault || [];
+  const i = s.vault.indexOf(tid);
+  if (!g || i < 0) return;
+  s.vault.splice(i, 1);
+  if (g.treasure) s.vault.push(g.treasure);
+  g.treasure = tid;
+}
+function unequipTreasure(s, gid) {
+  const g = s.gens[gid];
+  if (!g || !g.treasure) return;
+  s.vault = s.vault || [];
+  s.vault.push(g.treasure);
+  g.treasure = null;
+}
+
+// ---------- 因縁：何度もぶつかった敵将どうしは宿敵になる ----------
+const RIVAL_AT = 3; // 対決がこの回数に届くと宿敵
+const rivalKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+function addClash(s, ga, gb, n = 1) {
+  if (!ga || !gb || ga.clan === gb.clan) return;
+  if (ga.clan !== PLAYER && gb.clan !== PLAYER) return; // 自分の家が関わる対決だけを数える
+  s.rivals = s.rivals || {};
+  const k = rivalKey(ga.id, gb.id);
+  const before = s.rivals[k] || 0;
+  s.rivals[k] = before + n;
+  if (before < RIVAL_AT && s.rivals[k] >= RIVAL_AT && (ga.clan === PLAYER || gb.clan === PLAYER)) {
+    addNews(s, `宿命の対決！ ${ga.name}と${gb.name}`, `${s.rivals[k]}度目の激突、ついに宿敵に`, 42);
+  }
+}
+const clashes = (s, a, b) => (s.rivals && a && b ? s.rivals[rivalKey(a.id, b.id)] || 0 : 0);
+const areRivals = (s, a, b) => clashes(s, a, b) >= RIVAL_AT;
+// いちばん因縁の深い相手（まだこの世にいる武将）
+function rivalOf(s, g) {
+  if (!s.rivals || !g) return null;
+  let best = null, bestN = RIVAL_AT - 1;
+  Object.entries(s.rivals).forEach(([k, n]) => {
+    if (n <= bestN) return;
+    const [a, b] = k.split('|');
+    const other = a === g.id ? b : b === g.id ? a : null;
+    if (other && s.gens[other] && s.gens[other].clan !== 'graduated') { best = s.gens[other]; bestN = n; }
+  });
+  return best ? { g: best, n: bestN } : null;
 }

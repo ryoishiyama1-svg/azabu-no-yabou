@@ -117,7 +117,7 @@ function startMeeting(s, clan, proposal, envoy) {
   const r = s.rel[clan];
   return {
     clan, proposal, envoy: envoy.id, host: (clanLord(s, clan) || {}).id,
-    impression: clamp(Math.round(r.friend / 2 + 20), 5, 90),
+    impression: clamp(Math.round(r.friend / 2 + 20) + (treasureKind(envoy) === 'ougi' ? 10 : 0), 5, 95),
     rounds: 0, maxRounds: envoy.int >= 75 ? 3 : 2,
     used: {}, mood: 'think', lines: [], over: null, condition: null,
   };

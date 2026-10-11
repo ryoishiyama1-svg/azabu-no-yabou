@@ -31,6 +31,7 @@ function portraitOptions(g) {
     color,
     clan,
     bg: PORTRAIT_BG[rr(3)],
+    item: g.treasure && TREASURES[g.treasure] ? TREASURES[g.treasure].kind : null,
   };
 }
 

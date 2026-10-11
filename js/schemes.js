@@ -39,7 +39,12 @@ function schemeGuard(s, id) {
 }
 
 // 成功率
+// 扇を持つ者が仕掛けると、計略が決まりやすい
 function schemeChance(s, kind, g, to, target) {
+  const base = schemeChanceBase(s, kind, g, to, target);
+  return base > 0 && treasureKind(g) === 'ougi' ? Math.min(0.95, base + 0.15) : base;
+}
+function schemeChanceBase(s, kind, g, to, target) {
   const guard = schemeGuard(s, to);
   if (kind === 'rumor') return clamp(0.45 + (g.int - guard) / 100, 0.1, 0.9);
   if (kind === 'discord') return clamp(0.4 + (g.int - guard) / 100, 0.1, 0.85);

@@ -230,6 +230,47 @@ const UKIYO = (() => {
   // 服のしわ
   const folds = `<path d="M92,400 Q102,372 96,346 M214,400 Q206,372 212,346" stroke="rgba(0,0,0,0.28)" stroke-width="3" fill="none" stroke-linecap="round"/>`;
 
+  // 家宝の持ち物：名刀（肩越しの柄）・名槍（背の槍）は体の後ろ、軍配・扇は胸の前、兜は額の前立て
+  function itemBack(o) {
+    if (o.item === 'katana') {
+      return `<g transform="rotate(32 236 262)">
+        <rect x="229" y="250" width="14" height="96" fill="#5a2a20" stroke="${INK}" stroke-width="3"/>
+        <ellipse cx="236" cy="250" rx="15" ry="5" fill="${GOLD}" stroke="${INK}" stroke-width="2.5"/>
+        <rect x="230" y="186" width="12" height="62" fill="${INK}"/>
+        <path d="M230,196 L242,206 M230,210 L242,220 M230,224 L242,234" stroke="#e8e0cc" stroke-width="2"/>
+        <rect x="228" y="180" width="16" height="8" fill="${GOLD}" stroke="${INK}" stroke-width="2"/></g>`;
+    }
+    if (o.item === 'yari') {
+      return `<path d="M262,440 L262,62" stroke="${INK}" stroke-width="11" stroke-linecap="round"/>
+        <path d="M262,440 L262,62" stroke="#7a4a26" stroke-width="5"/>
+        <path d="M262,66 L252,58 L262,8 L272,58Z" fill="#dfe6ea" stroke="${INK}" stroke-width="3"/>
+        <path d="M250,70 L274,70" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`;
+    }
+    return '';
+  }
+  function itemFront(o) {
+    if (o.item === 'gunbai') {
+      return `<g transform="translate(226,338) rotate(-18)">
+        <rect x="-4" y="0" width="8" height="70" fill="#7a4a26" stroke="${INK}" stroke-width="2.5"/>
+        <path d="M0,4 Q-32,-4 -28,-38 Q-20,-64 0,-66 Q20,-64 28,-38 Q32,-4 0,4Z" fill="${INK}"/>
+        <path d="M0,-3 Q-25,-10 -22,-38 Q-16,-58 0,-59 Q16,-58 22,-38 Q25,-10 0,-3Z" fill="none" stroke="${GOLD}" stroke-width="2"/>
+        <circle cx="0" cy="-32" r="12" fill="${SHU}" stroke="${KINARI}" stroke-width="2"/></g>`;
+    }
+    if (o.item === 'ougi') {
+      return `<g transform="translate(110,352) rotate(-12)">
+        <path d="M0,0 L-46,-50 Q0,-74 46,-50 Z" fill="${KINARI}" stroke="${INK}" stroke-width="3"/>
+        <path d="M0,0 L-30,-60 M0,0 L-12,-66 M0,0 L8,-66 M0,0 L26,-60" stroke="${INK}" stroke-width="1.5"/>
+        <path d="M-40,-54 Q0,-72 40,-54 L36,-48 Q0,-64 -36,-48Z" fill="${o.color}"/>
+        <circle cx="0" cy="-32" r="7" fill="${SHU}" stroke="${INK}" stroke-width="1.5"/></g>`;
+    }
+    return '';
+  }
+  function itemHead(o) {
+    if (o.item !== 'kabuto') return '';
+    return `<path d="M116,104 Q150,40 184,104 Q150,76 116,104Z" fill="${GOLD}" stroke="${INK}" stroke-width="3"/>
+      <circle cx="150" cy="104" r="6" fill="${GOLD}" stroke="${INK}" stroke-width="2"/>`;
+  }
+
   // ---------- 組み立て ----------
   // o.small = true：地図や一覧用。顔に寄せ、柄や細かい線を省いて小さくても読めるようにする
   function bust(o) {
@@ -238,7 +279,9 @@ const UKIYO = (() => {
     const frontKey = isFemaleHair ? 'bangs' : o.hair;
     const art = `
       ${backHair[o.hair] || ''}
+      ${itemBack(o)}
       ${body(o)}
+      ${itemFront(o)}
       ${o.small ? '' : folds}
       ${neck}${neckShadow}
       ${o.female ? faceF : face}
@@ -246,6 +289,7 @@ const UKIYO = (() => {
       ${frontHair[frontKey]}
       ${o.small ? '' : hairShine[frontKey] + kegaki}
       ${headgear(o)}
+      ${itemHead(o)}
       ${expression(o)}
       ${kumadori(o)}
       ${glasses(o)}`;
