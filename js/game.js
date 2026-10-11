@@ -1168,7 +1168,7 @@ const genPower = (g) => g.str + g.pol + g.cha + g.int;
 
 // 春：3年生は卒業、ほかは進級。各校に新入生が入る
 function graduation(s) {
-  const info = { left: [], joined: [], lordLeft: null };
+  const info = { left: [], joined: [], joinedIds: [], lordLeft: null };
   // 卒業して2年以上たった武将は、もう出てこないのでデータから消す（セーブを軽くするため）
   Object.values(s.gens).forEach((g) => {
     if (g.clan === 'graduated' && g.gradTurn !== undefined && g.gradTurn < s.turn - 4) {
@@ -1204,7 +1204,7 @@ function graduation(s) {
     const count = (need || Math.random() < 0.6 ? 1 : 0) + (Math.random() < 0.25 ? 1 : 0);
     for (let i = 0; i < count; i++) {
       const g = makeGeneral(s, id, owner, { grade: 1, title: '新入生', strong: Math.random() < 0.15 });
-      if (owner === PLAYER) info.joined.push(g.name);
+      if (owner === PLAYER) { info.joined.push(g.name); info.joinedIds.push(g.id); }
     }
   });
   // プレイヤーの家には、少なくとも2人は入ってくる
@@ -1212,6 +1212,7 @@ function graduation(s) {
   while (mine.length && info.joined.length < 2) {
     const g = makeGeneral(s, pick(mine), PLAYER, { grade: 1, title: '新入生' });
     info.joined.push(g.name);
+    info.joinedIds.push(g.id);
   }
   return info;
 }

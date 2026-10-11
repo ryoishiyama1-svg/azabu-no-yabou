@@ -1151,6 +1151,46 @@ function meetingSound(res) {
   else Sound.taiko(0, 0.5);
 }
 
+// ---------- 新しい仲間の登場 ----------
+// 転校生の名乗り（いちばん高い能力で口ぶりが変わる）
+function transferLine(g) {
+  const best = ['str', 'int', 'pol', 'cha'].reduce((a, b) => (g[b] > g[a] ? b : a));
+  const from = MAP.byId[g.school] ? MAP.byId[g.school].short : '';
+  return {
+    str: `${from}から来た${g.name}だ。腕っぷしなら誰にも負けん！`,
+    int: `${from}より参りました${g.name}です。策ならお任せを`,
+    pol: `${from}から転校してきました。帳簿と予算はわたしが預かります`,
+    cha: `${from}から来ました！ みんなと仲良くなれたらうれしいな`,
+  }[best];
+}
+// この春、わが家に入った新入生
+function freshmen() {
+  const ids = (S.grad && S.grad.joinedIds) || [];
+  return ids.map((id) => S.gens[id]).filter((g) => g && g.clan === PLAYER);
+}
+const FRESH_LINES = ['よろしくお願いします！', '先輩、ご指導お願いします！', 'がんばります！', '早く戦に出たいです！', '部活と両立します！', '天下、取りましょう！'];
+// 入学式：新入生の顔ぶれと、いちばん期待の新星
+function showFreshmen(then) {
+  const list = freshmen().sort((a, b) => genPower(b) - genPower(a));
+  const star = list[0];
+  const rest = list.slice(1, 9);
+  const club = (g) => (g.club && CLUBS[g.club] ? CLUBS[g.club].name : '');
+  openModal(`<div class="fresh" data-lock>
+      <div class="fresh-head"><span>入学式</span><small>${dateLabel(S.turn)}・${pName()}に${list.length}人が入った</small></div>
+      <div class="fresh-star">
+        <div class="fs-pic">${portrait(star, 120, 'smile')}<span class="fs-tag">期待の新星</span></div>
+        <div class="fs-info"><b>${esc(star.name)}</b><small>${MAP.byId[star.loc] ? MAP.byId[star.loc].short : ''}・${club(star)}</small>
+          <div class="fs-stats">統${star.str} 政${star.pol} 魅${star.cha} 知${star.int}</div>
+          <p>「${esc(pick(FRESH_LINES))}」</p></div>
+      </div>
+      ${rest.length ? `<div class="fresh-row">${rest.map((g) => `<div>${portrait(g, 52, Math.random() < 0.5 ? 'smile' : null)}<b>${esc(g.name)}</b><small>${club(g)}</small></div>`).join('')}</div>` : ''}
+      ${list.length > 9 ? `<p class="hint">ほか${list.length - 9}人</p>` : ''}
+    </div>
+    <button class="btn red" id="fresh-ok">迎え入れる</button>`);
+  Sound.win();
+  $('fresh-ok').onclick = () => { Sound.tap(); then(); };
+}
+
 // ---------- イベント ----------
 function runEvents(done) {
   if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
@@ -1184,6 +1224,7 @@ function runEvents(done) {
       render();
       if (ev.id === 'succession') Sound.win();
       achievementToast(checkAchievements(S));
+      if (ev.id === 'spring' && freshmen().length) { showFreshmen(() => runEvents(done)); return; }
       if (!result) { runEvents(done); return; }
       if (v.scene) {
         const yes = +b.dataset.ci === 0;
@@ -1206,6 +1247,11 @@ function runEvents(done) {
       if (ev.id === 'succession' && lordOf(S)) {
         showKime(lordOf(S), `${S.lords.length}代目当主、見参`,
           pick(['先代の志、しかと受け継いだ', 'この家、必ず天下に導いてみせる', '皆の者、ついてまいれ！']));
+      }
+      // 転校生が加わった：名乗りの決め絵
+      if (['transfer', 'genius'].includes(ev.id) && S.gens[ev.p.gid] && S.gens[ev.p.gid].clan === PLAYER) {
+        const g = S.gens[ev.p.gid];
+        showKime(g, ev.id === 'genius' ? '天才転校生、参上' : '転校生、参上', transferLine(g));
       }
     };
   });

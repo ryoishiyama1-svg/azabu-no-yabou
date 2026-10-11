@@ -1544,3 +1544,36 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 #coach .cb button.go { background: var(--red); border-color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
 #coach.tip { border-color: var(--ink); box-shadow: 5px 5px 0 var(--red); }
 #coach.tip .ct > b { display: inline-block; background: var(--ai); color: var(--paper); padding: 0 8px; font-family: var(--brush); font-weight: 400; font-size: 14px; }
+
+/* 入学式：新入生の顔ぶれ */
+.fresh { text-align: center; }
+.fresh-head { margin: -4px 0 10px; }
+.fresh-head span { display: inline-block; font-family: var(--brush); font-size: 34px; color: var(--paper); background: var(--sakura); padding: 0 18px; border: 2.5px solid var(--ink); box-shadow: 4px 4px 0 var(--red); }
+.fresh-head small { display: block; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.fresh-star { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; text-align: left; padding: 10px; border: 2.5px solid var(--ink); box-shadow: 5px 5px 0 var(--ai);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cg fill='%23e9a3a8' opacity='.35'%3E%3Ccircle cx='8' cy='8' r='3'/%3E%3Ccircle cx='28' cy='26' r='2.4'/%3E%3C/g%3E%3C/svg%3E"), #fff6f2; }
+.fs-pic { position: relative; }
+.fs-pic .portrait { border: 2.5px solid var(--ink); border-radius: 0; background: #fff; }
+.fs-tag { position: absolute; left: -6px; bottom: -6px; background: var(--red); color: #fff; font-family: var(--brush); font-size: 14px; padding: 1px 8px; border: 1.5px solid var(--ink); transform: rotate(-4deg); }
+.fs-info b { display: block; font-family: var(--mincho); font-size: 19px; }
+.fs-info small { color: var(--muted); font-size: 12px; }
+.fs-stats { margin: 4px 0; font-family: var(--gothic); font-weight: 900; font-size: 12.5px; }
+.fs-info p { margin: 4px 0 0; font-family: var(--mincho); font-weight: 800; font-size: 14px; color: var(--red); }
+.fresh-row { display: flex; flex-wrap: wrap; justify-content: center; row-gap: 8px; margin: 14px 0 6px; }
+.fresh-row > div { width: 25%; }
+.fresh-row div { display: grid; justify-items: center; gap: 1px; animation: emIn 0.4s both; }
+.fresh-row div:nth-child(2) { animation-delay: 0.08s; } .fresh-row div:nth-child(3) { animation-delay: 0.16s; } .fresh-row div:nth-child(4) { animation-delay: 0.24s; }
+.fresh-row div:nth-child(n+5) { animation-delay: 0.32s; }
+.fresh-row .portrait { border: 2px solid var(--ink); }
+.fresh-row b { font-family: var(--mincho); font-size: 11.5px; line-height: 1.2; }
+.fresh-row small { font-size: 10px; color: var(--muted); }
+
+/* 細い画面：上の帯がはみ出さないよう詰める（金が4桁以上でも☰が隠れない） */
+@media (max-width: 420px) {
+  .hud { gap: 5px; padding-left: calc(env(safe-area-inset-left) + 6px); padding-right: calc(env(safe-area-inset-right) + 6px); }
+  .hud-date { font-size: 16px; letter-spacing: -0.02em; }
+  .hud-wx { margin-left: 3px; }
+  .hud b { font-size: 13.5px; }
+  .hud .icon { width: 30px; height: 30px; font-size: 14px; }
+  .hud #hud-crest svg { width: 26px; height: 26px; }
+}
