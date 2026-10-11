@@ -374,7 +374,7 @@ function helpChapters() {
         `<b>移動</b>：武将をとなりの自分の城へ移す`,
         `<b>徴兵</b>（金${RULES.recruitCost}）・<b>開発</b>（金${RULES.developCost}）・<b>築城</b>（金${RULES.fortifyCost}）`,
         `城を<b>委任</b>にすると、ターン終了時に自動で命令します。「全城で徴兵／開発」でまとめて命令も`,
-        `地図の<b>「危」</b>の札は、となりの敵が総がかりで来ると守り切れない城、<b>「注」</b>は油断できない城です`,
+        `地図の<b>「危」</b>の札は、となりの敵が総がかりで来ると守り切れない城、<b>「注」</b>は油断できない城です。城のパネルや軍議の<b>「援兵」</b>で、となりの城から兵を一押しで送れます`,
       ])}
       <h3>学校の特色と施設</h3>
       ${li([
@@ -706,7 +706,9 @@ function renderPanel() {
       const th = dangerOf(S, selected, winChance);
       if (!th) return '<p class="threat safe">後方の城：となりに敵の城はない</p>';
       const k = th.keep, pct = Math.min(99, Math.max(1, Math.round(k * 20) * 5));
-      return `<p class="threat ${k < 0.5 ? 'hi' : k < 0.85 ? 'mid' : 'ok'}">前線：となりの敵が総がかりで来ても、守り切る見込み 約${pct}%${k < 0.5 ? '。兵を送るか築城を' : ''}</p>`;
+      const plan = reinforcePlan(S, selected);
+      const btn = plan ? `<button class="reinforce" onclick="doReinforce('${selected}')"><b>援兵</b>${MAP.byId[plan.from].short}から${fmt(plan.amount)}兵を送る<small>見込み 約${pctOf(plan.before)}% → 約${pctOf(plan.after)}%${plan.enough ? '' : '（これでもまだ足りない）'}</small></button>` : '';
+      return `<p class="threat ${k < 0.5 ? 'hi' : k < 0.85 ? 'mid' : 'ok'}">前線：となりの敵が総がかりで来ても、守り切る見込み 約${pct}%${k < 0.85 && !plan ? '。となりから送れる兵がない。徴兵か築城を' : ''}</p>${btn}`;
     })()}
     <p class="facline"><span class="trait t-${traitOf(selected)}" title="${TRAITS[traitOf(selected)].desc}">${TRAITS[traitOf(selected)].name}</span>
       ${(c.fac || []).map((f) => `<span class="fac">${FACILITIES[f].name}</span>`).join('')}
@@ -782,7 +784,7 @@ function renderCouncil() {
       // 危うい城：攻められたら守り切れる見込みが5割を切る城。タップで順に見ていく
       const risky = castlesOf(S, PLAYER).map((id) => [id, dangerOf(S, id, winChance)]).filter(([, t]) => t && t.keep < 0.5)
         .sort((a, b) => a[1].keep - b[1].keep).map(([id]) => id);
-      return risky.length ? `<button class="warn danger-warn" id="danger-warn" data-ids="${risky.join(',')}">危 守りの危うい城が ${risky.length}つ：${risky.slice(0, 3).map((id) => MAP.byId[id].short).join('・')}${risky.length > 3 ? ' ほか' : ''}（タップで移動）</button>` : '';
+      return risky.length ? `<button class="warn danger-warn" id="danger-warn" data-ids="${risky.join(',')}">危 守りの危うい城が ${risky.length}つ：${risky.slice(0, 3).map((id) => MAP.byId[id].short).join('・')}${risky.length > 3 ? ' ほか' : ''}（タップで移動）</button>${castlesOf(S, PLAYER).some((id) => reinforcePlan(S, id)) ? '<button class="reinforce" onclick="bulkReinforce()"><b>援兵</b>危うい城へ、となりから送れるだけ兵を送る<small>送る側が危うくならない分だけ。輸送役の武将が1人ずつ動く</small></button>' : ''}` : '';
     })()}
     ${S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : ''}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
@@ -1745,6 +1747,83 @@ function oddsLabel(p) {
   if (p >= 0.2) return ['不利', 'var(--red)'];
   return ['勝ち目うすし', '#8c1c18'];
 }
+// ---------- 危うい城への援兵 ----------
+// 守り切る見込みが85%に届くよう、となりの自分の城から兵を送る案を作る
+const SAFE_KEEP = 0.85;
+const SAFE_RATIO = 0.683; // winChance(この比) ≒ 0.15
+// その城の兵1人あたりの守りの力（兵が0でも測れるよう、仮に1000人で測る）
+function defPerTroop(s, id) {
+  const c = s.castles[id], t = c.troops;
+  c.troops = 1000;
+  const p = defensePower(s, id) / 1000;
+  c.troops = t;
+  return p;
+}
+// 見込みを85%にするのに要る兵（今より何人多く要るか。足りていれば0以下）
+function troopsShort(s, id) {
+  const th = dangerOf(s, id, winChance);
+  if (!th) return -Infinity;
+  const attack = th.ratio * Math.max(1, defensePower(s, id));
+  return Math.ceil(attack / SAFE_RATIO / defPerTroop(s, id)) - s.castles[id].troops;
+}
+function reinforcePlan(s, id) {
+  const th = dangerOf(s, id, winChance);
+  if (!th || th.keep >= SAFE_KEEP) return null;
+  const need = troopsShort(s, id);
+  const room = RULES.troopCap - s.castles[id].troops;
+  const donors = MAP.adj[id].filter((n) => s.castles[n].owner === PLAYER && !s.delegate[n] && idleGensAt(s, n).length && readyTroops(s, n) > 0)
+    .map((n) => {
+      // 送る側も、送ったあと危うくならない分だけ出す
+      const short = troopsShort(s, n);
+      const spare = short === -Infinity ? readyTroops(s, n) : Math.min(readyTroops(s, n), -short);
+      return { from: n, spare: Math.floor(spare / 10) * 10 };
+    }).filter((d) => d.spare >= 10);
+  if (!donors.length) return null;
+  const best = donors.reduce((a, b) => (a.spare >= b.spare ? a : b));
+  const amount = Math.min(best.spare, room, Math.ceil(need / 10) * 10);
+  if (amount < 10) return null;
+  const c = s.castles[id];
+  c.troops += amount;
+  const after = dangerOf(s, id, winChance).keep;
+  c.troops -= amount;
+  if (amount < need && after < th.keep + 0.08) return null; // ほとんど変わらない案は出さない
+  return { from: best.from, to: id, amount, before: th.keep, after, enough: amount >= need };
+}
+const pctOf = (p) => Math.min(99, Math.max(1, Math.round(p * 20) * 5));
+// 危うい城すべてに、送れるだけ援兵を送る（危うい順）
+function bulkReinforce() {
+  Sound.tap();
+  const ids = castlesOf(S, PLAYER).map((id) => [id, dangerOf(S, id, winChance)]).filter(([, t]) => t && t.keep < SAFE_KEEP)
+    .sort((a, b) => a[1].keep - b[1].keep).map(([id]) => id);
+  const done = [];
+  ids.forEach((id) => {
+    const plan = reinforcePlan(S, id);
+    if (!plan) return;
+    const g = idleGensAt(S, plan.from).sort((a, b) => a.str - b.str)[0];
+    moveTroops(S, plan.from, plan.to, plan.amount);
+    S.arrived = S.arrived || {};
+    S.arrived[plan.to] = (S.arrived[plan.to] || 0) + plan.amount;
+    S.acted[g.id] = true;
+    done.push(`${MAP.byId[plan.to].short}へ${fmt(plan.amount)}`);
+  });
+  save();
+  render();
+  toast(done.length ? `援兵を送った：${done.join('・')}` : '送れる兵がなかった');
+}
+function doReinforce(id) {
+  const plan = reinforcePlan(S, id);
+  if (!plan) return;
+  Sound.tap();
+  const g = idleGensAt(S, plan.from).sort((a, b) => a.str - b.str)[0];
+  moveTroops(S, plan.from, plan.to, plan.amount);
+  S.arrived = S.arrived || {};
+  S.arrived[plan.to] = (S.arrived[plan.to] || 0) + plan.amount;
+  S.acted[g.id] = true;
+  save();
+  render();
+  toast(`${esc(g.name)}が${MAP.byId[plan.from].short}から${fmt(plan.amount)}兵を送った<br><b>守り切る見込み 約${pctOf(plan.before)}% → 約${pctOf(plan.after)}%</b>`);
+}
+
 function openAttack(from, to) {
   tutAdvance(4);
   const srcs = from ? [from] : attackSources(to);
