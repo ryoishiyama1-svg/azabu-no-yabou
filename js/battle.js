@@ -143,6 +143,17 @@ function stepBattle(s, B, cmds) {
     if (c === 'scheme') { e.out = 0.6; }
   });
 
+  // 部活（大将の得意な戦い方）
+  ['a', 'd'].forEach((sd) => {
+    const club = leader[sd] && leader[sd].club;
+    const c = baseCmd[sd], e = eff[sd];
+    if (!club || act[sd] === 'confused') return;
+    if (club === 'yakyu' && c === 'attack') e.out *= 1.15;
+    if (club === 'rikujou' && c === 'charge') e.out *= 1.15;
+    if (club === 'igo' && c === 'guard') e.in *= 0.9;
+    if (club === 'suisou') e.morale += 3;
+  });
+
   // 命令どうしの相性
   const m = baseCmd.a && baseCmd.d ? cmdMatch(baseCmd.a, baseCmd.d) : 0;
   const winner = m > 0 ? 'a' : m < 0 ? 'd' : null;
@@ -165,7 +176,8 @@ function stepBattle(s, B, cmds) {
     ['a', 'd'].forEach((sd) => {
       if (baseCmd[sd] !== 'scheme') return;
       const mine = leader[sd] ? leader[sd].int : 40, theirs = leader[other(sd)] ? leader[other(sd)].int : 40;
-      if (Math.random() < clamp(0.45 + (mine - theirs) / 100 + (B.weather === 'fog' ? 0.2 : 0), 0.15, 0.9)) {
+      const housou = leader[sd] && leader[sd].club === 'housou' ? 0.12 : 0; // 放送部は計略が得意
+      if (Math.random() < clamp(0.45 + (mine - theirs) / 100 + (B.weather === 'fog' ? 0.2 : 0) + housou, 0.15, 0.92)) {
         B[other(sd)].confused = 1; eff[other(sd)].morale -= 10;
         lines.push(`${name[sd]}の計略が決まった！ ${name[other(sd)]}は混乱している`);
       } else {
@@ -227,7 +239,10 @@ function checkBattleEnd(B, lines, name) {
 // ---------- 一騎打ち ----------
 function startDuel(B, s) {
   // 名刀を持つ者は、はじめから気合が高い
-  const ki0 = (sd) => (s && treasureKind(duelGen(s, B, sd)) === 'katana' ? 30 : 0);
+  const ki0 = (sd) => {
+    const g = s && duelGen(s, B, sd);
+    return (treasureKind(g) === 'katana' ? 30 : 0) + (g && g.club === 'kendo' ? 15 : 0); // 名刀・剣道部
+  };
   B.duel = Object.assign(B.duel || {}, {
     hp: { a: DUEL.hp, d: DUEL.hp }, ki: { a: ki0('a'), d: ki0('d') }, turn: 0, done: null, log: [], next: null,
   });
@@ -379,28 +394,58 @@ function duelStep(s, B, moves) {
 }
 
 // 一騎打ちの決着を合戦に反映する
-function endDuel(s, B) {
+// 一騎打ちの決着。choice はプレイヤーが勝ったときの敗将の扱い：
+//   'capture' 捕らえる / 'spare' 見逃す / 'persuade' 説得する（省略時は、深手なら4割で捕らえる）
+function endDuel(s, B, choice = null) {
   const D = B.duel;
   const w = D.done, l = other(w);
   B[l].morale = clamp(B[l].morale - 35, 0, 100);
   B[w].morale = clamp(B[w].morale + 10, 0, 100);
   const loserHp = D.hp[l];
-  // 大きく打ち負かすと、その場で捕らえることがある（当主は必ず逃げのびる）
   const loserGen = s.gens[l === 'a' ? B.gid : B.dgid];
-  if (loserHp <= 0 && !loserGen.lord && Math.random() < 0.4) B.duelCapture = l;
-  grow(s.gens[w === 'a' ? B.gid : B.dgid], 'str');
-  const lines = [`一騎打ちは${s.gens[w === 'a' ? B.gid : B.dgid].name}の勝ち！ ${shortName(B[l].clan)}の士気が大きく下がった`];
-  if (B.duelCapture) lines.push(`${loserGen.name}は捕らえられた！`);
   const winGen = s.gens[w === 'a' ? B.gid : B.dgid];
+  grow(winGen, 'str');
+  const lines = [`一騎打ちは${winGen.name}の勝ち！ ${shortName(B[l].clan)}の士気が大きく下がった`];
+  let tag = '';
+  if (choice === 'capture' && !loserGen.lord) {
+    // 深手を負わせていれば確実、そうでなければ6割
+    if (loserHp <= 0 || Math.random() < 0.6) { B.duelCapture = l; lines.push(`${loserGen.name}を捕らえた！`); tag = '。敗れた将は捕縛'; }
+    else lines.push(`${loserGen.name}は手勢に守られ、かろうじて逃げのびた`);
+  } else if (choice === 'spare') {
+    if (s.rel[B[l].clan]) changeFriend(s, B[l].clan, 8);
+    winGen.cha = Math.min(100, winGen.cha + 1);
+    lines.push(`${winGen.name}は刀を引いた。「行け。次は戦場で会おう」　${CLANS[B[l].clan] ? CLANS[B[l].clan].name : '敵'}は情けに感じ入った`);
+    tag = '。情けをかけて見逃す';
+  } else if (choice === 'persuade' && !loserGen.lord) {
+    const p = clamp(0.25 + (winGen.cha - 50) / 100 + (50 - (loserGen.loyal ?? 60)) / 100, 0.05, 0.8);
+    if (Math.random() < p) {
+      const home = w === 'a' ? B.from : B.to;
+      loserGen.clan = winGen.clan;
+      loserGen.loc = s.castles[home] && s.castles[home].owner === winGen.clan ? home : castlesOf(s, winGen.clan)[0];
+      loserGen.loyal = randInt(45, 60);
+      if (l === 'd') B.dgid = null; else B.a.morale = 0; // 大将を失った軍は崩れる
+      lines.push(`${loserGen.name}「……負けた。あなたについていこう」　${loserGen.name}が家臣に加わった！`);
+      tag = '。敗れた将はその場で寝返る';
+    } else lines.push(`${loserGen.name}「誰が従うものか！」　説得は失敗した`);
+  } else if (!choice && loserHp <= 0 && !loserGen.lord && Math.random() < 0.4) {
+    // おまかせや他家どうし：大きく打ち負かすと、その場で捕らえることがある（当主は必ず逃げのびる）
+    B.duelCapture = l;
+    lines.push(`${loserGen.name}は捕らえられた！`);
+    tag = '。敗れた将は捕縛';
+  }
   recordDuel(s, winGen, loserGen);
   if (B[w].clan === PLAYER || B[l].clan === PLAYER) {
-    addNews(s, `一騎打ち！ ${winGen.name}、${loserGen.name}を破る`, `${MAP.byId[B.to].name}の戦いにて${B.duelCapture ? '。敗れた将は捕縛' : ''}`, 45);
+    addNews(s, `一騎打ち！ ${winGen.name}、${loserGen.name}を破る`, `${MAP.byId[B.to].name}の戦いにて${tag}`, 45);
   }
   B.duel = null;
   const name = { a: shortName(B.attacker), d: shortName(B.defender) };
   checkBattleEnd(B, lines, name);
   if (B.over) B.rounds.push({ a: B.a.troops, d: B.d.troops, ma: B.a.morale, md: B.d.morale });
   return lines;
+}
+// 説得が成功する見込み（画面に出す）
+function persuadeChance(winGen, loserGen) {
+  return clamp(0.25 + (winGen.cha - 50) / 100 + (50 - (loserGen.loyal ?? 60)) / 100, 0.05, 0.8);
 }
 
 // 一騎打ちを断る

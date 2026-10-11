@@ -1397,6 +1397,7 @@ function showGeneral(gid) {
       </div>
       ${g.clan === PLAYER && !g.lord ? `<div class="gstats"><div><span>忠誠</span><i class="loyal-bar ${g.loyal < LOYAL.leaveBelow ? 'low' : ''}" style="width:${g.loyal}%"></i><b>${g.loyal}</b></div></div>
         <p class="hint">${g.loyal < LOYAL.rebelBelow ? '謀反を起こすおそれがある！' : g.loyal < LOYAL.leaveBelow ? '出奔するおそれがある' : g.loyal >= 80 ? '忠義に厚い' : 'まずまずの忠誠'}</p>` : ''}
+      ${g.club && CLUBS[g.club] ? `<p><span class="club">${CLUBS[g.club].name}</span> ${CLUBS[g.club].desc}</p>` : ''}
       ${g.skill ? `<p><span class="skill">${SKILLS[g.skill].name}</span> ${SKILLS[g.skill].desc}</p>` : '<p class="hint">特技なし</p>'}
       ${g.skill && ARTS[g.skill] ? `<p class="hint">戦法「${ARTS[g.skill].name}」：${ARTS[g.skill].desc}</p>` : ''}
       ${treasureBox(g)}
@@ -1623,7 +1624,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const gen = sd === 'a' ? g : dg;
     const clan = B[sd].clan;
     const info = gen
-      ? `${sd === 'd' ? '' : portrait(gen, 40, null, 'R')}<div><b>${esc(gen.name)}</b><small>統率${gen.str}${sd === 'a' && supNames.length ? `・援軍${supNames.length}` : ''}</small></div>${sd === 'd' ? portrait(gen, 40) : ''}`
+      ? `${sd === 'd' ? '' : portrait(gen, 40, null, 'R')}<div><b>${esc(gen.name)}</b><small>統率${gen.str}${gen.club && CLUBS[gen.club] ? `・${CLUBS[gen.club].name}` : ''}${sd === 'a' && supNames.length ? `・援軍${supNames.length}` : ''}</small></div>${sd === 'd' ? portrait(gen, 40) : ''}`
       : '<div><b>守将なし</b><small>&nbsp;</small></div>';
     return `<div class="b-side ${sd === 'a' ? 'left' : 'right'}" style="--c:${CLANS[clan].color}">
       <div class="b-gen">${info}</div>
@@ -1848,8 +1849,16 @@ function runBattle(B, { auto = false, onClose } = {}) {
         <button class="btn plain" id="du-no">${offer ? 'やめておく' : '断る'}</button></div>`;
     } else if (D.done) {
       const won = D.done === my;
-      body = `${du.say ? `<div class="du-say">${du.say}</div>` : ''}
-        <button class="btn red" id="du-end">${won ? '勝ち名乗りを上げる' : '決着'}</button>`;
+      // 勝ったら、敗れた敵将をどうするか選ぶ（敵の当主は捕らえられない）
+      const fate = won && !foeGen.lord
+        ? `<p class="du-q">敗れた${esc(foeGen.name)}を、どうする？</p>
+          <div class="du-moves">
+            <button class="btn" data-fate="capture"><b>捕らえる</b><small>${D.hp[fo] <= 0 ? '深手を負わせた。確実に捕らえる' : '6割で捕らえる'}</small></button>
+            <button class="btn" data-fate="persuade"><b>説得する</b><small>見込み ${Math.round(persuadeChance(myGen, foeGen) * 100)}%・成功すれば家臣に</small></button>
+            <button class="btn du-sp" data-fate="spare"><b>見逃す</b><small>相手の家の友好度+8・魅力が伸びる</small></button>
+          </div>`
+        : `<button class="btn red" id="du-end">${won ? '勝ち名乗りを上げる' : '決着'}</button>`;
+      body = `${du.say ? `<div class="du-say">${du.say}</div>` : ''}${fate}`;
     } else {
       const read = D.read || { level: 'none' };
       const readText = read.level === 'clear' ? `🔍 見えた！ 次は「${DUEL_MOVES[read.move] ? DUEL_MOVES[read.move].name : DUEL_SPECIALS[duelSpecialOf(foeGen)].name}」で来る`
@@ -1900,19 +1909,23 @@ function runBattle(B, { auto = false, onClose } = {}) {
       return;
     }
     if (D.done) {
-      $('du-end').onclick = () => {
+      const finishDuel = (choice) => {
         Sound.tap();
         Sound.bgmStart('battle');
         const won = D.done === me;
-        const lines = endDuel(S, B);
+        const lines = endDuel(S, B, choice);
         d.hidden = true;
         carry = lines;
         report(lines);
         updateBars();
         // 一騎打ちに勝ったら、勝者の決め絵を見せてから合戦に戻る
-        if (won) showKime(myGen, '討ち取ったり！', pick(['この勝負、もらった！', `${foeGen.name}、敗れたり！`, 'わが刃に一片の曇りなし']), afterRound, 'laugh');
-        else afterRound();
+        if (won) {
+          const say = choice === 'spare' ? '行け。次は戦場で会おう' : choice === 'persuade' ? 'ともに天下を目指そう' : pick(['この勝負、もらった！', `${foeGen.name}、敗れたり！`, 'わが刃に一片の曇りなし']);
+          showKime(myGen, choice === 'spare' ? '情けの一太刀' : '討ち取ったり！', say, afterRound, choice === 'spare' ? 'smile' : 'laugh');
+        } else afterRound();
       };
+      if ($('du-end')) $('du-end').onclick = () => finishDuel(null);
+      d.querySelectorAll('[data-fate]').forEach((b) => { b.onclick = () => finishDuel(b.dataset.fate); });
       return;
     }
     d.querySelectorAll('[data-mv]').forEach((b) => {

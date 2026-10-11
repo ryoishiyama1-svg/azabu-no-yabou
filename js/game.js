@@ -129,6 +129,7 @@ function makeGeneral(s, school, clan, { strong = false, title, grade } = {}) {
     skill: Math.random() < (strong ? 0.55 : 0.25) ? pick(Object.keys(SKILLS)) : null,
     look: randInt(0, 9999),
     since: s.turn || 0, // 入学（登場）した季
+    club: pick(Object.keys(CLUBS)), // 部活（得意な戦い方）
   };
   const best = pick(['str', 'pol', 'cha', 'int']);
   g[best] = Math.min(98, g[best] + randInt(8, 16)); // 得意な能力
@@ -259,6 +260,7 @@ function migrate(s) {
   s.diploLog = s.diploLog || [];
   s.vault = s.vault || [];
   initTreasures(s);
+  Object.values(s.gens).forEach((g) => { if (!g.club) g.club = Object.keys(CLUBS)[hashStr(g.id) % 6]; });
   if (!WEATHER[s.weather]) s.weather = s.turn === 0 ? 'sun' : rollWeather(s.turn);
   // 当主が家を離れてしまったセーブ（家督相続の前の合戦で候補が捕らわれた不具合）を直す
   if (castlesOf(s, PLAYER).length && !lordOf(s) && !(s.pending || []).some((ev) => ev.id === 'succession')) {

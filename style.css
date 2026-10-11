@@ -460,8 +460,8 @@ button { font: inherit; color: inherit; cursor: pointer; touch-action: manipulat
 }
 .stamp.win { color: var(--red); }
 .stamp.lose { color: #33406e; }
-.stamp.go { animation: stamp 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
-@keyframes stamp {
+.stamp.go { animation: b-stamp 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
+@keyframes b-stamp {
   0% { opacity: 0; transform: scale(2.6) rotate(-20deg); }
   100% { opacity: 1; transform: scale(1) rotate(-10deg); }
 }
@@ -1401,3 +1401,11 @@ svg.bf {
   animation: kira 3.2s ease-in-out infinite; }
 @keyframes kira { from { transform: translateX(-45%); } to { transform: translateX(45%); } }
 .kime-frame .portrait { border-radius: 0 !important; border: 0 !important; box-shadow: none !important; }
+.du-q { font-family: var(--brush); font-size: 17px; color: var(--paper); text-align: center; margin: 8px 0 6px; }
+
+/* 合戦の結果の判子：朱（勝ち）か藍（負け）の落款を、どんと押す */
+.stamp { border: 0; border-radius: 6px; color: var(--paper) !important; font-size: 58px; letter-spacing: 0.05em;
+  writing-mode: vertical-rl; width: 120px; height: 150px; margin: -75px 0 0 -60px; }
+.stamp.win { background: var(--red); box-shadow: inset 0 0 0 6px var(--red), inset 0 0 0 9px var(--paper), 6px 6px 0 var(--ink); }
+.stamp.lose { background: var(--ai); box-shadow: inset 0 0 0 6px var(--ai), inset 0 0 0 9px var(--paper), 6px 6px 0 var(--ink); }
+.club { display: inline-block; font-family: var(--gothic); font-weight: 900; font-size: 11px; padding: 1px 6px; color: var(--paper); background: var(--wakatake); border: 1.5px solid var(--ink); margin-right: 4px; }

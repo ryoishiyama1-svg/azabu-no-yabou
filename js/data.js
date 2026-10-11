@@ -258,3 +258,13 @@ const TREASURES = {
   senri: { name: '扇「千里眼」', kind: 'ougi' },
   kasumi: { name: '扇「霞」', kind: 'ougi' },
 };
+
+// ---------- 部活：武将の得意な戦い方（兵科）。大将として率いる合戦で効く ----------
+const CLUBS = {
+  kendo: { name: '剣道部', desc: '一騎打ちの始めから気合+15' },
+  yakyu: { name: '野球部', desc: '「攻撃」で与える損害+15%（遠投で矢を射かける）' },
+  rikujou: { name: '陸上部', desc: '「突撃」で与える損害+15%' },
+  suisou: { name: '吹奏楽部', desc: '毎合、味方の士気+3' },
+  housou: { name: '放送部', desc: '合戦中の計略が決まりやすい（+12%）' },
+  igo: { name: '囲碁部', desc: '「守り」で受ける損害をさらに-10%' },
+};
