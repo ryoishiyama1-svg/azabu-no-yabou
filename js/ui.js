@@ -677,6 +677,15 @@ function renderPanel() {
     body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}・性格「${personaOf(c.owner).name}」</p>` : ''}
       <div class="cmds">
         <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
+        ${(() => {
+          const envoy = canDebate(S, selected) ? debateEnvoy(S, selected) : null;
+          const why2 = isCapital(selected, c.owner) ? '本拠は言葉では落ちない'
+            : gensAt(S, selected).some((g) => g.lord) ? '当主のいる城は開城しない'
+            : S.debateCd && S.debateCd[selected] > S.turn ? 'しばらく舌戦には応じない'
+            : !envoy ? 'となりに命令できる武将がいない'
+            : `使者：${esc(envoy.name)}（知略${envoy.int}・魅力${envoy.cha}）`;
+          return atPeace(S, PLAYER, c.owner) ? '' : `<button class="btn wide debate-btn" id="c-debate" ${envoy ? '' : 'disabled'}><span class="k">舌</span>舌戦で開城を迫る<small>${why2}</small></button>`;
+        })()}
         <button class="btn plain wide" id="c-close">閉じる</button>
       </div>`;
   }
@@ -1280,6 +1289,7 @@ function bindPanel() {
   on('c-scheme', () => { Sound.tap(); showSchemeMenu(selected); });
   on('c-build', () => { Sound.tap(); showBuild(selected); });
   on('c-strike', () => { Sound.tap(); openAttack(null, selected); });
+  on('c-debate', () => { Sound.tap(); openDebate(selected); });
   const d = $('c-deleg');
   if (d) d.onchange = () => {
     Sound.tap();
@@ -1289,6 +1299,70 @@ function bindPanel() {
   };
   // 武将のカードをタップすると詳細
   panel.querySelectorAll('.gcard').forEach((c) => { c.onclick = () => showGeneral(c.dataset.gid); });
+}
+
+// ---------- 舌戦 ----------
+function openDebate(id) {
+  const envoy = debateEnvoy(S, id);
+  if (!envoy || !canDebate(S, id)) return;
+  const Dt = startDebate(S, id, envoy);
+  save();
+  Sound.bgmStart('meeting');
+  drawDebate(Dt);
+}
+
+function drawDebate(Dt) {
+  const g = S.gens[Dt.envoy];
+  const dg = Dt.dg ? S.gens[Dt.dg] : null;
+  const pct = Math.min(100, Math.round((Dt.gauge / Dt.need) * 100));
+  const sayLine = (l) => `<p>${l.who === 'me' ? `<b class="me">${esc(g.name)}</b>` : `<b>${dg ? esc(dg.name) : '城兵'}</b>`}「${esc(l.text)}」</p>`;
+  const say = Dt.lines.length ? Dt.lines.map(sayLine).join('')
+    : `<p><b>${dg ? esc(dg.name) : '城兵'}</b>「${dg ? pick(['何をしに来た。話だけは聞いてやろう', '開城だと？ 笑わせるな', 'ほう、口で城を落とす気か']) : '……誰だ。用件を言え'}」</p>`;
+  const read = Dt.read.level === 'clear' ? `🔍 見抜いた！ 相手は「${DEBATE_ARGS[Dt.read.weak].foe}」。「${DEBATE_ARGS[Dt.read.weak].name}」が効く`
+    : Dt.read.level === 'guess' ? `🔍 たぶん「${DEBATE_ARGS[Dt.read.weak].foe}」……「${DEBATE_ARGS[Dt.read.weak].name}」が効きそうだ`
+    : '🔍 相手の心は読めない';
+  const actions = Dt.done
+    ? `<button class="btn red" id="db-end">${Dt.done === 'win' ? '開城させる' : '引き上げる'}</button>`
+    : `<p class="mt-q">どの論で迫る？<small>あと ${DEBATE.rounds - Dt.round} 回</small></p>
+      <div class="mt-choices">${Object.entries(DEBATE_ARGS).map(([k, a]) => `<button class="btn db-arg db-${k}" data-arg="${k}"
+        ${k === 'gain' && S.gold[PLAYER] < DEBATE.gainCost ? 'disabled' : ''}><b>${a.name}</b> ${a.full}<small>${a.desc}${Dt.used[k] ? '・二度目は弱い' : ''}</small></button>`).join('')}</div>`;
+  openModal(`<div class="meeting debate" data-lock>
+      <p class="mt-place">${esc(MAP.byId[Dt.id].name)} 門前 ・ 舌戦</p>
+      <div class="mt-stage">
+        ${meetingRoom(Dt.owner === 'none' ? PLAYER : Dt.owner)}
+        <div class="mt-p left">${portrait(g, 84, Dt.done === 'win' ? 'happy' : Dt.mood.me, 'R')}<span>${esc(g.name)}<small>${pName()}の使者</small></span></div>
+        ${dg ? `<div class="mt-p right">${portrait(dg, 84, Dt.done === 'win' ? 'frustrated' : Dt.mood.foe)}<span>${esc(dg.name)}<small>${MAP.byId[Dt.id].short}の守将</small></span></div>` : ''}
+        ${Dt.done ? `<div class="mt-stamp ${Dt.done === 'win' ? 'deal' : 'fail'}">${Dt.done === 'win' ? '開 城' : '決 裂'}</div>` : ''}
+      </div>
+      <div class="mt-say">${say}</div>
+      <div class="mt-gauge db-gauge"><span>説得</span><i><b style="width:${pct}%"></b></i><em>${pct}%</em></div>
+      ${Dt.done ? '' : `<p class="mt-hint">${read}</p>`}
+    </div>
+    ${actions}`);
+  modalBody.querySelectorAll('[data-arg]').forEach((b) => {
+    b.onclick = () => {
+      const r = debateStep(S, Dt, b.dataset.arg);
+      if (r.kind === 'weak') Sound.taiko(0, 0.7); else Sound.tap();
+      if (Dt.done === 'win') Sound.win();
+      if (Dt.done === 'lose') Sound.lose();
+      save();
+      drawDebate(Dt);
+    };
+  });
+  const end = $('db-end');
+  if (end) end.onclick = () => {
+    Sound.tap();
+    const msg = endDebate(S, Dt);
+    save();
+    Sound.bgmStart('map');
+    closeModal();
+    selected = Dt.id;
+    render();
+    if (Dt.done === 'win') {
+      showKime(g, '無血開城', pick(['言葉は刃より強し', '一兵も失わずに済んだな', 'これぞ知の戦よ']), () => toast(esc(msg)), 'smile');
+      achievementToast(checkAchievements(S));
+    } else toast(esc(msg));
+  };
 }
 
 // ---------- 決め絵：ここぞの場面で、武将の大きな一枚絵を出す。タップで閉じる ----------

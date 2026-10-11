@@ -1409,3 +1409,14 @@ svg.bf {
 .stamp.win { background: var(--red); box-shadow: inset 0 0 0 6px var(--red), inset 0 0 0 9px var(--paper), 6px 6px 0 var(--ink); }
 .stamp.lose { background: var(--ai); box-shadow: inset 0 0 0 6px var(--ai), inset 0 0 0 9px var(--paper), 6px 6px 0 var(--ink); }
 .club { display: inline-block; font-family: var(--gothic); font-weight: 900; font-size: 11px; padding: 1px 6px; color: var(--paper); background: var(--wakatake); border: 1.5px solid var(--ink); margin-right: 4px; }
+
+/* ---------- 舌戦 ---------- */
+.debate-btn { --plate: #6b3a5e; }
+.debate .mt-say b.me { color: var(--ai); }
+.db-gauge i b { background: linear-gradient(90deg, var(--wakatake), var(--gold)); }
+.db-arg { text-align: left; }
+.db-arg b { font-family: var(--brush); font-weight: 400; font-size: 20px; margin-right: 4px; }
+.db-logic { --plate: var(--ai); }
+.db-heart { --plate: var(--red); }
+.db-gain { --plate: var(--gold); color: var(--ink); }
+.db-threat { --plate: var(--ink); }
