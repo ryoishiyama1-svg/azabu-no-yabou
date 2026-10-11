@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>アイコン案</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Yuji+Boku&family=Zen+Maru+Gothic:wght@900&display=swap">
+<style>
+body{margin:0;background:#e9dfc6;font-family:'Zen Maru Gothic',sans-serif;color:#1c1a17;padding:16px}
+h1{font-family:'Yuji Boku';font-weight:400;margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:22px}
+.c{display:grid;gap:6px;justify-items:center}
+.c canvas{width:220px;height:220px;border-radius:48px;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.home{display:flex;gap:16px;padding:16px;border-radius:18px;background:linear-gradient(160deg,#3a6ea5,#8a5aa8)}
+.home div{display:grid;justify-items:center;gap:4px;color:#fff;font-size:11px}
+.home img{width:60px;height:60px;border-radius:14px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs id="ukiyo-defs">
+    <defs id="ukiyo-defs">
+      <linearGradient id="bokashi" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#22406b"/><stop offset="0.55" stop-color="#22406b" stop-opacity="0.35"/><stop offset="1" stop-color="#22406b" stop-opacity="0"/>
+      </linearGradient>
+      <pattern id="seigaiha" width="30" height="15" patternUnits="userSpaceOnUse">
+        <rect width="30" height="15" fill="#2d5288"/>
+        <g fill="none" stroke="#f1e6cc" stroke-width="1.6"><circle cx="15" cy="15" r="13"/><circle cx="15" cy="15" r="8"/><circle cx="15" cy="15" r="3"/><circle cx="0" cy="7.5" r="13"/><circle cx="30" cy="7.5" r="13"/></g>
+      </pattern>
+      <pattern id="asanoha" width="40" height="46" patternUnits="userSpaceOnUse">
+        <rect width="40" height="46" fill="#f3d5d6"/>
+        <g stroke="#e9a3a8" stroke-width="1.4" fill="none"><path d="M20,0 L20,46 M0,11.5 L40,34.5 M40,11.5 L0,34.5 M20,23 L0,0 M20,23 L40,0 M20,23 L0,46 M20,23 L40,46"/></g>
+      </pattern>
+      <pattern id="ichimatsu" width="24" height="24" patternUnits="userSpaceOnUse">
+        <rect width="24" height="24" fill="#d8e0c8"/><rect width="12" height="12" fill="#b8c9a4"/><rect x="12" y="12" width="12" height="12" fill="#b8c9a4"/>
+      </pattern>
+    </defs>
+</defs></svg>
+<h1>アイコン案</h1>
+<div class="row" id="big"></div>
+<div class="home" id="home"></div>
+<script src="../js/ukiyo.js"></script>
+<script>
+const AI='#22406b', SHU='#c8372d', KINARI='#f1e6cc', SUMI='#1c1a17', YAMABUKI='#e0a526';
+const S=512;
+// 当主の顔（赤い家色・鉢巻・肩衣）
+function lordBust(){
+  return UKIYO.bust({dir:'L',hair:'spiky',garment:'gakuran',over:'kataginu',head:'hachimaki',mood:'smile',color:SHU,clan:'azabu',bg:'none',str:80,kuma:false});
+}
+function svgDoc(inner){
+  const defs=document.getElementById('ukiyo-defs').innerHTML;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"><defs>${defs}
+    <pattern id="sg2" width="60" height="30" patternUnits="userSpaceOnUse"><rect width="60" height="30" fill="#2d5288"/><g fill="none" stroke="${KINARI}" stroke-width="3"><circle cx="30" cy="30" r="26"/><circle cx="30" cy="30" r="16"/><circle cx="30" cy="30" r="6"/><circle cx="0" cy="15" r="26"/><circle cx="60" cy="15" r="26"/></g></pattern>
+  </defs>${inner}</svg>`;
+}
+function inner(b){ return b.replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,''); }
+const V = {
+  // 1：当主の顔に朱の日輪
+  face(){ const b=lordBust(); return svgDoc(`
+    <rect width="512" height="512" fill="${KINARI}"/>
+    <circle cx="300" cy="190" r="150" fill="${SHU}"/>
+    <rect y="372" width="512" height="140" fill="url(#sg2)"/>
+    <g transform="translate(36,92) scale(2.05)">${inner(b)}</g>
+    <rect x="18" y="18" width="476" height="476" fill="none" stroke="${SUMI}" stroke-width="14"/>`); },
+  // 4：顔を大きく、枠なし（採用候補）
+  face2(){ const b=lordBust(); return svgDoc(`
+    <rect width="512" height="512" fill="${KINARI}"/>
+    <circle cx="262" cy="200" r="168" fill="${SHU}"/>
+    <rect y="398" width="512" height="114" fill="url(#sg2)"/>
+    <g transform="translate(22,40) scale(2.36)">${inner(b)}</g>`); },
+  // 2：筆の「麻」を短冊に、朱の日輪と青海波
+  brush(){ return svgDoc(`
+    <rect width="512" height="512" fill="${KINARI}"/>
+    <rect y="350" width="512" height="162" fill="url(#sg2)"/>
+    <circle cx="256" cy="230" r="170" fill="${SHU}"/>
+    <rect x="178" y="70" width="176" height="370" fill="${AI}" transform="translate(10,10)"/>
+    <rect x="178" y="70" width="176" height="370" fill="${KINARI}" stroke="${SUMI}" stroke-width="10"/>
+    <rect x="190" y="82" width="152" height="346" fill="none" stroke="${SUMI}" stroke-width="3"/>`); },
+  // 3：朱の落款
+  seal(){ return svgDoc(`
+    <rect width="512" height="512" fill="url(#sg2)"/>
+    <rect x="96" y="96" width="320" height="320" rx="18" fill="${SUMI}" transform="translate(14,14)"/>
+    <rect x="96" y="96" width="320" height="320" rx="18" fill="${SHU}" stroke="${SUMI}" stroke-width="10"/>
+    <rect x="120" y="120" width="272" height="272" rx="8" fill="none" stroke="${KINARI}" stroke-width="6"/>`); },
+};
+const TEXT = {
+  face(x){ x.save(); x.translate(406,420); x.rotate(-0.06); x.fillStyle=SHU; x.fillRect(-58,-58,116,116); x.strokeStyle=SUMI; x.lineWidth=6; x.strokeRect(-58,-58,116,116);
+    x.fillStyle=KINARI; x.font='48px "Yuji Boku"'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('麻布',0,-20); x.fillText('之印',0,28); x.restore(); },
+  face2(x){ x.save(); x.translate(432,424); x.rotate(-0.08); x.fillStyle=SUMI; x.fillRect(-46,-46,100,100); x.fillStyle=SHU; x.fillRect(-52,-52,100,100); x.strokeStyle=KINARI; x.lineWidth=4; x.strokeRect(-44,-44,84,84); x.fillStyle=KINARI; x.font='72px "Yuji Boku"'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('麻',-2,2); x.restore(); },
+  brush(x){ x.fillStyle=SUMI; x.font='190px "Yuji Boku"'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('麻',266,170); x.font='120px "Yuji Boku"'; x.fillStyle=SHU; x.fillText('野',266,345); },
+  seal(x){ x.fillStyle=KINARI; x.font='250px "Yuji Boku"'; x.textAlign='center'; x.textBaseline='middle'; x.fillText('麻',256,262); },
+};
+async function render(k, size=S){
+  const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(V[k]()); await img.decode();
+  const cv=document.createElement('canvas'); cv.width=cv.height=S; const x=cv.getContext('2d');
+  x.drawImage(img,0,0,S,S); TEXT[k](x);
+  if(size===S) return cv;
+  const o=document.createElement('canvas'); o.width=o.height=size; const ox=o.getContext('2d'); ox.imageSmoothingQuality='high'; ox.drawImage(cv,0,0,size,size); return o;
+}
+window.renderIcon=render;
+(async()=>{
+  await document.fonts.load('100px "Yuji Boku"','麻布之印野');
+  for (const k of Object.keys(V)) {
+    const cv=await render(k); const d=document.createElement('div'); d.className='c'; d.appendChild(cv); d.insertAdjacentHTML('beforeend',`<b>${k}</b>`); document.getElementById('big').appendChild(d);
+    const h=document.createElement('div'); h.innerHTML=`<img src="${cv.toDataURL()}"><span>麻布の野望</span>`; document.getElementById('home').appendChild(h);
+  }
+  document.body.dataset.ready='1';
+})();
+</script></body></html>
