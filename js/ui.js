@@ -374,6 +374,7 @@ function helpChapters() {
         `<b>移動</b>：武将をとなりの自分の城へ移す`,
         `<b>徴兵</b>（金${RULES.recruitCost}）・<b>開発</b>（金${RULES.developCost}）・<b>築城</b>（金${RULES.fortifyCost}）`,
         `城を<b>委任</b>にすると、ターン終了時に自動で命令します。「全城で徴兵／開発」でまとめて命令も`,
+        `地図の<b>「危」</b>の札は、となりの敵が総がかりで来ると守り切れない城、<b>「注」</b>は油断できない城です`,
       ])}
       <h3>学校の特色と施設</h3>
       ${li([
@@ -540,6 +541,7 @@ function drawMap() {
         </g>
         <g class="deleg" transform="translate(${-w / 2 - 7},27)"><circle r="7.5"/><text>委</text></g>
         <g class="gbadge" transform="translate(17,-19)"><circle r="8"/><text></text></g>
+        <g class="danger" transform="translate(-19,-16) rotate(-8)"><rect x="-9" y="-9" width="18" height="18"/><text>危</text></g>
         <text class="facmark" x="-14" y="-22"></text>
         <text class="troops" y="48"></text>`;
       g.addEventListener('click', () => onCastleTap(n.id));
@@ -631,6 +633,14 @@ function render() {
     badge.style.display = own && total ? '' : 'none';
     badge.classList.toggle('none-left', idle === 0);
     badge.querySelector('text').textContent = idle;
+    // 危うい城：攻められたら守り切れる見込みが低い
+    const th = own ? dangerOf(S, id, winChance) : null;
+    const dz = g.querySelector('.danger');
+    const lvl = th && th.keep < 0.5 ? 'hi' : th && th.keep < 0.85 ? 'mid' : '';
+    dz.style.display = lvl ? '' : 'none';
+    dz.setAttribute('class', `danger ${lvl}`);
+    dz.querySelector('text').textContent = lvl === 'hi' ? '危' : '注';
+    g.classList.toggle('front', !!th);
     const ring = g.querySelector('.ring');
     const kind = mode && (mode.kind === 'attack' || mode.kind === 'scheme' ? 'target' : 'friend');
     ring.setAttribute('class', 'ring ' + (targets.includes(id) ? kind : id === selected ? 'sel' : ''));
@@ -691,6 +701,13 @@ function renderPanel() {
       <div class="stat"><span class="n">${c.def.toFixed(1)}</span><span class="l">防 御</span></div>
       <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span></div>
     </div>
+    ${(() => {
+      if (!own) return '';
+      const th = dangerOf(S, selected, winChance);
+      if (!th) return '<p class="threat safe">後方の城：となりに敵の城はない</p>';
+      const k = th.keep, pct = Math.min(99, Math.max(1, Math.round(k * 20) * 5));
+      return `<p class="threat ${k < 0.5 ? 'hi' : k < 0.85 ? 'mid' : 'ok'}">前線：となりの敵が総がかりで来ても、守り切る見込み 約${pct}%${k < 0.5 ? '。兵を送るか築城を' : ''}</p>`;
+    })()}
     <p class="facline"><span class="trait t-${traitOf(selected)}" title="${TRAITS[traitOf(selected)].desc}">${TRAITS[traitOf(selected)].name}</span>
       ${(c.fac || []).map((f) => `<span class="fac">${FACILITIES[f].name}</span>`).join('')}
       <span class="facnote">${TRAITS[traitOf(selected)].desc}${own && (c.fac || []).length < FAC_SLOTS ? `・施設の空き ${FAC_SLOTS - (c.fac || []).length}` : ''}</span></p>
@@ -745,6 +762,7 @@ function renderPanel() {
   bindPanel();
 }
 
+let dangerIdx = -1; // 「危うい城」ボタンで、次に見せる城
 function renderCouncil() {
   const counts = Object.keys(CLANS)
     .map((k) => [k, castlesOf(S, k).length])
@@ -760,6 +778,12 @@ function renderCouncil() {
       const low = gensOf(S, PLAYER).filter((g) => !g.lord && g.loc && g.loyal < LOYAL.leaveBelow).length;
       return low ? `<button class="warn loyal-warn" id="loyal-warn">⚠ 忠誠の低い家臣が ${low}人。出奔や謀反のおそれあり（タップで褒美）</button>` : '';
     })()}
+    ${(() => {
+      // 危うい城：攻められたら守り切れる見込みが5割を切る城。タップで順に見ていく
+      const risky = castlesOf(S, PLAYER).map((id) => [id, dangerOf(S, id, winChance)]).filter(([, t]) => t && t.keep < 0.5)
+        .sort((a, b) => a[1].keep - b[1].keep).map(([id]) => id);
+      return risky.length ? `<button class="warn danger-warn" id="danger-warn" data-ids="${risky.join(',')}">危 守りの危うい城が ${risky.length}つ：${risky.slice(0, 3).map((id) => MAP.byId[id].short).join('・')}${risky.length > 3 ? ' ほか' : ''}（タップで移動）</button>` : '';
+    })()}
     ${S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : ''}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
     <div class="bulk">
@@ -772,6 +796,14 @@ function renderCouncil() {
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
   $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
+  if ($('danger-warn')) $('danger-warn').onclick = () => {
+    Sound.tap();
+    const ids = $('danger-warn').dataset.ids.split(',');
+    dangerIdx = (dangerIdx + 1) % ids.length;
+    selected = ids[dangerIdx];
+    render();
+    centerOn(selected);
+  };
   if ($('loyal-warn')) $('loyal-warn').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）'); };
 }
 
@@ -845,6 +877,8 @@ const TIPS = [
     text: '幾度もぶつかった相手は<b>宿敵</b>となりました。宿敵どうしの合戦では、一騎打ちが起こりやすくなりますぞ。' },
   { id: 'hall', when: () => (S.hall || []).length > 0,
     text: '卒業した者の戦いぶりは<b>卒業生の列伝</b>に残ります。目録の家臣団から読めますぞ。名を上げた者は天下統一の絵巻にも載りまする。' },
+  { id: 'danger', when: () => castlesOf(S, PLAYER).some((id) => { const t = dangerOf(S, id, winChance); return t && t.keep < 0.5; }),
+    text: '地図に<b>「危」</b>の札が立った城は、となりの敵が総がかりで来ると守り切れませぬ。<b>「注」</b>は油断ならぬ城。兵を送るか築城で備えなされ。軍議の赤い札をタップすると、危うい城を順に見られますぞ。' },
   { id: 'encircle', when: () => !S.encircle && castlesOf(S, PLAYER).length / MAP.nodes.length >= DIPLO.encircleShare - 0.12,
     text: () => `殿、勢いがつきすぎております。城の${Math.round(DIPLO.encircleShare * 100)}%を超えると、諸家が<b>包囲網</b>を結んで一斉に攻めてまいります。守りを固めてから進まれませ。` },
 ];

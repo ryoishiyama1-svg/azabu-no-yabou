@@ -1444,3 +1444,23 @@ function rivalOf(s, g) {
   });
   return best ? { g: best, n: bestN } : null;
 }
+
+// ---------- 地図の前線表示 ----------
+// 自分の城の危うさ：となりの敵城（同じ家）が兵の8割を集めて攻めてきたら、守り切れる見込み
+// keep：おまかせで守ったときの見込み（0〜1）。となりに敵がいなければ null
+function dangerOf(s, id, ratioToChance) {
+  const byClan = {};
+  MAP.adj[id].forEach((n) => {
+    const o = s.castles[n].owner;
+    if (o === PLAYER || o === 'none' || atPeace(s, PLAYER, o)) return;
+    const lead = bestBy(gensAt(s, n), 'str');
+    const b = byClan[o] || (byClan[o] = { troops: 0, mult: 1 });
+    b.troops += Math.floor(s.castles[n].troops * 0.8);
+    if (lead) b.mult = Math.max(b.mult, atkMult(lead));
+  });
+  const clans = Object.keys(byClan);
+  if (!clans.length) return null;
+  const power = Math.max(1, defensePower(s, id));
+  const worst = Math.max(...clans.map((k) => byClan[k].troops * byClan[k].mult / power));
+  return { keep: 1 - ratioToChance(worst), ratio: worst };
+}
