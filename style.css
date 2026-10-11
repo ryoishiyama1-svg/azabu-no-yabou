@@ -1420,3 +1420,84 @@ svg.bf {
 .db-heart { --plate: var(--red); }
 .db-gain { --plate: var(--gold); color: var(--ink); }
 .db-threat { --plate: var(--ink); }
+
+/* 遊び方：章の札と頁 */
+.help-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 0 14px; }
+.help-tabs button {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  border: 2px solid var(--ink); background: #fffaf0; color: var(--ink);
+  font-family: var(--gothic); font-weight: 700; font-size: 13px; text-align: left; white-space: nowrap;
+  box-shadow: 2px 2px 0 var(--ai);
+}
+.help-tabs button i {
+  font-style: normal; font-family: var(--brush); font-size: 18px; line-height: 1;
+  width: 24px; height: 24px; display: grid; place-items: center; flex: none;
+  background: var(--ai); color: var(--paper);
+}
+.help-tabs button.on { background: var(--red); color: #fff; box-shadow: 2px 2px 0 var(--ink); transform: translate(1px, 1px); }
+.help-tabs button.on i { background: var(--paper); color: var(--red); }
+.help-page { position: relative; border-top: 2px solid var(--ink); padding-top: 10px; animation: suri 0.35s ease both; }
+.help-page .help-title { font-family: var(--brush); font-weight: 400; font-size: 24px; margin: 0 0 8px; padding-right: 54px; border: 0; }
+.help-seal {
+  position: absolute; right: 0; top: 8px; width: 46px; height: 46px; display: grid; place-items: center;
+  font-family: var(--brush); font-size: 30px; color: var(--red);
+  border: 3px solid var(--red); border-radius: 6px; transform: rotate(-6deg); opacity: 0.85;
+}
+.help-lead { font-family: var(--mincho); font-weight: 800; font-size: 15px; line-height: 1.7; }
+.help-flow { padding-left: 1.4em; margin: 6px 0 10px; }
+.help-flow li { margin: 4px 0; }
+.help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 6px 0 10px; }
+.help-grid div { background: #fffaf0; border: 1.5px solid var(--ink); padding: 6px 8px; font-size: 12px; line-height: 1.45; }
+.help-grid b { display: block; font-family: var(--mincho); font-size: 14px; margin-bottom: 2px; }
+.help-grid .hk { display: inline-grid; margin-right: 6px; font-style: normal; vertical-align: middle; place-items: center; width: 26px; height: 26px; color: #fff; background: var(--plate); font-family: var(--brush); font-weight: 400; font-size: 18px; }
+.help-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 6px; }
+.help-nav .btn:disabled { opacity: 0.35; }
+
+/* 戦績：家ごとの勝利と、実績の印 */
+table.best th, table.best td { border: 1.5px solid var(--ink); }
+table.best th { background: var(--ai); color: var(--paper); }
+table.best tr th:first-child { background: #fff8e6; color: var(--ink); }
+table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf0; }
+.clan-wins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0 4px; }
+.cw { display: grid; justify-items: center; gap: 2px; padding: 8px 4px 6px; background: #fffaf0; border: 1.5px solid var(--ink); }
+.cw b { font-family: var(--mincho); font-size: 13px; }
+.cw span { font-family: var(--gothic); font-weight: 900; font-size: 12px; color: var(--muted); }
+.cw:not(.won) svg { filter: grayscale(1); opacity: 0.45; }
+.cw.won { border-color: var(--c); box-shadow: 3px 3px 0 var(--c); }
+.cw.won span { color: var(--red); }
+.ach-meter { position: relative; height: 18px; border: 2px solid var(--ink); background: #fffaf0; margin: 4px 0 10px; }
+.ach-meter i { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(-45deg, var(--red) 0 6px, #b02e25 6px 12px); }
+.ach-meter span { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--gothic); font-weight: 900; font-size: 12px; color: var(--ink); text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+.seal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 6px; margin-bottom: 12px; }
+.aseal { display: grid; justify-items: center; align-content: start; text-align: center; gap: 3px; padding: 8px 4px; background: #fffaf0; border: 1.5px dashed #b9ad94; }
+.aseal .as-stamp {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  font-family: var(--brush); font-size: 28px; line-height: 1;
+  border: 2px dashed #c9bda2; border-radius: 6px; color: transparent;
+}
+.aseal b { font-family: var(--mincho); font-size: 12px; line-height: 1.25; color: #9b927f; }
+.aseal small { font-size: 10px; line-height: 1.35; color: var(--muted); }
+.aseal.done { border: 1.5px solid var(--ink); box-shadow: 2px 2px 0 var(--ai); }
+.aseal.done .as-stamp {
+  color: #fff; background: var(--red); border: 0; border-radius: 6px;
+  box-shadow: inset 0 0 0 3px var(--red), inset 0 0 0 4.5px #f6d3c9;
+  transform: rotate(-5deg);
+}
+.aseal.done b { color: var(--ink); }
+.aseal.done:nth-child(even) .as-stamp { transform: rotate(4deg); border-radius: 50%; }
+
+/* 家臣団の並べかえ・設定の切りかえ札 */
+.stats.four { grid-template-columns: repeat(4, 1fr); }
+.stat .n.bad { color: var(--red); }
+.sort-row { display: grid; grid-template-columns: repeat(6, 1fr); border: 2px solid var(--ink); margin: 10px 0 4px; }
+.sort-row button {
+  padding: 7px 0; border: 0; border-left: 1.5px solid var(--ink); background: #fffaf0; color: var(--ink);
+  font-family: var(--gothic); font-weight: 700; font-size: 12.5px;
+}
+.sort-row button:first-child { border-left: 0; }
+.sort-row button.on { background: var(--ai); color: var(--paper); }
+.seg-row button {
+  border-radius: 0; border: 2px solid var(--ink); background: #fffaf0; color: var(--ink);
+  font-family: var(--gothic); font-weight: 700; box-shadow: 3px 3px 0 var(--ai);
+}
+.seg-row button.on { background: var(--red); color: #fff; border-color: var(--ink); box-shadow: 1px 1px 0 var(--ink); transform: translate(2px, 2px); }

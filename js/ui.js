@@ -353,83 +353,135 @@ function startGame(isNew) {
   }
 }
 
-function showHelp() {
+// 遊び方：章ごとの絵巻。上の札で章を選ぶ
+let HELP_CH = 0;
+function helpChapters() {
   const me = S ? pName() : '自分の家';
+  const li = (a) => `<ul>${a.map((x) => `<li>${x}</li>`).join('')}</ul>`;
+  return [
+    { k: '始', t: 'はじめ', name: 'はじめに', body: `
+      <p class="help-lead">${me}を率いて、地図上のすべての学校を制覇すれば<b>天下統一</b>。城がすべて奪われると敗北です。</p>
+      <h3>一季の流れ</h3>
+      <ol class="help-flow">
+        <li><b>城を選ぶ</b>：地図の城をタップして、そこにいる武将に命令します</li>
+        <li><b>命令する</b>：武将1人につき1季1回。武将のいない城は何もできません</li>
+        <li><b>ターン終了</b>：他家が動き、季節が進み、<b>学園瓦版</b>で出来事がわかります</li>
+      </ol>
+      <h3>命令</h3>
+      ${li([
+        `<b>出陣</b>：道でつながった敵城を攻める。攻め先のとなりの城から<b>援軍</b>も出せます`,
+        `<b>輸送</b>：となりの自分の城へ兵を送る。送られた兵は<b>その季は動けません</b>`,
+        `<b>移動</b>：武将をとなりの自分の城へ移す`,
+        `<b>徴兵</b>（金${RULES.recruitCost}）・<b>開発</b>（金${RULES.developCost}）・<b>築城</b>（金${RULES.fortifyCost}）`,
+        `城を<b>委任</b>にすると、ターン終了時に自動で命令します。「全城で徴兵／開発」でまとめて命令も`,
+      ])}
+      <h3>学校の特色と施設</h3>
+      ${li([
+        `学校の<b>特色</b>：${Object.values(TRAITS).map((t) => `<b>${t.name}</b>（${t.desc}）`).join('、')}`,
+        `「建設」で<b>施設</b>を${FAC_SLOTS}つまで：${Object.values(FACILITIES).map((f) => `${f.name}（${f.desc}）`).join('、')}`,
+        `特色と施設は、城を落とすとそのまま引き継げます`,
+      ])}` },
+    { k: '将', t: '武将', name: '武将', body: `
+      ${li([
+        `能力：<b>統率</b>＝合戦の強さ、<b>政治</b>＝開発、<b>魅力</b>＝徴兵・登用、<b>知略</b>＝守り・作戦を読む`,
+        `命令をこなすと、能力が少しずつ上がります`,
+        `城を落とすと、敵の武将を<b>捕らえる</b>ことがあります。登用すれば家臣に`,
+      ])}
+      <h3>忠誠と褒美</h3>
+      ${li([
+        `家臣の<b>忠誠度</b>は季節ごとに少しずつ下がります（当主の魅力が高いと下がりにくい）`,
+        `<b>褒美</b>（金${LOYAL.rewardCost}）や合戦の勝利、合宿・文化祭で上がります`,
+        `忠誠${LOYAL.leaveBelow}未満で<b>出奔</b>、${LOYAL.rebelBelow}未満で城ごと<b>謀反</b>のおそれ`,
+      ])}
+      <h3>部活</h3>
+      <p>武将はみな部活に入っていて、合戦で効き目があります。</p>
+      <div class="help-grid">${Object.values(CLUBS).map((c) => `<div><b>${c.name}</b><span>${c.desc}</span></div>`).join('')}</div>
+      <h3>卒業と家督相続</h3>
+      ${li([
+        `毎年春、<b>3年生は卒業</b>し、各校に<b>新入生</b>が入ります`,
+        `<b>当主が卒業</b>すると、家臣から後継者を選びます。当主の得意な能力で<b>家訓</b>が決まります`,
+        `選ばれなかった実力者は、家を去ることもあります`,
+      ])}` },
+    { k: '戦', t: '合戦', name: '合戦', body: `
+      <h3>出陣の作戦</h3>
+      <p><b>突撃</b>は奇襲に、<b>奇襲</b>は籠城に、<b>籠城</b>は突撃に強い。読み勝つと最初の士気が上がります。知略の高い大将は敵の作戦を読めることも。</p>
+      <h3>采配</h3>
+      ${li([
+        `1合ずつ<b>攻撃・突撃・守り・計略・退却</b>から選びます（最大8合）`,
+        `<b>突撃は計略に、計略は守りに、守りは突撃に強い</b>。計略が決まると敵は1合動けません`,
+        `兵が残っていても<b>士気が0で総崩れ</b>。敵の兵か士気を0にすれば落城`,
+        `特技を持つ武将は<b>戦法</b>（一番槍・火計・鼓舞など）を1度だけ使えます`,
+        `<b>天気</b>で合戦が変わります：${Object.values(WEATHER).map((w) => `${w.name}（${w.desc}）`).join('、')}`,
+        `家の本拠をめぐる合戦は<b>決戦</b>。守る側の士気が高く、大将どうしの一騎打ちが必ず起こります`,
+        `「おまかせで決着」「結果まで飛ばす」で省略も。設定でいつもおまかせにもできます`,
+      ])}
+      <h3>一騎打ち</h3>
+      ${li([
+        `<b>斬る</b>は払うに、<b>払う</b>は受けるに、<b>受ける</b>は斬るに強い。<b>溜める</b>と気合+${DUEL.kiCharge}（ただし攻められると深手）`,
+        `気合が満ちると<b>必殺技</b>。特技ごとに技が違います`,
+        `勝ったら相手を<b>捕らえる・説得する・見逃す</b>から選べます`,
+      ])}
+      <h3>コツ</h3>
+      <p>守る側は「兵力×防御×守将」で戦います。<b>勝算大</b>と出るまで兵や援軍を集めましょう。</p>` },
+    { k: '謀', t: '計略', name: '計略・舌戦', body: `
+      <h3>計略</h3>
+      ${li([
+        `城の命令「計略」で、道${SCHEME_RANGE}本先までの城に仕掛けられます`,
+        `<b>流言</b>：敵城の兵と守りを減らす ／ <b>離間</b>：敵の武将の忠誠を下げる`,
+        `<b>引き抜き</b>：敵の武将を寝返らせる。忠誠が低い相手ほど成功しやすい`,
+        `<b>調略</b>：独立校を戦わずに味方にする`,
+        `他家も計略を仕掛けてきます。忠誠の低い家臣は引き抜かれやすいので注意`,
+      ])}
+      <h3>舌戦</h3>
+      <p>敵の城を選んで「舌戦」。となりの城の、知略と魅力のいちばん高い武将が使者になり、<b>${DEBATE.rounds}回の論</b>で説得します。ゲージを満たせば<b>無血開城</b>。</p>
+      <div class="help-grid">${Object.entries(DEBATE_ARGS).map(([k, a]) => `<div><b><i class="hk db-${k}">${a.name}</i>${a.full}</b><span>${a.desc}。「${a.foe}」な相手に効く</span></div>`).join('')}</div>
+      ${li([
+        `守将の<b>弱点</b>の論は2倍、反対の論は半分、同じ論のくり返しは弱まります`,
+        `使者の知略が高いほど、相手の弱点を見抜けます`,
+        `本拠と、当主のいる城は開城しません。断られた城には4季のあいだ仕掛けられません`,
+      ])}` },
+    { k: '交', t: '外交', name: '外交', body: `
+      ${li([
+        `各家との<b>友好度</b>を「贈答」で上げ、<b>停戦</b>や<b>同盟</b>を申し込めます`,
+        `申し込みは<b>会談</b>。使者（魅力の高い武将）が1人行動します`,
+        `停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います`,
+        `城の${Math.round(DIPLO.encircleShare * 100)}%以上を持つと、諸家が<b>包囲網</b>を結成します`,
+        `各家には<b>性格</b>があります（${Object.entries(CLAN_PERSONA).filter(([k]) => k !== PLAYER).map(([k, p]) => `${CLANS[k].name.replace('家', '')}＝${PERSONAS[p].name}`).join('、')}）`,
+        `他家どうしも停戦・同盟を結び、ときには裏切ります`,
+      ])}` },
+    { k: '伝', t: '物語', name: '武将の物語', body: `
+      <p class="help-lead">戦いを重ねるほど、武将に物語が生まれます。</p>
+      <h3>列伝と異名</h3>
+      ${li([
+        `武将ごとに戦いの記録（<b>列伝</b>）が残り、手柄に応じて「鬼の〜」などの<b>異名</b>がつきます`,
+        `名を上げた武将は卒業すると<b>卒業生の列伝</b>に名を残します（武将一覧から見られます）`,
+        `当主や名のある武将は、カードがきらきらと<b>雲母摺り</b>になります`,
+      ])}
+      <h3>家宝</h3>
+      <p>名刀や軍配などの家宝を持たせると、その武将に効き目があります。敵の武将を捕らえると奪えることも。持ち主が卒業すると後輩に受け継がれます。</p>
+      <div class="help-grid">${Object.values(TREASURE_KINDS).map((t) => `<div><b>${t.name}</b><span>${t.desc}</span></div>`).join('')}</div>
+      <h3>因縁</h3>
+      <p>同じ相手と${RIVAL_AT}度ぶつかると<b>宿敵</b>に。宿敵どうしの合戦では一騎打ちが起こりやすくなります。</p>
+      <h3>決め絵</h3>
+      <p>家督相続や一騎打ちの勝利、決戦、無血開城など、ここいちばんの場面では武将の<b>決め絵</b>が刷り上がります。</p>
+      <h3>他家と実績</h3>
+      <p>一度天下統一すると、他の家でも遊べます。「戦績・実績」で記録を見られます。</p>` },
+  ];
+}
+function showHelp(ch = HELP_CH) {
+  const chs = helpChapters();
+  HELP_CH = clamp(ch, 0, chs.length - 1);
+  const c = chs[HELP_CH];
   openModal(`<h2>遊び方</h2>
-    <h3>目的</h3>
-    <p>${me}を率いて、地図上のすべての学校を制覇すれば天下統一（クリア）。城がすべて奪われると敗北です。</p>
-    <h3>武将</h3>
-    <ul>
-      <li>命令は<b>武将</b>が行います。武将1人につき1ターン1回。武将のいない城は何もできません</li>
-      <li>能力：<b>統率</b>＝合戦の強さ、<b>政治</b>＝開発、<b>魅力</b>＝徴兵・登用、<b>知略</b>＝守り・作戦を読む</li>
-      <li>城を落とすと、敵の武将を<b>捕らえる</b>ことがあります。登用すれば家臣になります</li>
-      <li>命令をこなすと、能力が少しずつ上がります</li>
-    </ul>
-    <h3>忠誠と褒美</h3>
-    <ul>
-      <li>家臣には<b>忠誠度</b>があり、季節ごとに少しずつ下がります（当主の魅力が高いと下がりにくい）</li>
-      <li><b>褒美</b>（金${LOYAL.rewardCost}）で忠誠が上がります。合戦で勝つ、合宿や文化祭の演劇でも上がります</li>
-      <li>忠誠が${LOYAL.leaveBelow}未満だと<b>出奔</b>、${LOYAL.rebelBelow}未満だと城ごと<b>謀反</b>を起こすことがあります。捕虜から登用した武将は忠誠が低めです</li>
-    </ul>
-    <h3>学校の特色と施設</h3>
-    <ul>
-      <li>学校には<b>特色</b>があります：${Object.values(TRAITS).map((t) => `<b>${t.name}</b>（${t.desc}）`).join('、')}</li>
-      <li>城の命令「建設」で<b>施設</b>を${FAC_SLOTS}つまで建てられます：${Object.values(FACILITIES).map((f) => `${f.name}（${f.desc}）`).join('、')}</li>
-      <li>特色と施設は、城を落とすとそのまま引き継げます</li>
-    </ul>
-    <h3>計略</h3>
-    <ul>
-      <li>城の命令「計略」で、道${SCHEME_RANGE}本先までの城に仕掛けられます</li>
-      <li><b>流言</b>：敵城の兵と守りを減らす ／ <b>離間</b>：敵の武将の忠誠を下げる</li>
-      <li><b>引き抜き</b>：敵の武将を寝返らせる。忠誠が低い相手ほど成功しやすい</li>
-      <li><b>調略</b>：独立校を戦わずに味方にする。魅力が高く、近くに大軍がいるほど成功しやすい</li>
-      <li>他家も計略を仕掛けてきます。忠誠の低い家臣は引き抜かれやすいので注意</li>
-    </ul>
-    <h3>卒業と家督相続</h3>
-    <ul>
-      <li>武将には<b>学年</b>があります。毎年春、<b>3年生は卒業</b>していなくなり、各校に<b>新入生</b>が入ります</li>
-      <li><b>当主が卒業する</b>と、家臣の中から後継者を選びます。当主のいちばん得意な能力で<b>家訓</b>が決まり、その代のあいだ効果があります</li>
-      <li>選ばれなかった実力者は、不満を抱いて家を去ることもあります</li>
-    </ul>
-    <h3>合戦の作戦</h3>
-    <p>出陣のとき<b>作戦</b>を選べます。突撃は奇襲に、奇襲は籠城に、籠城（持久戦）は突撃に強い、じゃんけんの関係です。読み勝つと最初の士気が上がります。知略の高い大将は、敵の作戦を読めることがあります。</p>
-    <h3>合戦の采配</h3>
-    <ul>
-      <li>合戦は1合ずつ進み、毎回<b>攻撃・突撃・守り・計略・退却</b>から命令を選びます（最大8合）</li>
-      <li><b>突撃は計略に、計略は守りに、守りは突撃に強い</b>。計略が決まると敵は混乱して1合動けません</li>
-      <li>兵が残っていても<b>士気が0になると総崩れ</b>。敵の兵か士気を0にすれば落城です</li>
-      <li>特技を持つ武将は<b>戦法</b>（一番槍・火計・鼓舞など）を1度だけ使えます</li>
-      <li>ときどき<b>一騎打ち</b>が起こります。斬るは払うに、払うは受けるに、受けるは斬るに強い</li>
-      <li>「おまかせで決着」「結果まで飛ばす」で省略もできます。目録の「設定」で、いつもおまかせにもできます</li>
-      <li>敵に攻められると<b>敵襲</b>の知らせが出て、守りの合戦も采配できます</li>
-    </ul>
-    <h3>命令</h3>
-    <ul>
-      <li><b>出陣</b>：道でつながった敵城を攻める。攻め先のとなりにある城から<b>援軍</b>も出せます</li>
-      <li><b>輸送</b>：となりの自分の城へ兵を送る</li>
-      <li><b>移動</b>：武将をとなりの自分の城へ移す</li>
-      <li><b>徴兵</b>：金${RULES.recruitCost}で兵を増やす（魅力が高いほど多い）</li>
-      <li><b>開発</b>：金${RULES.developCost}で経済を上げ、収入を増やす（政治が高いほど多い）</li>
-      <li><b>築城</b>：金${RULES.fortifyCost}で防御を上げる</li>
-    </ul>
-    <h3>委任と一括命令</h3>
-    <p>城を<b>委任</b>にすると、ターン終了時に自動で命令します。「全城で徴兵／開発」でまとめて命令もできます。</p>
-    <h3>外交</h3>
-    <ul>
-      <li>各家との<b>友好度</b>を「贈答」で上げ、<b>停戦</b>や<b>同盟</b>を申し込めます（使者＝魅力の高い武将が1人行動します）</li>
-      <li>停戦・同盟の相手とはおたがいに攻め合いません。破棄すると他の家からの信用も失います</li>
-      <li>城の${Math.round(DIPLO.encircleShare * 100)}%以上を持つと、諸家が<b>包囲網</b>を結成して一斉に攻めてきます</li>
-      <li>各家には<b>性格</b>があります（${Object.entries(CLAN_PERSONA).filter(([k]) => k !== PLAYER).map(([k, p]) => `${CLANS[k].name.replace('家', '')}＝${PERSONAS[p].name}`).join('、')}）。停戦・同盟の結びやすさや、攻め方が変わります</li>
-      <li>他家どうしも停戦・同盟を結び、ときには裏切ります。外交の画面で、他家どうしの関係も見られます</li>
-    </ul>
-    <h3>イベント</h3>
-    <p>季節ごとに卒業式・入学式・夏合宿・文化祭・受験シーズンが訪れ、転校生や寝返りの誘いなどの出来事も起こります。</p>
-    <h3>他家と実績</h3>
-    <p>一度天下統一すると、他の家でも遊べるようになります。「戦績・実績」で記録を見られます。</p>
-    <h3>合戦のコツ</h3>
-    <p>守る側は「兵力×防御×守将」で戦います。<b>勝算大</b>と出るまで兵や援軍を集めましょう。その日の士気で結果が変わることもあります。</p>
+    <div class="help-tabs">${chs.map((x, i) => `<button class="${i === HELP_CH ? 'on' : ''}" data-ch="${i}"><i>${x.k}</i>${x.t}</button>`).join('')}</div>
+    <div class="help-page"><div class="help-seal">${c.k}</div><h3 class="help-title">${c.name}</h3>${c.body}</div>
+    <div class="help-nav">
+      <button class="btn plain" data-ch="${HELP_CH - 1}" ${HELP_CH === 0 ? 'disabled' : ''}>← 前の章</button>
+      <button class="btn plain" data-ch="${HELP_CH + 1}" ${HELP_CH === chs.length - 1 ? 'disabled' : ''}>次の章 →</button>
+    </div>
     <p class="hint">※実在の学校名を使ったフィクションです。武将・能力値・家紋はすべて架空です。</p>
     <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-ch]').forEach((b) => { b.onclick = () => { Sound.tap(); showHelp(+b.dataset.ch); }; });
 }
 
 // ---------- 地図 ----------
@@ -2263,22 +2315,34 @@ function lordsHistory() {
   }).join('')}</ol>`;
 }
 
+// 家臣団：並べかえの札つき
+let ROSTER_SORT = 'grade';
+const ROSTER_SORTS = { grade: '学年', str: '統率', int: '知略', pol: '政治', cha: '魅力', loyal: '忠誠' };
 function showRoster() {
-  const gens = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || b.grade - a.grade || a.loc.localeCompare(b.loc));
+  const by = ROSTER_SORT;
+  const key = (g) => (by === 'grade' ? g.grade * 1000 - (g.loc || '').charCodeAt(0) : by === 'loyal' ? -g.loyal : g[by]);
+  const gens = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || key(b) - key(a));
   const seniors = gens.filter((g) => g.grade >= 3).length;
   const retainers = gens.filter((g) => !g.lord);
   const avgLoyal = retainers.length ? Math.round(retainers.reduce((a, g) => a + g.loyal, 0) / retainers.length) : 0;
+  const treasures = gens.filter((g) => g.treasure).length + (S.vault || []).length;
   openModal(`<h2>家臣団</h2>
-    <p class="hint" style="text-align:center">${gens.length}人（うち3年生 ${seniors}人は次の春に卒業）・ 平均の忠誠 ${avgLoyal} ・ タップするとその城へ</p>
-    <button class="btn" id="roster-reward">褒美を与える（忠誠の低い順）</button>
+    <div class="stats four"><div class="stat"><span class="n">${gens.length}</span><span class="l">武将</span></div>
+      <div class="stat"><span class="n">${seniors}</span><span class="l">春に卒業</span></div>
+      <div class="stat"><span class="n ${avgLoyal < 50 ? 'bad' : ''}">${avgLoyal}</span><span class="l">平均忠誠</span></div>
+      <div class="stat"><span class="n">${treasures}</span><span class="l">家宝</span></div></div>
+    <div class="sort-row">${Object.entries(ROSTER_SORTS).map(([k, t]) => `<button data-sort="${k}" class="${k === by ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <p class="hint" style="text-align:center">タップするとその城へ</p>
     <div class="glist roster">${gens.map((g) => genCard(g, {
       acted: !!S.acted[g.id],
       extra: `<span class="where">${MAP.byId[g.loc].short}</span>`,
     })).join('')}</div>
+    <button class="btn" id="roster-reward">褒美を与える（忠誠の低い順）</button>
     <h3>歴代当主</h3>
     ${lordsHistory()}
     <button class="btn" id="roster-hall">卒業生の列伝<small class="sub">${(S.hall || []).length}人</small></button>
     <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-sort]').forEach((b) => { b.onclick = () => { Sound.tap(); ROSTER_SORT = b.dataset.sort; showRoster(); }; });
   $('roster-hall').onclick = () => { Sound.tap(); showHall(showRoster); };
   $('roster-reward').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）', showRoster); };
   modalBody.querySelectorAll('.gcard').forEach((c) => {
@@ -2416,6 +2480,11 @@ function showEnding() {
 }
 
 // ---------- 実績と戦績 ----------
+// 実績の印：取れたものは朱の落款、まだのものは空の枠
+function achSeal(a, done) {
+  return `<div class="aseal ${done ? 'done' : ''}"><span class="as-stamp">${done ? a.icon : ''}</span>
+    <b>${done ? a.name : '？？？'}</b><small>${a.desc}</small></div>`;
+}
 function achCard(a, done = true) {
   return `<div class="ach ${done ? '' : 'locked'}"><span class="ai">${done ? a.icon : '？'}</span>
     <div><b>${done ? a.name : '？？？'}</b><small>${a.desc}</small></div></div>`;
@@ -2444,7 +2513,7 @@ function showRecords() {
     return `<tr><th>${sc.name}</th>${cells}</tr>`;
   }).join('');
   const clans = Object.keys(CLANS).filter((k) => k !== 'none')
-    .map((k) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name.replace('家', '')} ${rec.clanWins[k] || 0}勝</span>`).join('');
+    .map((k) => `<div class="cw ${rec.clanWins[k] ? 'won' : ''}" style="--c:${CLANS[k].color}">${crestBadge(k, 34)}<b>${CLANS[k].name.replace('家', '')}</b><span>${rec.clanWins[k] || 0}勝</span></div>`).join('');
   openModal(`<h2>戦績・実績</h2>
     <div class="stats"><div class="stat"><span class="n">${rec.wins}</span><span class="l">天下統一</span></div>
       <div class="stat"><span class="n">${rec.plays}</span><span class="l">遊んだ回数</span></div>
@@ -2452,10 +2521,11 @@ function showRecords() {
     <h3>最短の天下統一</h3>
     <table class="best"><tr><th></th>${Object.values(DIFFICULTY).map((d) => `<th>${d.name}</th>`).join('')}</tr>${best}</table>
     <h3>家ごとの勝利</h3>
-    <div class="clan-list">${clans}</div>
+    <div class="clan-wins">${clans}</div>
     <p class="hint">${rec.unlocked.length > 1 ? '🔓 すべての家で遊べます' : '🔒 一度天下統一すると、他の家でも遊べるようになります'}</p>
-    <h3>実績</h3>
-    <div class="ach-list">${ACHIEVEMENTS.map((a) => achCard(a, !!rec.ach[a.id])).join('')}</div>
+    <h3>実績の印</h3>
+    <div class="ach-meter"><i style="width:${Math.round((got / ACHIEVEMENTS.length) * 100)}%"></i><span>${got} / ${ACHIEVEMENTS.length}</span></div>
+    <div class="seal-grid">${ACHIEVEMENTS.map((a) => achSeal(a, !!rec.ach[a.id])).join('')}</div>
     <button class="btn plain" data-close>閉じる</button>`);
 }
 

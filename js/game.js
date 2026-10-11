@@ -1287,7 +1287,7 @@ function recordBattle(s, r) {
 }
 function recordDuel(s, winner, loser) {
   addClash(s, winner, loser, 2);
-  if (winner) recOf(winner).dw++;
+  if (winner) { recOf(winner).dw++; if (winner.clan === PLAYER) s.stats.duelWins = (s.stats.duelWins || 0) + 1; }
   if (loser) recOf(loser).dl++;
 }
 
