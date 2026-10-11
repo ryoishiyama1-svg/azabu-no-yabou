@@ -1536,3 +1536,11 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .em-vs span { font-family: var(--brush); font-size: 34px; color: #fff; text-shadow: 2px 2px 0 var(--ink); }
 .em-gone { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); font-family: var(--brush); font-size: 24px; }
 .em-nums { grid-template-columns: repeat(3, 1fr); }
+
+/* 軍師の手ほどき・献策：題箋の札 */
+#coach { border: 2.5px solid var(--ink); border-radius: 0; box-shadow: 5px 5px 0 var(--ai); background: var(--fiber), var(--washi), #fffaf0; }
+#coach .portrait { border: 2px solid var(--ink); }
+#coach .cb button { border: 1.5px solid var(--ink); border-radius: 0; background: #fffaf0; color: var(--ink); }
+#coach .cb button.go { background: var(--red); border-color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+#coach.tip { border-color: var(--ink); box-shadow: 5px 5px 0 var(--red); }
+#coach.tip .ct > b { display: inline-block; background: var(--ai); color: var(--paper); padding: 0 8px; font-family: var(--brush); font-weight: 400; font-size: 14px; }

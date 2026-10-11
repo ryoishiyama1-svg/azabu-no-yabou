@@ -784,7 +784,7 @@ const TUT = {
   4: { text: '大将と兵の数を決めて「出陣！」。<b>勝算大</b>と出ていれば、まず負けませぬ。' },
   5: { text: '初陣、お見事でした！ 城を落とすと敵の武将を捕らえることがあり、<b>登用</b>すれば家臣になります。残った武将で<b>徴兵</b>や<b>開発</b>もできますぞ。', next: true },
   6: { text: '命令が済んだら、下の<b>「ターン終了」</b>を押してくだされ。季節が変わり、他家も動きます。', done: () => S.turn >= 1 },
-  7: { text: '季節ごとに行事が起こり、<b>外交</b>で他家と手を結ぶこともできます。城が増えたら<b>委任</b>や<b>全城で徴兵</b>を使うと楽ですぞ。では殿、天下統一を！', next: true, last: true },
+  7: { text: '季節ごとに行事が起こり、<b>外交</b>で他家と手を結ぶこともできます。この先、新しい場面が来たら拙者が<b>献策</b>いたします。迷ったら目録の<b>遊び方</b>も。では殿、天下統一を！', next: true, last: true },
 };
 
 function tutAdvance(to) {
@@ -799,7 +799,18 @@ function endTutorial() {
 function renderCoach() {
   const box = $('coach');
   const step = S && TUT[S.tut];
-  if (!step) { box.hidden = true; return; }
+  if (!step) {
+    const tip = currentTip();
+    if (!tip) { box.hidden = true; return; }
+    box.hidden = false;
+    box.className = 'tip';
+    box.innerHTML = `${portrait(SENSEI, 44)}<div class="ct"><b>軍師の献策</b><p>${typeof tip.text === 'function' ? tip.text() : tip.text}</p>
+      <div class="cb"><button class="go" id="coach-next">心得た</button><button id="coach-skip">献策はもう要らぬ</button></div></div>`;
+    $('coach-next').onclick = () => { Sound.tap(); markTip(tip.id); renderCoach(); };
+    $('coach-skip').onclick = () => { Sound.tap(); markTip(tip.id); setSetting('tips', 'off'); renderCoach(); toast('献策は「設定」からまた受けられます'); };
+    return;
+  }
+  box.className = '';
   if (step.done && step.done()) { S.tut++; save(); renderCoach(); return; }
   box.hidden = false;
   box.innerHTML = `${portrait(SENSEI, 44)}<div class="ct"><b>軍師</b><p>${step.text}</p>
@@ -807,6 +818,40 @@ function renderCoach() {
   const next = $('coach-next');
   if (next) next.onclick = () => { Sound.tap(); if (step.last) endTutorial(); else { S.tut++; save(); renderCoach(); } };
   $('coach-skip').onclick = () => { Sound.tap(); endTutorial(); };
+}
+
+
+// ---------- 軍師の献策（その場面が初めて来たときに一度だけ教える） ----------
+const TIPS_KEY = 'azabu-tips';
+function tipsSeen() { try { return JSON.parse(localStorage.getItem(TIPS_KEY)) || {}; } catch (e) { return {}; } }
+function markTip(id) { const t = tipsSeen(); t[id] = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(t)); } catch (e) {} }
+const mineGens = () => gensOf(S, PLAYER);
+const TIPS = [
+  { id: 'debate', when: () => selected && S.castles[selected].owner !== PLAYER && canDebate(S, selected) && debateEnvoy(S, selected),
+    text: 'この城、<b>舌戦</b>で落とせるやもしれませぬ。知略と魅力の高い者を使者に立て、理・情・利・威の論で開城を迫るのです。守将の<b>弱点の論</b>を見抜くのが肝心ですぞ。' },
+  { id: 'treasure', when: () => S.turn >= 1 && mineGens().some((g) => g.treasure),
+    text: 'わが家には<b>家宝</b>がございます。武将をタップして詳しく見ると、持たせ替えができますぞ。名刀は一騎打ちに、軍配は攻めに、兜は守りに効きまする。' },
+  { id: 'club', when: () => S.turn >= 2,
+    text: '武将はみな<b>部活</b>に入っております。剣道部は一騎打ち、野球部は攻撃、吹奏楽部は士気…。合戦の大将選びの参考になされませ。' },
+  { id: 'weather', when: () => S.weather && S.weather !== 'sun',
+    text: () => `今季の空は<b>${WEATHER[S.weather].name}</b>。${WEATHER[S.weather].desc}。上の天気の印をタップすると、いつでも確かめられますぞ。` },
+  { id: 'loyal', when: () => mineGens().some((g) => !g.lord && g.loyal < 50),
+    text: '<b>忠誠</b>の低い家臣がおります。放っておくと出奔や謀反のおそれが。家臣団の画面から<b>褒美</b>を与えなされ。' },
+  { id: 'graduate', when: () => S.turn % 4 === 3 && mineGens().some((g) => g.grade >= 3),
+    text: () => `この冬が明ければ<b>3年生は卒業</b>いたします。${lordOf(S) && lordOf(S).grade >= 3 ? '殿もご卒業。<b>後継ぎ</b>となる者を育てておかれませ。' : '城の守りに穴が空かぬよう、備えておきましょう。'}` },
+  { id: 'delegate', when: () => castlesOf(S, PLAYER).length >= 6,
+    text: '城が増えてまいりました。前線から遠い城は<b>委任</b>にすれば、季節の終わりに自ら動きます。<b>全城で徴兵／開発</b>もお使いなされ。' },
+  { id: 'rival', when: () => Object.keys(S.rivalBook || {}).length > 0,
+    text: '幾度もぶつかった相手は<b>宿敵</b>となりました。宿敵どうしの合戦では、一騎打ちが起こりやすくなりますぞ。' },
+  { id: 'hall', when: () => (S.hall || []).length > 0,
+    text: '卒業した者の戦いぶりは<b>卒業生の列伝</b>に残ります。目録の家臣団から読めますぞ。名を上げた者は天下統一の絵巻にも載りまする。' },
+  { id: 'encircle', when: () => !S.encircle && castlesOf(S, PLAYER).length / MAP.nodes.length >= DIPLO.encircleShare - 0.12,
+    text: () => `殿、勢いがつきすぎております。城の${Math.round(DIPLO.encircleShare * 100)}%を超えると、諸家が<b>包囲網</b>を結んで一斉に攻めてまいります。守りを固めてから進まれませ。` },
+];
+function currentTip() {
+  if (!S || S.tut || S.result || getSettings().tips === 'off') return null;
+  const seen = tipsSeen();
+  return TIPS.find((t) => !seen[t.id] && t.when()) || null;
 }
 
 // ---------- 外交 ----------
@@ -1705,7 +1750,7 @@ const SETTINGS_KEY = 'azabu-settings';
 function getSettings() {
   let v = {};
   try { v = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) {}
-  return Object.assign({ attackMode: 'command', defenseMode: 'command', speed: 'normal' }, v);
+  return Object.assign({ attackMode: 'command', defenseMode: 'command', speed: 'normal', tips: 'on' }, v);
 }
 function setSetting(k, v) {
   const s = getSettings();
@@ -1722,14 +1767,25 @@ function showSettings() {
     ${row('attackMode', '攻める合戦', [['command', '采配する'], ['auto', 'おまかせ']], '「おまかせ」にすると、出陣したあとは自動で決着します。')}
     ${row('defenseMode', '守りの合戦', [['command', '采配する'], ['auto', 'おまかせ']], '「采配する」にすると、敵に攻められたとき「敵襲！」として迎え撃てます。委任中の城は自動で守ります。')}
     ${row('speed', '合戦の演出', [['normal', 'ふつう'], ['fast', '速い']], '')}
+    ${row('tips', '軍師の献策', [['on', '受ける'], ['off', '受けない']], '新しい場面が来たとき、軍師が一度だけ心得を教えます。')}
+    <button class="btn plain" id="tips-reset">献策をはじめから聞き直す</button>
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('[data-set]').forEach((b) => {
     b.onclick = () => {
       Sound.tap();
       setSetting(b.dataset.set, b.dataset.v);
       modalBody.querySelectorAll(`[data-set="${b.dataset.set}"]`).forEach((x) => x.classList.toggle('on', x === b));
+      if (S) renderCoach();
     };
   });
+  $('tips-reset').onclick = () => {
+    Sound.tap();
+    try { localStorage.removeItem(TIPS_KEY); } catch (e) {}
+    setSetting('tips', 'on');
+    modalBody.querySelectorAll('[data-set="tips"]').forEach((x) => x.classList.toggle('on', x.dataset.v === 'on'));
+    toast('献策をはじめから聞き直します');
+    if (S) renderCoach();
+  };
 }
 
 // ---------- 合戦（1合ずつ采配する） ----------
