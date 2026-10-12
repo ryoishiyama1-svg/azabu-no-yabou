@@ -713,6 +713,7 @@ function renderPanel() {
       const btn = plan ? `<button class="reinforce" onclick="doReinforce('${selected}')"><b>援兵</b>${MAP.byId[plan.from].short}から${fmt(plan.amount)}兵を送る<small>見込み 約${pctOf(plan.before)}% → 約${pctOf(plan.after)}%${plan.enough ? '' : '（これでもまだ足りない）'}</small></button>` : '';
       return `<p class="threat ${k < 0.5 ? 'hi' : k < 0.85 ? 'mid' : 'ok'}">前線：となりの敵が総がかりで来ても、守り切る見込み 約${pct}%${k < 0.85 && !plan ? '。となりから送れる兵がない。徴兵か築城を' : ''}</p>${btn}`;
     })()}
+    <p class="motto">${(() => { const lo = schoolLore(selected); return `<b>校風</b>「${lo.motto}」${lo.sight ? `<small>名物：${lo.sight}</small>` : ""}`; })()}</p>
     <p class="facline"><span class="trait t-${traitOf(selected)}" title="${TRAITS[traitOf(selected)].desc}">${TRAITS[traitOf(selected)].name}</span>
       ${(c.fac || []).map((f) => `<span class="fac">${FACILITIES[f].name}</span>`).join('')}
       <span class="facnote">${TRAITS[traitOf(selected)].desc}${own && (c.fac || []).length < FAC_SLOTS ? `・施設の空き ${FAC_SLOTS - (c.fac || []).length}` : ''}</span></p>
@@ -1269,6 +1270,48 @@ function showBond(ev, then) {
   let closed = false;
   box.onclick = null;
   setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 700);
+}
+
+// ---------- 名門校の落城（本拠を落としたときの一枚絵） ----------
+function conquestArt(id, loser) {
+  const lc = CLANS[loser] ? CLANS[loser].color : '#857b6c';
+  const pc = CLANS[PLAYER].color;
+  const banner = (x, y, col, rot, crestKey) => `<g transform="translate(${x},${y}) rotate(${rot})">
+    <path d="M0,0 L0,-96" stroke="#1c1a17" stroke-width="3.5"/>
+    <rect x="2" y="-94" width="26" height="62" fill="${col}" stroke="#1c1a17" stroke-width="2"/>
+    <g transform="translate(15,-63)">${UKIYO.crest(crestKey, 0, 0, 9)}</g></g>`;
+  return `<svg viewBox="0 0 340 210" class="conq-art" aria-hidden="true">
+    <defs><linearGradient id="cq-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c8372d"/><stop offset=".55" stop-color="#e8a05a"/><stop offset="1" stop-color="#f6dcb0"/></linearGradient></defs>
+    <rect width="340" height="210" fill="url(#cq-sky)"/>
+    <circle cx="170" cy="92" r="58" fill="#f1e6cc" opacity=".35"/>
+    <path d="M0,150 Q60,128 120,146 Q180,120 240,142 Q300,126 340,140 L340,210 L0,210Z" fill="#6b5a40" stroke="#1c1a17" stroke-width="3"/>
+    <g class="conq-castle" transform="translate(170,132) scale(3.2)" style="--c:${lc}">${castleMarkup(true)}</g>
+    <path d="M10,60 q20,-14 40,0 q16,-12 32,0 q-14,10 -36,6 q-22,6 -36,-6z M250,40 q20,-14 40,0 q16,-12 32,0 q-14,10 -36,6 q-22,6 -36,-6z" fill="#e0a526" stroke="#1c1a17" stroke-width="2"/>
+    ${banner(70, 196, pc, -6, PLAYER)}${banner(276, 196, pc, 5, PLAYER)}
+    ${banner(236, 206, lc, 38, loser)}
+    <rect x="2" y="2" width="336" height="206" fill="none" stroke="#1c1a17" stroke-width="4"/>
+  </svg>`;
+}
+function showConquest(B, then) {
+  const id = B.to, loser = B.defender;
+  const lore = schoolLore(id);
+  const dg = B.dgid && S.gens[B.dgid];
+  let box = $('conq');
+  if (!box) { box = document.createElement('div'); box.id = 'conq'; box.className = 'kime conq'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="conq-card">
+      <div class="conq-title"><span>${esc(MAP.byId[id].name)}</span><b>落 城</b></div>
+      <div class="conq-frame">${conquestArt(id, loser)}
+      </div>
+      <p class="conq-motto"><b>校風</b>「${esc(lore.motto)}」</p>
+      ${dg ? `<div class="conq-cry">${portrait(dg, 56, 'frustrated')}<p><b>${esc(dg.name)}</b>「${esc(lore.cry || '無念……')}」</p></div>` : ''}
+      <p class="conq-gain">${CLANS[loser].name}の本拠${lore.sight ? `・${esc(lore.sight)}` : ''}は、${pName()}のものとなった</p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(3); Sound.taiko(0.7, 1.2); Sound.stamp(1.0);
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 900);
 }
 
 // ---------- イベント ----------
@@ -2481,7 +2524,9 @@ function runBattle(B, { auto = false, onClose } = {}) {
       Sound.tap();
       box.hidden = true;
       Sound.bgmStart('map');
-      handleCaptives(r.captured || [], () => { if (onClose) onClose(r); });
+      const next = () => handleCaptives(r.captured || [], () => { if (onClose) onClose(r); });
+      // 名門校（家の本拠）を落としたら、落城の一枚絵
+      if (r.won && !defense && B.attacker === PLAYER && CLANS[B.defender] && B.to === B.defender) showConquest(B, next); else next();
     };
   }
 

@@ -1542,3 +1542,10 @@ function bondPartnerIn(s, leader, gids) {
   const id = gids.find((x) => x !== leader.id && bondBetween(s, leader, s.gens[x]));
   return id ? s.gens[id] : null;
 }
+
+// ---------- 学校の校風 ----------
+function schoolLore(id) {
+  if (SCHOOL_LORE[id]) return SCHOOL_LORE[id];
+  const list = TRAIT_MOTTOS[traitOf(id)] || TRAIT_MOTTOS.traditional;
+  return { motto: list[hashStr(id) % list.length] };
+}

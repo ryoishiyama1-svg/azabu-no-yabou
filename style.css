@@ -1652,3 +1652,33 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .ev-art .season-art { display: block; width: 100%; height: auto; }
 .ev-art-title { position: absolute; top: 10px; right: 12px; writing-mode: vertical-rl; background: var(--paper); color: var(--ink);
   border: 3px solid var(--ink); outline: 1px solid var(--ink); outline-offset: -6px; padding: 10px 5px; font-family: var(--brush); font-size: 20px; letter-spacing: 0.08em; box-shadow: 3px 3px 0 var(--red); }
+
+/* 校風（城のパネル） */
+.motto { margin: 4px 0; font-family: var(--mincho); font-weight: 800; font-size: 13px; }
+.motto b { display: inline-block; margin-right: 6px; padding: 0 6px; background: var(--ink); color: var(--paper); font-family: var(--brush); font-weight: 400; }
+.motto small { margin-left: 6px; font-family: var(--gothic); font-weight: 500; font-size: 11.5px; color: var(--muted); }
+
+/* 名門校の落城 */
+.conq-card { width: 100%; max-width: 380px; text-align: center; color: var(--paper); }
+.conq-title { display: flex; justify-content: center; align-items: baseline; gap: 10px; margin-bottom: 10px; animation: fude 1s cubic-bezier(0.6, 0.1, 0.3, 1) 0.1s both; }
+.conq-title span { font-family: var(--mincho); font-weight: 800; font-size: 18px; }
+.conq-title b { font-family: var(--brush); font-weight: 400; font-size: 40px; letter-spacing: 0.1em; text-shadow: 3px 3px 0 var(--red); }
+.conq-frame { position: relative; border: 5px solid var(--paper); box-shadow: 9px 9px 0 var(--red); animation: kime-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.conq-art { display: block; width: 100%; height: auto; }
+.conq-castle .shadow { fill: rgba(28, 26, 23, 0.25); }
+.conq-castle .stone { fill: #8a8170; stroke: var(--ink); stroke-width: 1.6; }
+.conq-castle .stone-line { stroke: rgba(28, 26, 23, 0.55); stroke-width: 0.8; fill: none; }
+.conq-castle .wall { fill: var(--paper); stroke: var(--ink); stroke-width: 1.6; }
+.conq-castle .window { fill: var(--ink); }
+.conq-castle .clock { fill: var(--paper); stroke: var(--ink); stroke-width: 1.2; }
+.conq-castle .roof { fill: var(--c); stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; }
+.conq-castle .shachi { fill: none; stroke: var(--gold); stroke-width: 2.4; stroke-linecap: round; }
+.conq-castle .shachi-dot { fill: var(--gold); }
+.conq-motto { margin: 14px 0 0; font-family: var(--mincho); font-weight: 800; font-size: 15px; animation: kime-bg 0.4s ease-out 0.9s both; }
+.conq-motto b { display: inline-block; margin-right: 6px; padding: 0 6px; background: var(--paper); color: var(--ink); font-family: var(--brush); font-weight: 400; }
+.conq-cry { display: flex; align-items: center; gap: 10px; margin: 16px 0 0; text-align: left; animation: kime-bg 0.4s ease-out 1.2s both; }
+.conq-cry .portrait { flex: none; border: 2px solid var(--paper); }
+.conq-cry p { margin: 0; font-family: var(--mincho); font-weight: 800; font-size: 15px; line-height: 1.5; }
+.conq-cry b { display: block; font-size: 12px; color: #f3d27a; }
+.conq-gain { margin: 12px 0 0; font-size: 13px; color: #f3d27a; animation: kime-bg 0.4s ease-out 1.6s both; }
+.conq .kime-tap { animation-delay: 2s; }
