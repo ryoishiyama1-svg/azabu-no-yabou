@@ -356,3 +356,12 @@ const LORD_VOICE = {
   balanced: { catch: '', guard: 'ここは我らの本拠！ 一歩たりとも通さぬ！', letters: ['', '', ''] },
 };
 const LETTER_AT = [3, 7, 12]; // その家との合戦がこの回数に届くと、当主から書状が届く
+// 捕らえられた当主のひとこと（家の性格ごと）
+const LORD_CAPTURED = {
+  aggressive: '……殺せ！ 情けなど無用だ！',
+  cunning: 'ふむ、ここで捕まるとはな。読み違えたのは私のほうか',
+  diplomatic: '……話し合おう。互いに得のある道が、まだあるはずだ',
+  expansive: '我が家の学び舎は、まだ残っておるぞ',
+  cautious: '慎重に構えたつもりが……不覚',
+  balanced: '……好きにするがいい',
+};

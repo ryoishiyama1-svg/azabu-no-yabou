@@ -1726,3 +1726,37 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .fn-line b { display: block; font-size: 12px; color: #f3d27a; }
 .fn-sub { margin: 10px 0 0; font-size: 12.5px; color: #f3d27a; animation: kime-bg 0.5s ease-out 1.7s both; }
 .finale .kime-tap { animation-delay: 2s; }
+
+/* ---------- 地図の季節の移ろい ---------- */
+#mapwrap { transition: background-color 1.2s; }
+#mapwrap[data-season="0"] { background-color: #f4e3d8; }
+#mapwrap[data-season="1"] { background-color: #e4e8cc; }
+#mapwrap[data-season="2"] { background-color: #f0d9b2; }
+#mapwrap[data-season="3"] { background-color: #e9ebea; }
+#map .trees .trunk { stroke: #4a3328; stroke-width: 3; stroke-linecap: round; }
+#map .trees .crown { stroke: var(--ink); stroke-width: 1.2; fill: var(--crown, #6f9e4f); transition: fill 1s; }
+#map .trees .crown.c2 { fill: var(--crown2, #5d8a4a); }
+#map .trees .cap, #map .snowcap, .castle .snow { display: none; }
+#mapwrap[data-season="0"] #map .trees { --crown: #f6d2d5; --crown2: #eeb3b9; }
+#mapwrap[data-season="1"] #map .trees { --crown: #7fae5a; --crown2: #5d8a4a; }
+#mapwrap[data-season="2"] #map .trees { --crown: #e0a526; --crown2: #d9622b; }
+#mapwrap[data-season="3"] #map .trees { --crown: #c9d2cf; --crown2: #aebbb8; }
+#mapwrap[data-season="3"] #map .trees .cap { display: inline; fill: #fffaf0; }
+#mapwrap[data-season="3"] #map .snowcap { display: inline; fill: #fffaf0; stroke: var(--ink); stroke-width: 1.5; }
+#mapwrap[data-season="3"] #map .castle .snow { display: inline; fill: #fffaf0; }
+/* 海の色と金雲：春は桜の霞、秋は朱がかった金、冬は銀 */
+#mapwrap[data-season="1"] #map .bay { fill: #2f70b2; }
+#mapwrap[data-season="3"] #map .bay { fill: #587494; }
+#mapwrap[data-season="3"] #map .river-hi { stroke: #6f88a6; }
+#mapwrap[data-season="0"] #map .kasumi path { fill: #f3c6cb; }
+#mapwrap[data-season="2"] #map .kasumi path { fill: #e8a05a; }
+#mapwrap[data-season="3"] #map .kasumi path { fill: #e6e9ec; }
+#mapwrap[data-season="2"] #map .mountains path:not(.snowcap) { filter: sepia(0.5) saturate(1.4) hue-rotate(-20deg); }
+
+/* 敵の当主を捕らえたとき */
+.lordcap { text-align: center; }
+.lc-pic { position: relative; display: inline-block; margin: 6px 0 4px; border: 4px solid var(--ink); box-shadow: 6px 6px 0 var(--c); background: var(--c); }
+.lc-pic .portrait { display: block; border-radius: 0 !important; border: 0 !important; }
+.lc-crest { position: absolute; right: -14px; bottom: -14px; background: var(--paper); border-radius: 50%; padding: 3px; box-shadow: 2px 2px 0 var(--ink); }
+.lordcap h2 { font-size: 22px; margin: 10px 0 4px; }
+.lc-line { font-family: var(--mincho); font-weight: 800; font-size: 15px; color: var(--red); margin: 4px 0 8px; }

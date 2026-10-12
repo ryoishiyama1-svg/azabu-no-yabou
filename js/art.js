@@ -214,6 +214,7 @@ function castleMarkup(capital) {
     <rect class="wall" x="-7" y="-24" width="14" height="10"/>
     <circle class="clock" cx="0" cy="-19" r="3.2"/>
     <path class="roof" d="M-12,-23 L0,-31 L12,-23 Z"/>
+    <path class="snow" d="M-21,-5 L0,-15 L21,-5 L15,-6.5 L0,-12 L-15,-6.5Z M-12,-23 L0,-31 L12,-23 L8,-24 L0,-28.5 L-8,-24Z"/>
     ${gold}`;
 }
 
@@ -463,6 +464,7 @@ function sceneryMarkup() {
     <path d="M-80,120 C-40,60 -20,20 20,0 C50,30 70,60 120,120 Z" fill="#8aa0bd"/>
     <path d="M40,120 C80,50 100,30 130,15 C160,45 190,80 230,120 Z" fill="#9fb0c8" opacity="0.9"/>
     <path d="M-20,120 C10,80 30,65 60,55 C90,75 110,95 140,120 Z" fill="#b7c4d6"/>
+    <path class="snowcap" d="M8,10 L20,0 L32,12 L26,9 L20,14 L14,9Z M112,24 L130,15 L146,28 L138,25 L130,30 L122,25Z"/>
   </g>`;
 
   // 東京湾
@@ -482,6 +484,8 @@ function sceneryMarkup() {
     const a = ang > 90 || ang < -90 ? ang + 180 : ang;
     s += `<text class="map-label river-name" transform="translate(${((p.x + q.x) / 2).toFixed(0)},${((p.y + q.y) / 2 - 8).toFixed(0)}) rotate(${a.toFixed(0)})">${r.name}</text>`;
   });
+
+  s += seasonTrees();
 
   // 金の霞（すやり霞）
   const clouds = [[W * 0.02, H * 0.82, 260], [W * 0.55, H * 0.03, 300], [W * 0.78, H * 0.22, 220], [W * 0.25, H * 0.06, 200]];
@@ -671,4 +675,34 @@ function seasonArt(kind) {
     <path d="M0,40 C30,34 60,40 96,22" stroke="#3b2a22" stroke-width="5" fill="none"/>
     <path d="M40,37 L56,52 M66,32 L72,14" stroke="#3b2a22" stroke-width="3" fill="none"/>${ume}
     ${snow}${frame}</svg>`;
+}
+
+// ---------- 地図の季節の木（春：桜、夏：青葉、秋：紅葉、冬：雪） ----------
+// 色はCSSで季節ごとに変える。城や湾に重ならない場所に、決まった配置で植える
+function seasonTrees() {
+  const bay = BAY.map(([la, lo]) => MAP.geo(la, lo));
+  const inBay = (x, y) => {
+    let inside = false;
+    for (let i = 0, j = bay.length - 1; i < bay.length; j = i++) {
+      const a = bay[i], b = bay[j];
+      if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+  };
+  const r = seeded(MAP.nodes.length * 13 + 5);
+  const trees = [];
+  MAP.nodes.forEach((n) => {
+    for (let k = 0; k < 2; k++) {
+      const a = r() * Math.PI * 2, d = 44 + r() * 20;
+      const x = n.x + Math.cos(a) * d, y = n.y + Math.sin(a) * d * 0.8;
+      if (x < 20 || y < 30 || x > MAP.width - 20 || y > MAP.height - 20 || inBay(x, y)) continue;
+      if (MAP.nodes.some((m) => Math.hypot(m.x - x, m.y - y) < 40)) continue;
+      if (trees.some((t) => Math.hypot(t.x - x, t.y - y) < 26)) continue;
+      trees.push({ x, y, s: 0.85 + r() * 0.4 });
+    }
+  });
+  return `<g class="trees">${trees.map((t) => `<g class="tree" transform="translate(${t.x.toFixed(0)},${t.y.toFixed(0)}) scale(${t.s.toFixed(2)})">
+    <path class="trunk" d="M0,2 L0,-8"/>
+    <circle class="crown c2" cx="-7" cy="-9" r="6.5"/><circle class="crown c2" cx="7" cy="-9" r="6.5"/><circle class="crown" cy="-15" r="8"/>
+    <path class="cap" d="M-8,-19 Q0,-26 8,-19 Q4,-21 0,-20 Q-4,-21 -8,-19Z"/></g>`).join('')}</g>`;
 }

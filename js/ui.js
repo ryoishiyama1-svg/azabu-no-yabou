@@ -613,6 +613,7 @@ function render() {
   $('hud-castles').textContent = `${mine.length}/${MAP.nodes.length}`;
   $('btn-sound').textContent = Sound.on ? '♪' : '✕';
   petals($('map-petals'), S.turn % 4, 12);
+  mapwrap.dataset.season = S.turn % 4; // 地図の季節の色と飾り
 
   document.querySelectorAll('#territory .cell').forEach((p) => {
     const owner = S.castles[p.dataset.id].owner;
@@ -2622,10 +2623,73 @@ function processDefenses(done) {
 }
 
 // ---------- 捕虜 ----------
+// ---------- 敵の当主を捕らえたとき ----------
+// 家臣にする（難しい）／身代金を取って帰す／情けをかけて帰し、停戦を結ぶ
+function lordCaptiveOf(gid) {
+  const k = Object.keys(S.aiLords || {}).find((c) => S.aiLords[c] === gid);
+  return k && castlesOf(S, k).length ? k : null;
+}
+function returnLord(g, k) {
+  g.clan = k;
+  g.loc = castlesOf(S, k).includes(k) ? k : castlesOf(S, k)[0];
+  delete g.capturedAt;
+}
+function handleLordCaptive(g, k, rest, done) {
+  const p = Math.round(recruitChance(S, g) * 50);
+  const ransom = Math.min(Math.max(0, Math.floor(S.gold[k] * 0.6)), 300 + castlesOf(S, k).length * 60);
+  const next = () => { closeModal(); render(); handleCaptives(rest, done); };
+  openModal(`<div class="lordcap" data-lock>
+      <p class="news">敵将捕縛</p>
+      <div class="lc-pic" style="--c:${CLANS[k].color}">${portrait(g, 150, 'frustrated')}<span class="lc-crest">${crestBadge(k, 40)}</span></div>
+      <h2>${CLANS[k].name}当主　${esc(g.name)}</h2>
+      <p class="lc-line">「${esc(LORD_CAPTURED[CLAN_PERSONA[k]] || LORD_CAPTURED.balanced)}」</p>
+      <p class="hint">敵の当主を捕らえた。扱いひとつで、${CLANS[k].name}との先行きが変わる。</p>
+    </div>
+    <button class="btn red" id="lc-recruit">家臣にする<small class="sub">成功率 ${p}%・失敗すると去っていく</small></button>
+    <button class="btn" id="lc-ransom" ${ransom < 50 ? 'disabled' : ''}>身代金を取って帰す<small class="sub">${CLANS[k].name}から金 ${fmt(ransom)}・友好度は下がる</small></button>
+    <button class="btn plain" id="lc-truce">情けをかけて帰す<small class="sub">${CLANS[k].name}と${DIPLO.truceTurns}季の停戦・友好度+15</small></button>`);
+  Sound.hyoshigi(2);
+  const result = (html, good) => {
+    if (good) Sound.win(); else Sound.lose();
+    save();
+    openModal(`<div class="gdetail" data-lock>${portrait(g, 72, good ? 'smile' : 'angry')}<p>${html}</p></div><button class="btn red" id="lc-next">次へ</button>`);
+    $('lc-next').onclick = () => { Sound.tap(); next(); };
+  };
+  $('lc-recruit').onclick = () => {
+    Sound.tap();
+    const ok = Math.random() < p / 100;
+    if (ok && S.castles[g.capturedAt] && S.castles[g.capturedAt].owner === PLAYER) {
+      g.clan = PLAYER; g.loc = g.capturedAt; g.loyal = randInt(30, 45); g.title = `元${CLANS[k].name.replace('家', '')}当主`;
+      S.stats.recruited++;
+      addNews(S, `${CLANS[k].name}当主・${g.name}、${pName()}に降る`, '敵将が味方に', 60);
+      result(`「……負けは負けだ。${pName()}の天下、この目で見届けよう」<br><b>${esc(g.name)}が家臣になった！</b>`, true);
+    } else {
+      releaseCaptive(S, g.id);
+      result(`「誰が仕えるものか！」<br>${esc(g.name)}は去っていった…`, false);
+    }
+  };
+  $('lc-ransom').onclick = () => {
+    Sound.tap();
+    S.gold[k] -= ransom; S.gold[PLAYER] += ransom;
+    if (S.rel[k]) changeFriend(S, k, -10);
+    returnLord(g, k);
+    result(`${CLANS[k].name}は金 ${fmt(ransom)} を差し出した。<br>「この屈辱、忘れはせぬぞ……」`, true);
+  };
+  $('lc-truce').onclick = () => {
+    Sound.tap();
+    returnLord(g, k);
+    if (S.rel[k]) { changeFriend(S, k, 15); S.rel[k].truce = Math.max(S.rel[k].truce || 0, DIPLO.truceTurns); }
+    addDiploLog(S, `${CLANS[k].name}の当主・${g.name}を情けをもって帰し、停戦を結んだ`, 'good');
+    result(`「……この恩、いつか必ず返す」<br>${CLANS[k].name}と${DIPLO.truceTurns}季の停戦を結んだ。`, true);
+  };
+}
+
 function handleCaptives(list, done) {
   if (!list.length) { done(); return; }
   const [gid, ...rest] = list;
   const g = S.gens[gid];
+  const lordClan = lordCaptiveOf(gid);
+  if (lordClan) { handleLordCaptive(g, lordClan, rest, done); return; }
   const p = Math.round(recruitChance(S, g) * 100);
   openModal(`<div class="gdetail" data-lock>
       <p class="news">捕 縛</p>
