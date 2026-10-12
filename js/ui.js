@@ -2877,8 +2877,41 @@ function endingNumbers() {
   const n = [['合戦の勝利', st.battlesWon || 0], ['一騎打ち', st.duelWins || 0], ['舌戦の開城', st.debateWins || 0], ['家宝', tr], ['当主', S.lords.length], ['家臣', gensOf(S, PLAYER).length]];
   return `<div class="stats em-nums">${n.map(([l, v]) => `<div class="stat"><span class="n">${v}</span><span class="l">${l}</span></div>`).join('')}</div>`;
 }
+// ---------- 天下統一の大団円 ----------
+// 金箔の空に朱の日輪、当主の大首絵を、すべての家の紋がぐるりと囲む
+const FINALE_LINES = ['皆の者、よくぞここまでついてきてくれた！', 'この天下、皆で掴んだものだ', '学び舎に、泰平の世を', '先代たちよ、見ておられますか'];
+function showFinale(then) {
+  const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord && g.clan === PLAYER);
+  const clans = Object.keys(CLANS).filter((k) => k !== 'none');
+  const ring = clans.map((k, i) => {
+    const a = (i / clans.length) * Math.PI * 2 - Math.PI / 2;
+    const x = 50 + Math.cos(a) * 44, y = 50 + Math.sin(a) * 44;
+    return `<span class="fn-crest ${k === PLAYER ? 'me' : ''}" style="left:${x}%;top:${y}%;animation-delay:${0.6 + i * 0.12}s">${crestBadge(k, 40)}</span>`;
+  }).join('');
+  let box = $('finale');
+  if (!box) { box = document.createElement('div'); box.id = 'finale'; box.className = 'kime finale'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="fn-card">
+      <div class="fn-title">天下統一</div>
+      <div class="fn-stage">
+        <div class="fn-sun"></div>
+        ${ring}
+        <div class="fn-lord">${lord ? portrait(lord, 220, 'laugh') : crestBadge(PLAYER, 160)}</div>
+      </div>
+      ${lord ? `<p class="fn-line"><b>${esc(lord.name)}</b>「${esc(pick(S.lords.length > 1 ? FINALE_LINES : FINALE_LINES.slice(0, 3)))}」</p>` : ''}
+      <p class="fn-sub">${dateLabel(S.turn)}　${pName()} ${S.lords.length}代目当主　${MAP.nodes.length}校を平定</p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(3); Sound.taiko(0.7, 1.2); Sound.taiko(0.95, 1.2); Sound.kira();
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 1500);
+}
+
 function showEnding() {
   const win = S.result === 'win';
+  // 天下統一なら、まず大団円の一枚絵
+  if (win && !S.finaleShown) { S.finaleShown = true; closeModal(); Sound.bgmStart('win'); showFinale(showEnding); return; }
   Sound.bgmStart(win ? 'win' : 'lose');
   const { got, unlockedNow } = recordEnding(S);
   save();
