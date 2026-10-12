@@ -1269,6 +1269,7 @@ function endTurn(s) {
   aiLoyaltyTick(s, log);
   traitTick(s);
   bondTick(s);
+  aiClans().forEach((k) => { if (castlesOf(s, k).length) aiLordOf(s, k); });
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
@@ -1295,6 +1296,7 @@ function recordBattle(s, r) {
   const ga = s.gens[r.gid], gd = r.dgid ? s.gens[r.dgid] : null;
   if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; } else a.l++; }
   addClash(s, ga, gd, 1);
+  countClanClash(s, r);
   if (gd) { const d = recOf(gd); if (r.won) d.l++; else { d.w++; d.def++; } }
 }
 function recordDuel(s, winner, loser) {
@@ -1548,4 +1550,34 @@ function schoolLore(id) {
   if (SCHOOL_LORE[id]) return SCHOOL_LORE[id];
   const list = TRAIT_MOTTOS[traitOf(id)] || TRAIT_MOTTOS.traditional;
   return { motto: list[hashStr(id) % list.length] };
+}
+
+// ---------- 他家の当主 ----------
+// s.aiLords[家] = 当主の武将id。卒業や捕縛でいなくなったら、その家でいちばん格の高い者が継ぐ
+function aiLordOf(s, clan) {
+  if (clan === PLAYER || !CLANS[clan] || clan === 'none') return null;
+  s.aiLords = s.aiLords || {};
+  const cur = s.gens[s.aiLords[clan]];
+  if (cur && cur.clan === clan && cur.loc) return cur;
+  const heir = bestBy(gensOf(s, clan).filter((g) => g.loc), (g) => g.str + g.cha + g.pol + g.int);
+  if (!heir) return null;
+  const first = !s.aiLords[clan];
+  s.aiLords[clan] = heir.id;
+  heir.title = '当主';
+  if (!first && castlesOf(s, clan).length) addNews(s, `${CLANS[clan].name}に新当主・${heir.name}`, lordVoice(clan).catch ? `「${lordVoice(clan).catch}」` : '', 36);
+  return heir;
+}
+const lordVoice = (clan) => LORD_VOICE[CLAN_PERSONA[clan]] || LORD_VOICE.balanced;
+// 自分の家との合戦を数え、節目で当主から書状を送らせる
+function countClanClash(s, r) {
+  const foe = r.attacker === PLAYER ? r.defender : r.defender === PLAYER ? r.attacker : null;
+  if (!foe || foe === 'none' || !CLANS[foe]) return;
+  s.clanClash = s.clanClash || {};
+  s.clanClash[foe] = (s.clanClash[foe] || 0) + 1;
+  const i = LETTER_AT.indexOf(s.clanClash[foe]);
+  if (i < 0 || !lordVoice(foe).letters[i]) return;
+  const lord = aiLordOf(s, foe);
+  if (!lord) return;
+  s.bondQueue = s.bondQueue || [];
+  s.bondQueue.push({ id: 'letter', p: { clan: foe, lord: lord.id, i, n: s.clanClash[foe] } });
 }

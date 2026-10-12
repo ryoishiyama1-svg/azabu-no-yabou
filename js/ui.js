@@ -906,6 +906,7 @@ function showDiplomacy(message) {
     const off = !envoy || (S.encircle && !r.sister);
     return `<div class="diplo-row ${r.sister ? 'sister' : ''}">
       <div class="dr-head">${clanChip(k)}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
+      ${(() => { const lo = aiLordOf(S, k); return lo ? `<div class="dr-lord">${portrait(lo, 48, r.friend >= 60 ? "smile" : r.friend < 30 ? "angry" : null)}<div><small>当主</small><b>${esc(lo.name)}</b>${lordVoice(k).catch ? `<i>「${lordVoice(k).catch}」</i>` : ""}</div></div>` : ""; })()}
       <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
       ${(() => {
         const rs = aiRelations(S, k);
@@ -1314,10 +1315,40 @@ function showConquest(B, then) {
   setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 900);
 }
 
+// ---------- 他家の当主からの書状 ----------
+// 巻紙に縦書きの文と、相手の家の落款。右上に当主の顔
+function showLetter(ev, then) {
+  const p = ev.p, k = p.clan;
+  const lord = S.gens[p.lord];
+  const text = lordVoice(k).letters[p.i];
+  if (!lord || !text) { then(); return; }
+  let box = $('letter');
+  if (!box) { box = document.createElement('div'); box.id = 'letter'; box.className = 'kime letter'; document.body.appendChild(box); }
+  const mood = CLAN_PERSONA[k] === 'diplomatic' ? 'think' : p.i === 2 ? 'smile' : 'angry';
+  box.innerHTML = `<div class="letter-card">
+      <div class="lt-head">${portrait(lord, 64, mood)}<div><small>${CLANS[k].name}当主より</small><b>${esc(lord.name)}</b><span>${p.n}度目の合戦を経て</span></div></div>
+      <div class="lt-paper" style="--c:${CLANS[k].color}">
+        <p class="lt-body">${esc(pName())}　殿<br><br>${esc(text)}</p>
+        <div class="lt-sign"><span>${esc(lord.name)}</span><i>${CLANS[k].name.replace('家', '')}<br>之印</i></div>
+      </div>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(1); Sound.stamp(0.9);
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 800);
+}
+
 // ---------- イベント ----------
 function runEvents(done) {
   if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
   const ev = S.pending[0];
+  if (ev.id === 'letter') {
+    closeModal();
+    showLetter(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); });
+    return;
+  }
   if (ev.id === 'bond' || ev.id === 'farewell') {
     closeModal();
     showBond(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); });
@@ -2162,7 +2193,8 @@ function runBattle(B, { auto = false, onClose } = {}) {
   if (B.decisive) {
     // 決戦：本拠を守る大将の名乗り
     const lordD = dg ? dg.name : '城兵';
-    openLines.unshift(`${lordD}「ここは${CLANS[B.defender].name}の本拠・${MAP.byId[B.to].short}！ 一歩たりとも通さぬ！」`);
+    const isLord = dg && aiLordOf(S, B.defender) === dg;
+    openLines.unshift(isLord ? `${CLANS[B.defender].name}当主・${lordD}「${lordVoice(B.defender).guard}」` : `${lordD}「ここは${CLANS[B.defender].name}の本拠・${MAP.byId[B.to].short}！ 一歩たりとも通さぬ！」`);
     const cutIn = () => setTimeout(() => {
       const cut = $('b-cut');
       cut.textContent = '天下分け目の決戦';

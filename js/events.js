@@ -52,6 +52,12 @@ const EVENTS = {
     choices: () => [{ label: 'よし' }],
     apply() { return ''; },
   },
+  letter: {
+    icon: '書', title: '書状',
+    text: (s, p) => `${CLANS[p.clan].name}の当主から書状が届いた。`,
+    choices: () => [{ label: '受け取る' }],
+    apply() { return ''; },
+  },
   farewell: {
     icon: '別', title: '別れ',
     text: (s, p) => `${s.gens[p.a] ? s.gens[p.a].name : ''}が卒業し、${s.gens[p.b] ? s.gens[p.b].name : ''}と別れた。`,
