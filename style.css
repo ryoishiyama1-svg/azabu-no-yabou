@@ -1646,3 +1646,9 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .bond-line span { grid-row: span 2; background: var(--red); color: #fff; font-family: var(--brush); font-size: 15px; padding: 2px 6px; }
 .bond-line small { color: var(--muted); font-size: 11px; }
 .b-bond { color: #ffd7cf; }
+
+/* 季節の行事の一枚絵 */
+.ev-art { position: relative; margin: -4px -4px 12px; box-shadow: 6px 6px 0 var(--ai); animation: suri 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.ev-art .season-art { display: block; width: 100%; height: auto; }
+.ev-art-title { position: absolute; top: 10px; right: 12px; writing-mode: vertical-rl; background: var(--paper); color: var(--ink);
+  border: 3px solid var(--ink); outline: 1px solid var(--ink); outline-offset: -6px; padding: 10px 5px; font-family: var(--brush); font-size: 20px; letter-spacing: 0.08em; box-shadow: 3px 3px 0 var(--red); }

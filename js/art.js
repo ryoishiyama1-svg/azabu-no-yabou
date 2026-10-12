@@ -574,3 +574,101 @@ function titleArt() {
     <path d="M0,650 Q48,614 96,640 T192,636 T300,630 T400,636 M0,690 Q48,660 96,682 T192,676 T300,670 T400,676 M0,732 Q48,704 96,724 T192,718 T300,712 T400,718" fill="none" stroke="#3c6aa3" stroke-width="5"/>
   </svg>`;
 }
+
+// ---------- 季節の行事の一枚絵（錦絵風・340×150） ----------
+// 校舎：横長の学び舎に時計塔。屋根と窓の色、雪で季節を出す
+function schoolHouse(x, y, { roof = '#22406b', wall = '#f1e6cc', win = '#22406b', snow = false } = {}) {
+  const wins = [0, 1, 2, 3, 4, 5].map((i) => `<rect x="${x + 10 + i * 22}" y="${y + 20}" width="12" height="12" fill="${win}" stroke="#1c1a17" stroke-width="1.5"/>`).join('');
+  const snowCap = snow
+    ? `<path d="M${x - 6},${y + 12} Q${x + 72},${y + 4} ${x + 150},${y + 12} L${x + 140},${y + 3} Q${x + 72},${y - 2} ${x + 4},${y + 3}Z" fill="#fffaf0"/>
+       <path d="M${x + 52},${y - 20} L${x + 72},${y - 36} L${x + 92},${y - 20} Q${x + 72},${y - 27} ${x + 52},${y - 20}Z" fill="#fffaf0"/>`
+    : '';
+  return `<g>
+    <rect x="${x}" y="${y + 10}" width="144" height="40" fill="${wall}" stroke="#1c1a17" stroke-width="2.5"/>
+    <path d="M${x - 6},${y + 12} L${x + 150},${y + 12} L${x + 140},${y + 2} L${x + 4},${y + 2}Z" fill="${roof}" stroke="#1c1a17" stroke-width="2.5"/>
+    ${wins}
+    <rect x="${x + 57}" y="${y - 22}" width="30" height="34" fill="${wall}" stroke="#1c1a17" stroke-width="2.5"/>
+    <path d="M${x + 52},${y - 20} L${x + 72},${y - 36} L${x + 92},${y - 20}Z" fill="${roof}" stroke="#1c1a17" stroke-width="2.5"/>
+    <circle cx="${x + 72}" cy="${y - 7}" r="8" fill="#fffaf0" stroke="#1c1a17" stroke-width="2"/>
+    <path d="M${x + 72},${y - 7} L${x + 72},${y - 12} M${x + 72},${y - 7} L${x + 76},${y - 6}" stroke="#1c1a17" stroke-width="1.6"/>
+    <rect x="${x + 64}" y="${y + 34}" width="16" height="16" fill="#1c1a17"/>
+    ${snowCap}
+  </g>`;
+}
+
+function seasonArt(kind) {
+  const W = 340, H = 150;
+  const frame = `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" fill="none" stroke="#1c1a17" stroke-width="4"/>`;
+  const r = seeded(kind.length * 31 + 7);
+  const open = `<svg viewBox="0 0 ${W} ${H}" class="season-art" aria-hidden="true">`;
+
+  if (kind === 'spring') {
+    const petals = Array.from({ length: 26 }, () => {
+      const x = (r() * W).toFixed(0), y = (r() * H).toFixed(0), a = (r() * 180).toFixed(0);
+      return `<ellipse cx="${x}" cy="${y}" rx="3.4" ry="2" fill="#f6c9cd" stroke="#e9a3a8" stroke-width=".6" transform="rotate(${a} ${x} ${y})"/>`;
+    }).join('');
+    const tree = (x, s) => `<g transform="translate(${x},70) scale(${s})">
+      <path d="M0,60 L0,10 M0,22 L-14,6 M0,18 L12,2" stroke="#4a3328" stroke-width="5" fill="none"/>
+      <circle cx="-14" cy="-2" r="20" fill="#f3c6cb"/><circle cx="12" cy="-8" r="22" fill="#eeb3b9"/><circle cx="0" cy="-22" r="18" fill="#f6d2d5"/></g>`;
+    return `${open}<rect width="${W}" height="${H}" fill="#fbeee6"/>
+      <rect width="${W}" height="70" fill="url(#bokashi)" opacity=".35"/>
+      <rect y="122" width="${W}" height="28" fill="#d9c9a3"/>
+      ${schoolHouse(98, 74, { roof: '#c8372d' })}
+      ${tree(78, 0.8)}${tree(262, 0.85)}${tree(40, 1.1)}${tree(300, 1.15)}
+      ${petals}${frame}</svg>`;
+  }
+
+  if (kind === 'summer') {
+    const burst = (cx, cy, rad, col) => Array.from({ length: 16 }, (_, i) => {
+      const a = (i / 16) * Math.PI * 2;
+      const x1 = (cx + Math.cos(a) * rad * 0.35).toFixed(1), y1 = (cy + Math.sin(a) * rad * 0.35).toFixed(1);
+      const x2 = (cx + Math.cos(a) * rad).toFixed(1), y2 = (cy + Math.sin(a) * rad).toFixed(1);
+      const x3 = (cx + Math.cos(a) * rad * 1.1).toFixed(1), y3 = (cy + Math.sin(a) * rad * 1.1).toFixed(1);
+      return `<path d="M${x1},${y1} L${x2},${y2}" stroke="${col}" stroke-width="2.6" stroke-linecap="round"/><circle cx="${x3}" cy="${y3}" r="1.8" fill="${col}"/>`;
+    }).join('');
+    const stars = Array.from({ length: 22 }, () => `<circle cx="${(r() * W).toFixed(0)}" cy="${(r() * 70).toFixed(0)}" r="${(0.6 + r()).toFixed(1)}" fill="#f1e6cc" opacity=".7"/>`).join('');
+    const lanterns = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<g transform="translate(${30 + i * 40},${(86 + Math.sin(i) * 3).toFixed(1)})">
+      <path d="M0,-10 L0,-4" stroke="#1c1a17"/><ellipse rx="7" ry="9" fill="#c8372d" stroke="#1c1a17" stroke-width="1.5"/><path d="M-7,0 L7,0" stroke="#e0a526" stroke-width="1.2"/></g>`).join('');
+    return `${open}<defs><linearGradient id="sa-night" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101a33"/><stop offset="1" stop-color="#22406b"/></linearGradient></defs>
+      <rect width="${W}" height="${H}" fill="url(#sa-night)"/>${stars}
+      ${burst(80, 44, 30, '#e0a526')}${burst(200, 34, 26, '#e9a3a8')}${burst(276, 58, 22, '#c8372d')}${burst(140, 66, 14, '#f1e6cc')}
+      <path d="M0,76 Q170,66 340,76" stroke="#1c1a17" stroke-width="1.5" fill="none"/>${lanterns}
+      <rect y="112" width="${W}" height="38" fill="url(#seigaiha)"/>
+      <path d="M0,112 L${W},112" stroke="#1c1a17" stroke-width="3"/>${frame}</svg>`;
+  }
+
+  if (kind === 'autumn') {
+    const leaves = Array.from({ length: 18 }, () => {
+      const x = (r() * W).toFixed(0), y = (r() * H).toFixed(0), a = (r() * 360).toFixed(0);
+      const c = ['#c8372d', '#e0a526', '#d9622b'][Math.floor(r() * 3)];
+      return `<path transform="translate(${x},${y}) rotate(${a}) scale(.9)" d="M0,-7 L2,-2 L7,-3 L3,1 L5,6 L0,3 L-5,6 L-3,1 L-7,-3 L-2,-2Z" fill="${c}"/>`;
+    }).join('');
+    const lanterns = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => {
+      const x = 20 + i * 37.5, y = 34 - Math.pow((x - 170) / 170, 2) * 14;
+      return `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="6.5" ry="8.5" fill="${i % 2 ? '#e0a526' : '#c8372d'}" stroke="#1c1a17" stroke-width="1.5"/>`;
+    }).join('');
+    const nobori = (x, col, txt) => `<g transform="translate(${x},52)"><path d="M0,0 L0,72" stroke="#1c1a17" stroke-width="2.5"/>
+      <rect x="2" y="2" width="16" height="50" fill="${col}" stroke="#1c1a17" stroke-width="1.5"/>
+      ${[...txt].map((ch, i) => `<text x="10" y="${18 + i * 14}" font-size="11" fill="#fffaf0" text-anchor="middle" font-weight="900">${ch}</text>`).join('')}</g>`;
+    return `${open}<defs><linearGradient id="sa-eve" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8a05a"/><stop offset=".7" stop-color="#f6dcb0"/></linearGradient></defs>
+      <rect width="${W}" height="${H}" fill="url(#sa-eve)"/>
+      <circle cx="282" cy="40" r="20" fill="#c8372d" opacity=".85"/>
+      <rect y="122" width="${W}" height="28" fill="#cdb98f"/>
+      ${schoolHouse(98, 74, { roof: '#6b3a5e', win: '#e0a526' })}
+      <path d="M0,22 Q170,48 340,22" stroke="#1c1a17" stroke-width="1.5" fill="none"/>${lanterns}
+      ${nobori(40, '#c8372d', '文化祭')}${nobori(66, '#22406b', '模擬店')}${nobori(258, '#5d8a4a', '演劇部')}
+      ${leaves}${frame}</svg>`;
+  }
+
+  // 冬：雪の学び舎と梅
+  const snow = Array.from({ length: 40 }, () => `<circle cx="${(r() * W).toFixed(0)}" cy="${(r() * H).toFixed(0)}" r="${(1 + r() * 1.6).toFixed(1)}" fill="#fffaf0" opacity=".9"/>`).join('');
+  const ume = [[30, 30], [52, 18], [70, 36], [44, 50], [86, 24]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.5" fill="#c8372d"/><circle cx="${x}" cy="${y}" r="1.4" fill="#e0a526"/>`).join('');
+  return `${open}<defs><linearGradient id="sa-win" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c2846"/><stop offset="1" stop-color="#4b6286"/></linearGradient></defs>
+    <rect width="${W}" height="${H}" fill="url(#sa-win)"/>
+    <circle cx="236" cy="30" r="14" fill="#f1e6cc"/><circle cx="242" cy="26" r="13" fill="#1f2b4a"/>
+    <rect y="120" width="${W}" height="30" fill="#f4efe4"/>
+    ${schoolHouse(98, 74, { roof: '#22406b', win: '#f3d27a', snow: true })}
+    <path d="M0,40 C30,34 60,40 96,22" stroke="#3b2a22" stroke-width="5" fill="none"/>
+    <path d="M40,37 L56,52 M66,32 L72,14" stroke="#3b2a22" stroke-width="3" fill="none"/>${ume}
+    ${snow}${frame}</svg>`;
+}

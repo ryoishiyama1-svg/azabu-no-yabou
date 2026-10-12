@@ -60,7 +60,7 @@ const EVENTS = {
   },
   // ---------- 季節の行事 ----------
   spring: {
-    icon: '桜', title: '卒業式と入学式',
+    icon: '桜', title: '卒業式と入学式', art: 'spring',
     text: (s) => {
       const g = s.grad || { left: [], joined: [] };
       // 人数が多いときは、最初の数人だけ名前を出す
@@ -88,23 +88,40 @@ const EVENTS = {
     },
   },
   summer: {
-    icon: '夏', title: '夏合宿',
-    text: () => `夏休みに合宿を開けば、家臣たちの統率が鍛えられ、結束も強まるだろう。費用は金${300}。`,
-    choices: (s) => [{ label: '合宿を開く（金300）', disabled: s.gold[PLAYER] < 300 }, { label: '見送る' }],
+    icon: '夏', title: '夏合宿', art: 'summer',
+    text: () => '夏休み。どこで合宿を開くかで、家臣たちの伸びるところが変わる。寝食を共にすれば、結束も強まるだろう。',
+    choices: (s) => [
+      { label: '山ごもり（金300）', sub: '統率が上がる・忠誠+3', disabled: s.gold[PLAYER] < 300 },
+      { label: '海合宿（金250）', sub: '魅力が上がる・忠誠+5', disabled: s.gold[PLAYER] < 250 },
+      { label: '勉強合宿（金200）', sub: '知略が上がる', disabled: s.gold[PLAYER] < 200 },
+      { label: '見送る' },
+    ],
     apply(s, p, ci) {
-      if (ci !== 0) return '合宿は見送った。';
-      s.gold[PLAYER] -= 300;
-      gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 3));
-      return `厳しい合宿を乗りこえた。${growAll(s, 'str')}\n寝食を共にし、家臣たちの忠誠も少し上がった。`;
+      if (ci === 0) {
+        s.gold[PLAYER] -= 300;
+        gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 3));
+        return `山にこもって鍛えぬいた。${growAll(s, 'str')}\n寝食を共にし、家臣たちの忠誠も少し上がった。`;
+      }
+      if (ci === 1) {
+        s.gold[PLAYER] -= 250;
+        gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 5));
+        return `海辺の合宿は笑い声が絶えなかった。${growAll(s, 'cha')}\n花火の夜、家臣たちの心がひとつになった。`;
+      }
+      if (ci === 2) {
+        s.gold[PLAYER] -= 200;
+        return `朝から晩まで机に向かった。${growAll(s, 'int')}`;
+      }
+      return '合宿は見送った。';
     },
   },
   autumn: {
-    icon: '祭', title: '文化祭',
-    text: (s) => `いよいよ文化祭。${pName()}の出し物を決めよう。`,
+    icon: '祭', title: '文化祭', art: 'autumn',
+    text: (s) => `いよいよ文化祭。提灯が灯り、校舎がにぎわう。${pName()}の出し物を決めよう。`,
     choices: (s) => [
       { label: '模擬店', sub: `金 +${150 + 25 * castlesOf(s, PLAYER).length}` },
-      { label: '演劇', sub: '家臣の魅力と忠誠が上がる' },
-      { label: '研究発表', sub: '家臣の政治が上がる' },
+      { label: '演劇', sub: '魅力が上がる・忠誠+3' },
+      { label: '研究発表', sub: '政治が上がる' },
+      { label: '後夜祭', sub: '同じ城の家臣どうしの絆が深まる・忠誠+2' },
     ],
     apply(s, p, ci) {
       if (ci === 0) {
@@ -116,14 +133,57 @@ const EVENTS = {
         gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 3));
         return `演劇は大喝采！ ${growAll(s, 'cha')}\n一体感が生まれ、家臣たちの忠誠も少し上がった。`;
       }
-      return `研究発表は高い評価を受けた。${growAll(s, 'pol')}`;
+      if (ci === 2) return `研究発表は高い評価を受けた。${growAll(s, 'pol')}`;
+      // 後夜祭：キャンプファイヤーを囲んで、同じ城の者どうしの絆の点が深まる
+      gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 2));
+      castlesOf(s, PLAYER).forEach((id) => {
+        const gens = gensAt(s, id).filter((g) => g.clan === PLAYER);
+        for (let i = 0; i < gens.length; i++) {
+          for (let j = i + 1; j < gens.length; j++) {
+            const type = bondKindOf(gens[i], gens[j]);
+            if (type) addBondPts(s, gens[i], gens[j], type, 2);
+          }
+        }
+      });
+      return '後夜祭。火を囲んで語り明かし、家臣たちの距離がぐっと縮まった。\n（同じ城の家臣どうしの絆が深まった）';
     },
   },
   winter: {
-    icon: '雪', title: '受験シーズン',
-    text: () => '三年生が受験のため部活を引退した…。すべての学校で兵が少し減った。',
-    choices: () => [{ label: 'がんばれ受験生' }],
-    apply(s) { scaleTroops(s, allCastles(), 0.92); return ''; },
+    icon: '雪', title: '受験シーズン', art: 'winter',
+    text: (s) => {
+      const n = gensOf(s, PLAYER).filter((g) => g.grade >= 3).length;
+      return `雪の学び舎。三年生が受験のため部活を引退し、すべての学校で兵が減る。${n ? `\nわが家の三年生は${n}人。春には巣立っていく。` : ''}`;
+    },
+    choices: (s) => [
+      { label: 'がんばれ受験生', sub: '兵が1割ほど減る' },
+      { label: '合格祈願（金200）', sub: 'わが家の兵の減りが半分・三年生の忠誠+6', disabled: s.gold[PLAYER] < 200 },
+      { label: '送別会（金100）', sub: '三年生が後輩に技を引き継ぐ（同じ城の後輩が成長）', disabled: s.gold[PLAYER] < 100 },
+    ],
+    apply(s, p, ci) {
+      const mine = castlesOf(s, PLAYER);
+      const others = allCastles().filter((id) => s.castles[id].owner !== PLAYER);
+      scaleTroops(s, others, 0.92);
+      if (ci === 1) {
+        s.gold[PLAYER] -= 200;
+        scaleTroops(s, mine, 0.96);
+        gensOf(s, PLAYER).filter((g) => g.grade >= 3).forEach((g) => changeLoyal(g, 6));
+        return '絵馬に願いを込めた。先輩たちの士気は保たれ、わが家の兵の減りは小さく済んだ。';
+      }
+      scaleTroops(s, mine, 0.92);
+      if (ci === 2) {
+        s.gold[PLAYER] -= 100;
+        let n = 0;
+        gensOf(s, PLAYER).filter((g) => g.grade >= 3 && g.loc).forEach((sr) => {
+          const best = ['str', 'int', 'pol', 'cha'].reduce((x, y) => (sr[y] > sr[x] ? y : x));
+          gensAt(s, sr.loc).filter((g) => g.clan === PLAYER && g.grade < 3 && g[best] < sr[best]).forEach((g) => {
+            g[best] = Math.min(100, g[best] + 1);
+            n++;
+          });
+        });
+        return `送別会で、先輩たちは後輩に技と心得を託した。\n${n ? `後輩たちの能力が${n}か所伸びた。` : '託せる相手がいなかったが、心は伝わった。'}`;
+      }
+      return '';
+    },
   },
 
   // ---------- ランダムな出来事 ----------
@@ -434,6 +494,7 @@ function eventView(s, ev) {
   const e = EVENTS[ev.id];
   return {
     icon: e.icon, title: ev.id === 'envoy' ? ENVOY_KINDS[ev.p.kind].title : e.title,
+    art: e.art || null,
     scene: !!e.scene,
     text: e.text(s, ev.p),
     choices: e.choices(s, ev.p),

@@ -1292,8 +1292,8 @@ function runEvents(done) {
     openModal(`${envoyScene(ev, v.title, ev.p.kind === 'tribute' ? 'angry' : ev.p.kind === 'plea' ? 'think' : null, v.text)}${choiceHtml}`);
   } else {
     openModal(`<div class="event" data-lock>
-      <div class="ev-icon">${v.icon}</div>
-      <h2>${v.title}</h2>
+      ${v.art ? `<div class="ev-art">${seasonArt(v.art)}<span class="ev-art-title">${v.title}</span></div>` : `<div class="ev-icon">${v.icon}</div>`}
+      ${v.art ? "" : `<h2>${v.title}</h2>`}
       ${v.gid ? `<div class="glist pick">${genCard(S.gens[v.gid])}</div>` : ''}
       <p class="ev-text">${esc(v.text)}</p>
     </div>
@@ -1321,7 +1321,7 @@ function runEvents(done) {
           <button class="btn red" id="ev-next">承 知</button>`);
         if (yes) Sound.win(); else Sound.lose();
       } else {
-        openModal(`<div class="event" data-lock><div class="ev-icon">${v.icon}</div><p class="ev-text">${esc(result)}</p></div>
+        openModal(`<div class="event" data-lock>${v.art ? `<div class="ev-art">${seasonArt(v.art)}</div>` : `<div class="ev-icon">${v.icon}</div>`}<p class="ev-text">${esc(result)}</p></div>
         <button class="btn red" id="ev-next">承 知</button>`);
       }
       $('ev-next').onclick = () => {
