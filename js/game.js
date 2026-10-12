@@ -1182,7 +1182,7 @@ function graduation(s) {
     if (['ronin', 'captive'].includes(g.clan) && g.grade >= 3) { g.clan = 'graduated'; g.gradTurn = s.turn; return; }
     if (g.clan === 'graduated') { if (g.gradTurn === undefined) g.gradTurn = s.turn; return; }
     if (g.grade >= 3) {
-      if (g.clan === PLAYER) { info.left.push(g.name); enshrine(s, g); }
+      if (g.clan === PLAYER) { info.left.push(g.name); enshrine(s, g); bondGraduate(s, g); }
       passOnTreasure(s, g, g.clan);
       if (g.lord && g.clan === PLAYER) info.lordLeft = g.id;
       g.clan = 'graduated';
@@ -1268,10 +1268,12 @@ function endTurn(s) {
   loyaltyTick(s, log);
   aiLoyaltyTick(s, log);
   traitTick(s);
+  bondTick(s);
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
   s.pending = s.result ? [] : rollEvents(s);
+  if (!s.result && s.bondQueue && s.bondQueue.length) s.pending.push(...s.bondQueue.splice(0));
   s.log = log;
   return log;
 }
@@ -1463,4 +1465,80 @@ function dangerOf(s, id, ratioToChance) {
   const power = Math.max(1, defensePower(s, id));
   const worst = Math.max(...clans.map((k) => byClan[k].troops * byClan[k].mult / power));
   return { keep: 1 - ratioToChance(worst), ratio: worst };
+}
+
+// ---------- 絆（自分の家の武将どうし） ----------
+// s.bonds[key] = { a, b, type, since }  ／ s.bondPts[key] = 点数 ／ s.bondQueue = 次に見せる場面
+const bondKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+function bondsOf(s, g) {
+  if (!s.bonds || !g) return [];
+  return Object.values(s.bonds).filter((b) => b.a === g.id || b.b === g.id)
+    .map((b) => ({ ...b, other: b.a === g.id ? b.b : b.a }));
+}
+const bondBetween = (s, a, b) => (s.bonds && a && b ? s.bonds[bondKey(a.id, b.id)] : null);
+// 二人の組み合わせで、生まれる絆の種類（同じ城で過ごすとき）
+function bondKindOf(a, b) {
+  if (a.grade === b.grade) return 'shin';
+  const [hi, lo] = a.grade > b.grade ? [a, b] : [b, a];
+  const best = ['str', 'int', 'pol', 'cha'].reduce((x, y) => (hi[y] > hi[x] ? y : x));
+  return hi[best] >= 65 && hi[best] >= lo[best] + 8 ? 'shitei' : null;
+}
+function addBondPts(s, a, b, type, n) {
+  if (!a || !b || a.id === b.id || a.clan !== PLAYER || b.clan !== PLAYER) return;
+  s.bonds = s.bonds || {};
+  s.bondPts = s.bondPts || {};
+  const k = bondKey(a.id, b.id);
+  if (s.bonds[k]) return;
+  s.bondPts[k] = (s.bondPts[k] || 0) + n;
+  // 1季に生まれるのは1組まで。家の中の絆の数にも上限がある
+  if (s.bondPts[k] >= BOND_AT && bondsOf(s, a).length < BOND_MAX && bondsOf(s, b).length < BOND_MAX &&
+      s.lastBond !== s.turn && Object.keys(s.bonds).length < BOND_LIVE) {
+    s.lastBond = s.turn;
+    formBond(s, a, b, type);
+  }
+}
+function formBond(s, a, b, type) {
+  const k = bondKey(a.id, b.id);
+  // 師弟は、学年の上の人を a（師）にする
+  const [x, y] = type === 'shitei' && b.grade > a.grade ? [b, a] : [a, b];
+  s.bonds[k] = { a: x.id, b: y.id, type, since: s.turn };
+  delete s.bondPts[k];
+  if (type === 'shin') [x, y].forEach((g) => { g.loyal = Math.min(100, (g.loyal || 60) + 8); });
+  if (type === 'senyu') [x, y].forEach((g) => { g.str = Math.min(100, g.str + 1); });
+  s.bondQueue = s.bondQueue || [];
+  s.bondQueue.push({ id: 'bond', p: { a: x.id, b: y.id, type, line: randInt(0, 1) } });
+  addNews(s, `${x.name}と${y.name}、${BOND_TYPES[type].name}の契り`, '二人の絆が家を強くする', 43);
+}
+// 季節ごと：同じ城にいる自分の武将どうしに点を足す
+function bondTick(s) {
+  castlesOf(s, PLAYER).forEach((id) => {
+    const gens = gensAt(s, id).filter((g) => g.clan === PLAYER);
+    for (let i = 0; i < gens.length; i++) {
+      for (let j = i + 1; j < gens.length; j++) {
+        const type = bondKindOf(gens[i], gens[j]);
+        if (type && Math.random() < 0.5) addBondPts(s, gens[i], gens[j], type, 1);
+      }
+    }
+  });
+}
+// 卒業：絆の相手との別れ。師弟なら弟子が師の得意を受け継ぐ
+function bondGraduate(s, g) {
+  bondsOf(s, g).forEach((bd) => {
+    const other = s.gens[bd.other];
+    delete s.bonds[bondKey(g.id, bd.other)];
+    if (!other || other.clan !== PLAYER || other.grade >= 3) return; // 二人とも卒業するなら、別れの場面はなし
+    let gift = null;
+    if (bd.type === 'shitei' && bd.a === g.id) {
+      gift = ['str', 'int', 'pol', 'cha'].reduce((x, y) => (g[y] > g[x] ? y : x));
+      other[gift] = Math.min(100, other[gift] + 3);
+    }
+    s.bondQueue = s.bondQueue || [];
+    s.bondQueue.push({ id: 'farewell', p: { a: g.id, b: other.id, type: bd.type, line: randInt(0, 1), gift } });
+  });
+}
+// 合戦で、大将が絆の相手と並んでいるか（攻め：援軍の大将／守り：同じ城の武将）
+function bondPartnerIn(s, leader, gids) {
+  if (!leader || leader.clan !== PLAYER) return null;
+  const id = gids.find((x) => x !== leader.id && bondBetween(s, leader, s.gens[x]));
+  return id ? s.gens[id] : null;
 }

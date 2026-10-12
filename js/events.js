@@ -45,6 +45,19 @@ function borderEnemies(s, clanFilter) {
 }
 
 const EVENTS = {
+  // 絆の場面（画面は ui.js の showBond が描く。ここは自動で進めるときの受け皿）
+  bond: {
+    icon: '絆', title: '絆',
+    text: (s, p) => `${s.gens[p.a] ? s.gens[p.a].name : ''}と${s.gens[p.b] ? s.gens[p.b].name : ''}が${BOND_TYPES[p.type].name}の契りを結んだ。`,
+    choices: () => [{ label: 'よし' }],
+    apply() { return ''; },
+  },
+  farewell: {
+    icon: '別', title: '別れ',
+    text: (s, p) => `${s.gens[p.a] ? s.gens[p.a].name : ''}が卒業し、${s.gens[p.b] ? s.gens[p.b].name : ''}と別れた。`,
+    choices: () => [{ label: '見送る' }],
+    apply() { return ''; },
+  },
   // ---------- 季節の行事 ----------
   spring: {
     icon: '桜', title: '卒業式と入学式',

@@ -461,6 +461,9 @@ function helpChapters() {
       <h3>家宝</h3>
       <p>名刀や軍配などの家宝を持たせると、その武将に効き目があります。敵の武将を捕らえると奪えることも。持ち主が卒業すると後輩に受け継がれます。</p>
       <div class="help-grid">${Object.values(TREASURE_KINDS).map((t) => `<div><b>${t.name}</b><span>${t.desc}</span></div>`).join('')}</div>
+      <h3>絆</h3>
+      <p>自分の家の武将どうしに<b>絆</b>が生まれます。同じ学年で同じ城に長くいると<b>親友</b>、学年の違う二人なら<b>師弟</b>、いっしょに出陣を重ねると<b>戦友</b>。絆の相手と並んで戦うと士気が上がり、卒業のときには別れの場面があります。</p>
+      <div class="help-grid">${Object.values(BOND_TYPES).map((t) => `<div><b>${t.name}</b><span>${t.desc}</span></div>`).join('')}</div>
       <h3>因縁</h3>
       <p>同じ相手と${RIVAL_AT}度ぶつかると<b>宿敵</b>に。宿敵どうしの合戦では一騎打ちが起こりやすくなります。</p>
       <h3>決め絵</h3>
@@ -877,6 +880,8 @@ const TIPS = [
     text: '城が増えてまいりました。前線から遠い城は<b>委任</b>にすれば、季節の終わりに自ら動きます。<b>全城で徴兵／開発</b>もお使いなされ。' },
   { id: 'rival', when: () => Object.keys(S.rivalBook || {}).length > 0,
     text: '幾度もぶつかった相手は<b>宿敵</b>となりました。宿敵どうしの合戦では、一騎打ちが起こりやすくなりますぞ。' },
+  { id: 'bond', when: () => Object.keys(S.bonds || {}).length > 0,
+    text: '家臣のあいだに<b>絆</b>が生まれましたな。絆の相手を<b>援軍</b>に連れて出陣する、あるいは同じ城で守らせると、士気が上がりまするぞ。武将をタップすると、誰と結ばれているか分かります。' },
   { id: 'hall', when: () => (S.hall || []).length > 0,
     text: '卒業した者の戦いぶりは<b>卒業生の列伝</b>に残ります。目録の家臣団から読めますぞ。名を上げた者は天下統一の絵巻にも載りまする。' },
   { id: 'danger', when: () => castlesOf(S, PLAYER).some((id) => { const t = dangerOf(S, id, winChance); return t && t.keep < 0.5; }),
@@ -1227,10 +1232,54 @@ function showFreshmen(then) {
   $('fresh-ok').onclick = () => { Sound.tap(); then(); };
 }
 
+// ---------- 絆の場面（二枚続きの錦絵） ----------
+// 背景の柄が二人の後ろに通しで見えるよう、似顔の地の柄を外す
+function bondPortrait(g, mood, dir) {
+  return portrait(g, 260, mood, dir).replace(/<rect width="200" height="220" fill="url\(#\w+\)"\/><rect width="200" height="84" fill="url\(#bokashi\)" opacity="0.75"\/>/, '');
+}
+const BOND_KNOT = `<svg class="bd-knot" viewBox="0 0 120 70" aria-hidden="true"><g fill="none" stroke-linecap="round">
+  <path d="M0,40 C25,40 30,18 50,18 C66,18 70,34 60,42 C50,50 38,40 46,30 C54,20 72,22 80,34 C88,46 100,40 120,40" stroke="#1c1a17" stroke-width="9"/>
+  <path d="M0,40 C25,40 30,18 50,18 C66,18 70,34 60,42 C50,50 38,40 46,30 C54,20 72,22 80,34 C88,46 100,40 120,40" stroke="#c8372d" stroke-width="5"/>
+  <path d="M58,44 L50,66 M64,44 L72,66" stroke="#1c1a17" stroke-width="7"/><path d="M58,44 L50,66 M64,44 L72,66" stroke="#c8372d" stroke-width="3.5"/></g></svg>`;
+function showBond(ev, then) {
+  const p = ev.p, T = BOND_TYPES[p.type];
+  const a = S.gens[p.a], b = S.gens[p.b];
+  if (!a || !b) { then(); return; }
+  const bye = ev.id === 'farewell';
+  const [la, lb] = (bye ? T.bye : T.lines)[p.line || 0];
+  let box = $('bond');
+  if (!box) { box = document.createElement('div'); box.id = 'bond'; box.className = 'kime bond'; document.body.appendChild(box); }
+  const eff = bye
+    ? (p.gift ? `${esc(b.name)}は師の教えを受け継いだ（${{ str: '統率', int: '知略', pol: '政治', cha: '魅力' }[p.gift]}+3）` : `${esc(a.name)}、卒業。絆は胸に残る`)
+    : `${T.name}の契り：${T.desc}`;
+  box.innerHTML = `<div class="bond-card">
+      <div class="bd-title"><span>${bye ? '別' : '絆'}</span><b>${bye ? `${T.name}の別れ` : T.name}</b></div>
+      <div class="bd-pair m-${T.motif}">
+        <div class="bd-panel l">${bondPortrait(a, bye ? 'smile' : 'smile', 'R')}<div class="bd-name">${esc(a.name)}${p.type === 'shitei' ? '<small>師</small>' : ''}</div></div>
+        <div class="bd-panel r">${bondPortrait(b, bye ? 'think' : 'happy', 'L')}<div class="bd-name">${esc(b.name)}${p.type === 'shitei' ? '<small>弟子</small>' : ''}</div></div>
+        ${BOND_KNOT}
+      </div>
+      <p class="bd-line l"><b>${esc(a.name.split(' ')[1] || a.name)}</b>「${esc(la)}」</p>
+      <p class="bd-line r"><b>${esc(b.name.split(' ')[1] || b.name)}</b>「${esc(lb)}」</p>
+      <p class="bd-eff">${eff}</p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  if (bye) Sound.lose(); else { Sound.hyoshigi(1); Sound.kira(); }
+  let closed = false;
+  box.onclick = null;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 700);
+}
+
 // ---------- イベント ----------
 function runEvents(done) {
   if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
   const ev = S.pending[0];
+  if (ev.id === 'bond' || ev.id === 'farewell') {
+    closeModal();
+    showBond(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); });
+    return;
+  }
   const v = eventView(S, ev);
   Sound.taiko(0, 0.7);
   const choiceHtml = v.choiceGens
@@ -1645,6 +1694,7 @@ function showGeneral(gid) {
       <h2>${esc(g.name)}</h2>
       ${nickOf(g) ? `<p class="nick-big">「${esc(nickOf(g))}」</p>` : ''}
       ${(() => { const rv = rivalOf(S, g); return rv ? `<p class="rival-line">宿敵：<b>${esc(rv.g.name)}</b>（${CLANS[rv.g.clan] ? CLANS[rv.g.clan].name : '浪人'}・${rv.n}度の対決）</p>` : ''; })()}
+      ${bondsOf(S, g).map((bd) => { const o = S.gens[bd.other]; return o ? `<p class="bond-line"><span>${BOND_TYPES[bd.type].name}</span><b>${esc(o.name)}</b>${bd.type === 'shitei' ? (bd.a === g.id ? '（弟子）' : '（師）') : ''}<small>${BOND_TYPES[bd.type].desc}</small></p>` : ''; }).join('')}
       <p class="hint">${esc(g.title)}（${MAP.byId[g.school].name}出身）${g.lord ? `・${pName()}当主` : ''}</p>
       <p class="hint">${gradeTag(g)}${g.grade >= 3 ? '次の春に卒業' : `卒業まであと${4 - g.grade}回の春`}</p>
       <div class="gstats">
@@ -2006,7 +2056,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
   box.innerHTML = `
     <div class="b-head"><div class="b-title ${B.decisive ? 'decisive' : ''}">${B.decisive ? '決 戦' : defense ? '籠 城 戦' : '合 戦'}</div>
       <div class="b-sub">${MAP.byId[B.to].name}の戦い${defense ? `（${pShort()}の守り）` : ''}
-        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}</div>
+        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}${B.bond && B.bond.side === me ? `<div class="b-tactic b-bond">絆の力：${esc(B.bond.a)}と${esc(B.bond.b)}（${BOND_TYPES[B.bond.type].name}）が並ぶ！ 士気+${BOND_MORALE}</div>` : ''}</div>
     <div class="b-field">
       ${battleScene(B, S.turn)}
       <div class="b-cut" id="b-cut"></div>

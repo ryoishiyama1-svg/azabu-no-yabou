@@ -40,7 +40,7 @@ function startBattle(s, o) {
   const kakunBonus = (clan) => (clan === PLAYER && s.kakun === 'cha' ? 5 : 0);
   // 決戦：家の本拠（家の名のもとになった城）をめぐる合戦。守る側は士気が高く、大将どうしの一騎打ちが必ず起こる
   const decisive = isCapital(to, defender);
-  return {
+  const B = {
     decisive,
     from, to, attacker, defender, gid, dgid: dg ? dg.id : null, support, tactic, tr,
     parts: [{ from, n: n - support.reduce((a, sp) => a + sp.n, 0) }, ...support],
@@ -58,6 +58,15 @@ function startBattle(s, o) {
     round: 0, over: null, duel: null, duelDone: false, duelCapture: null,
     rounds: [{ a: n, d: dst.troops, ma: 0, md: 0 }],
   };
+  // 絆：大将が絆の相手と並んで戦うと士気が上がる。いっしょに出陣すると戦友の点がたまる
+  const side = attacker === PLAYER ? 'a' : defender === PLAYER ? 'd' : null;
+  if (side) {
+    const leader = side === 'a' ? s.gens[gid] : dg;
+    const partner = bondPartnerIn(s, leader, side === 'a' ? support.map((sp) => sp.gid) : gensAt(s, to).map((g) => g.id));
+    if (partner) { B[side].morale = clamp(B[side].morale + BOND_MORALE, 15, 100); B.bond = { side, a: leader.name, b: partner.name, type: bondBetween(s, leader, partner).type }; }
+  }
+  if (attacker === PLAYER && !committed) support.forEach((sp) => addBondPts(s, s.gens[gid], s.gens[sp.gid], 'senyu', 2));
+  return B;
 }
 
 // 命令の相性：+1 = 勝ち、-1 = 負け

@@ -1606,3 +1606,43 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .reinforce b { grid-row: span 2; background: var(--ai); color: var(--paper); font-family: var(--brush); font-weight: 400; font-size: 16px; padding: 2px 8px; }
 .reinforce small { color: var(--muted); font-size: 11.5px; font-weight: 500; }
 .reinforce:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ai); }
+
+/* ---------- 絆の場面：二枚続きの錦絵 ---------- */
+.bond-card { width: 100%; max-width: 380px; text-align: center; color: var(--paper); }
+.bd-title { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; animation: fude 1s cubic-bezier(0.6, 0.1, 0.3, 1) 0.1s both; }
+.bd-title span { width: 52px; height: 52px; display: grid; place-items: center; background: var(--red); color: var(--paper); font-family: var(--brush); font-size: 34px;
+  box-shadow: inset 0 0 0 3px var(--red), inset 0 0 0 5px var(--paper); transform: rotate(-6deg); }
+.bd-title b { font-family: var(--brush); font-weight: 400; font-size: 32px; letter-spacing: 0.1em; text-shadow: 3px 3px 0 var(--red); }
+.bd-pair { position: relative; display: grid; grid-template-columns: 1fr 1fr; border: 5px solid var(--paper); box-shadow: 9px 9px 0 var(--red);
+  animation: kime-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; overflow: hidden; }
+.bd-panel { position: relative; overflow: hidden; }
+.bd-panel + .bd-panel { border-left: 3px solid var(--paper); }
+.bd-panel .portrait { display: block; width: 100%; height: auto; border-radius: 0 !important; border: 0 !important; box-shadow: none !important; background: transparent !important; }
+.bd-panel.l .portrait { transform: scale(1.06) translateX(4%); transform-origin: 50% 100%; }
+.bd-panel.r .portrait { transform: scale(1.06) translateX(-4%); transform-origin: 50% 100%; }
+.bd-name { position: absolute; top: 6px; writing-mode: vertical-rl; background: var(--paper); color: var(--ink); border: 2.5px solid var(--ink);
+  padding: 8px 4px; font-family: var(--brush); font-size: 17px; box-shadow: 3px 3px 0 var(--ai); }
+.bd-name small { font-size: 12px; color: var(--red); margin-top: 4px; }
+.bd-panel.l .bd-name { left: 6px; }
+.bd-panel.r .bd-name { right: 6px; }
+.bd-knot { position: absolute; left: 50%; bottom: 10px; width: 108px; transform: translateX(-50%); animation: kime-seal 0.35s cubic-bezier(0.2, 1.8, 0.4, 1) 0.8s both; }
+/* 背景の柄：親友＝桜、師弟＝松に月、戦友＝日輪 */
+.bd-pair.m-sakura { background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cg fill='%23fff' opacity='.75'%3E%3Cpath d='M14 10c3-4 8-2 6 3-2 4-6 4-6-3z'/%3E%3Cpath d='M50 40c3-4 8-2 6 3-2 4-6 4-6-3z'/%3E%3Cpath d='M30 58c3-4 8-2 6 3-2 4-6 4-6-3z'/%3E%3C/g%3E%3C/svg%3E"),
+  linear-gradient(180deg, #e9a3a8, #f6d9d6 60%, #f1e6cc); }
+.bd-pair.m-matsu { background:
+  radial-gradient(circle at 50% 30%, #f3e3a8 0 17%, rgba(243, 227, 168, 0.25) 18%, transparent 30%),
+  linear-gradient(180deg, #22406b, #3d5f8f 55%, #c9d3dc); }
+.bd-pair.m-hinomaru { background:
+  radial-gradient(circle at 50% 40%, var(--red) 0 30%, transparent 30.5%),
+  repeating-conic-gradient(from 0deg at 50% 40%, rgba(224, 165, 38, 0.35) 0 6deg, transparent 6deg 15deg), #f1e6cc; }
+.bd-line { margin: 10px 0 0; font-family: var(--mincho); font-weight: 800; font-size: 15px; line-height: 1.5; animation: kime-bg 0.4s ease-out both; }
+.bd-line b { display: inline-block; margin-right: 4px; font-size: 12px; background: var(--paper); color: var(--ink); padding: 0 6px; }
+.bd-line.l { text-align: left; animation-delay: 1s; }
+.bd-line.r { text-align: right; animation-delay: 1.5s; }
+.bd-eff { margin: 12px 0 0; font-size: 12.5px; color: var(--gold-hi, #f3d27a); animation: kime-bg 0.4s ease-out 1.9s both; }
+.bond .kime-tap { animation-delay: 2.1s; }
+.bond-line { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; margin: 4px 0; padding: 5px 8px; background: #fff3f0; border-left: 5px solid var(--red); font-size: 13px; }
+.bond-line span { grid-row: span 2; background: var(--red); color: #fff; font-family: var(--brush); font-size: 15px; padding: 2px 6px; }
+.bond-line small { color: var(--muted); font-size: 11px; }
+.b-bond { color: #ffd7cf; }
