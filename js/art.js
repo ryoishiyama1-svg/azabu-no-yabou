@@ -542,7 +542,7 @@ function buildCells() {
 }
 
 // ---------- タイトルの屏風絵 ----------
-function titleArt() {
+function titleArt(season = realSeason()) {
   // 錦絵学園のタイトル：一文字ぼかしの空、朱の日輪（版ずれ）、霞、富士、学園城、北斎風の大波
   const K = '#1c1a17', P = '#f1e6cc';
   return `<svg class="byobu" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -550,6 +550,7 @@ function titleArt() {
     <rect width="400" height="260" fill="url(#bokashi)"/>
     <circle cx="300" cy="206" r="110" fill="#c8372d"/>
     <circle cx="293" cy="199" r="110" fill="none" stroke="${K}" stroke-width="5"/>
+    ${titleSeasonArt(season)}
     <g stroke="${K}" stroke-width="3.5">
       <path d="M-10,286 H200 a16,16 0 0 1 0,32 H150 a9,9 0 0 0 0,18 H240 a9,9 0 0 1 0,18 H60 a9,9 0 0 1 0,-18 H100 a9,9 0 0 0 0,-18 H-10Z" fill="#e9a3a8"/>
       <path d="M250,378 H410 V410 H290 a16,16 0 0 1 0,-32Z" fill="#e0a526"/>
@@ -705,4 +706,35 @@ function seasonTrees() {
     <path class="trunk" d="M0,2 L0,-8"/>
     <circle class="crown c2" cx="-7" cy="-9" r="6.5"/><circle class="crown c2" cx="7" cy="-9" r="6.5"/><circle class="crown" cy="-15" r="8"/>
     <path class="cap" d="M-8,-19 Q0,-26 8,-19 Q4,-21 0,-20 Q-4,-21 -8,-19Z"/></g>`).join('')}</g>`;
+}
+
+// ---------- タイトルの季節（遊ぶ日の月で決まる） ----------
+// 0 春（3〜5月）・1 夏（6〜8月）・2 秋（9〜11月）・3 冬（12〜2月）
+function realSeason(d = new Date()) {
+  return Math.floor(((d.getMonth() + 10) % 12) / 3);
+}
+// 右上から垂れる枝（春：桜／秋：紅葉／冬：紅梅）と、夏の花火・冬の雪
+function titleSeasonArt(season) {
+  const K = '#1c1a17';
+  const r = seeded(97 + season);
+  const branch = `<path d="M410,-6 C360,30 330,40 300,78 M352,34 C340,58 318,70 292,74 M330,50 C334,80 352,96 372,104" fill="none" stroke="#3b2a22" stroke-width="7" stroke-linecap="round"/>`;
+  const along = [[300, 78], [292, 74], [316, 66], [338, 46], [372, 104], [356, 92], [344, 30], [370, 18], [324, 58], [306, 86]];
+  if (season === 0) {
+    const fl = along.map(([x, y]) => `<g transform="translate(${x},${y})">${[0, 72, 144, 216, 288].map((a) => `<ellipse rx="5" ry="7" cy="-6" transform="rotate(${a})" fill="#f6d2d5" stroke="${K}" stroke-width="1.2"/>`).join('')}<circle r="2.5" fill="#c8372d"/></g>`).join('');
+    return branch + fl;
+  }
+  if (season === 1) {
+    const burst = (cx, cy, rad, col) => Array.from({ length: 18 }, (_, i) => {
+      const a = (i / 18) * Math.PI * 2;
+      return `<path d="M${(cx + Math.cos(a) * rad * 0.3).toFixed(1)},${(cy + Math.sin(a) * rad * 0.3).toFixed(1)} L${(cx + Math.cos(a) * rad).toFixed(1)},${(cy + Math.sin(a) * rad).toFixed(1)}" stroke="${col}" stroke-width="4" stroke-linecap="round"/>`;
+    }).join('');
+    return `<g opacity=".9">${burst(330, 70, 48, '#e0a526')}${burst(250, 40, 30, '#e9a3a8')}${burst(372, 150, 24, '#f1e6cc')}</g>`;
+  }
+  if (season === 2) {
+    const lv = along.map(([x, y], i) => `<path transform="translate(${x},${y}) rotate(${(r() * 360).toFixed(0)}) scale(1.6)" d="M0,-7 L2,-2 L7,-3 L3,1 L5,6 L0,3 L-5,6 L-3,1 L-7,-3 L-2,-2Z" fill="${i % 3 ? '#c8372d' : '#e0a526'}" stroke="${K}" stroke-width=".8"/>`).join('');
+    return branch + lv;
+  }
+  const ume = along.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="6" fill="#c8372d" stroke="${K}" stroke-width="1.2"/><circle cx="${x}" cy="${y}" r="2" fill="#e0a526"/>`).join('');
+  const snow = Array.from({ length: 46 }, () => `<circle cx="${(r() * 400).toFixed(0)}" cy="${(r() * 600).toFixed(0)}" r="${(1.5 + r() * 2.5).toFixed(1)}" fill="#fffaf0" stroke="${K}" stroke-width=".6"/>`).join('');
+  return branch + ume + snow;
 }

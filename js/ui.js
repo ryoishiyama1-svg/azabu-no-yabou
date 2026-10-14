@@ -99,7 +99,7 @@ function petals(el, season, count) {
 // ---------- タイトル ----------
 $('title-art').innerHTML = titleArt();
 $('title-crest').innerHTML = crestBadge(PLAYER, 84);
-petals($('title-petals'), 0, 18);
+petals($('title-petals'), realSeason(), 18);
 
 // タイトルの音楽：iPhoneは画面に触れるまで音を出せないので、最初のタッチで流し始める
 function titleMusic() {
@@ -1321,16 +1321,17 @@ function showConquest(B, then) {
 function showLetter(ev, then) {
   const p = ev.p, k = p.clan;
   const lord = S.gens[p.lord];
-  const text = lordVoice(k).letters[p.i];
+  const text = p.text || lordVoice(k).letters[p.i];
   if (!lord || !text) { then(); return; }
   let box = $('letter');
   if (!box) { box = document.createElement('div'); box.id = 'letter'; box.className = 'kime letter'; document.body.appendChild(box); }
-  const mood = CLAN_PERSONA[k] === 'diplomatic' ? 'think' : p.i === 2 ? 'smile' : 'angry';
+  const mood = p.mood || (CLAN_PERSONA[k] === 'diplomatic' ? 'think' : p.i === 2 ? 'smile' : 'angry');
   box.innerHTML = `<div class="letter-card">
-      <div class="lt-head">${portrait(lord, 64, mood)}<div><small>${CLANS[k].name}当主より</small><b>${esc(lord.name)}</b><span>${p.n}度目の合戦を経て</span></div></div>
+      <div class="lt-head">${portrait(lord, 64, mood)}<div><small>${CLANS[k].name}当主より</small><b>${esc(lord.name)}</b><span>${p.sub || `${p.n}度目の合戦を経て`}</span></div></div>
       <div class="lt-paper" style="--c:${CLANS[k].color}">
         <p class="lt-body">${esc(pName())}　殿<br><br>${esc(text)}</p>
         <div class="lt-sign"><span>${esc(lord.name)}</span><i>${CLANS[k].name.replace('家', '')}<br>之印</i></div>
+        ${p.gift ? `<p class="lt-gift">${esc(p.gift)}</p>` : ''}
       </div>
       <p class="kime-tap">画面をタップ</p>
     </div>`;
@@ -2673,11 +2674,13 @@ function handleLordCaptive(g, k, rest, done) {
     S.gold[k] -= ransom; S.gold[PLAYER] += ransom;
     if (S.rel[k]) changeFriend(S, k, -10);
     returnLord(g, k);
+    addDebt(S, k, g.id, 'ransom');
     result(`${CLANS[k].name}は金 ${fmt(ransom)} を差し出した。<br>「この屈辱、忘れはせぬぞ……」`, true);
   };
   $('lc-truce').onclick = () => {
     Sound.tap();
     returnLord(g, k);
+    addDebt(S, k, g.id, 'mercy');
     if (S.rel[k]) { changeFriend(S, k, 15); S.rel[k].truce = Math.max(S.rel[k].truce || 0, DIPLO.truceTurns); }
     addDiploLog(S, `${CLANS[k].name}の当主・${g.name}を情けをもって帰し、停戦を結んだ`, 'good');
     result(`「……この恩、いつか必ず返す」<br>${CLANS[k].name}と${DIPLO.truceTurns}季の停戦を結んだ。`, true);

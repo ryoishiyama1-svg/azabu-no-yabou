@@ -1270,6 +1270,7 @@ function endTurn(s) {
   traitTick(s);
   bondTick(s);
   aiClans().forEach((k) => { if (castlesOf(s, k).length) aiLordOf(s, k); });
+  debtTick(s);
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
@@ -1580,4 +1581,43 @@ function countClanClash(s, r) {
   if (!lord) return;
   s.bondQueue = s.bondQueue || [];
   s.bondQueue.push({ id: 'letter', p: { clan: foe, lord: lord.id, i, n: s.clanClash[foe] } });
+}
+
+// ---------- 恩と恨み（捕らえた当主の扱いの後日談） ----------
+// 情けをかけて帰した当主は、しばらくして恩を返しに来る。身代金を取られた当主は、恨みの書状を寄こす
+function addDebt(s, clan, lord, kind) {
+  s.debts = s.debts || [];
+  s.debts.push({ clan, lord, kind, due: s.turn + randInt(2, 5) });
+}
+function debtTick(s) {
+  if (!s.debts || !s.debts.length) return;
+  s.debts = s.debts.filter((d) => {
+    if (s.turn < d.due) return true;
+    const lord = s.gens[d.lord];
+    if (!lord || !castlesOf(s, d.clan).length || aiLordOf(s, d.clan) !== lord) return false; // 当主が代わっていたら、話は立ち消え
+    s.bondQueue = s.bondQueue || [];
+    if (d.kind === 'ransom') {
+      if (s.rel[d.clan]) changeFriend(s, d.clan, -10);
+      s.bondQueue.push({ id: 'letter', p: { clan: d.clan, lord: d.lord, mood: 'angry', sub: '身代金の恨み',
+        text: '金で買い戻されたあの日の屈辱、片時も忘れたことはない。いずれ必ず、この借りは返させてもらう。', gift: `${CLANS[d.clan].name}の友好度が下がった` } });
+      return false;
+    }
+    // 恩返し：金か、となりの城への援兵
+    const border = castlesOf(s, PLAYER).filter((id) => MAP.adj[id].some((n) => s.castles[n].owner === d.clan));
+    const to = border.length ? pick(border) : castlesOf(s, PLAYER)[0];
+    if (to && Math.random() < 0.5) {
+      const n = 300 + castlesOf(s, d.clan).length * 40;
+      s.castles[to].troops = Math.min(RULES.troopCap, s.castles[to].troops + n);
+      s.bondQueue.push({ id: 'letter', p: { clan: d.clan, lord: d.lord, mood: 'smile', sub: '先の恩に報いて',
+        text: '貴殿に救われた命、ここで返そう。我が家の精鋭を、貴殿の城へ送り届ける。存分に使ってくれ。', gift: `${MAP.byId[to].short}に ${n} の援兵が加わった` } });
+    } else {
+      const g = 300 + castlesOf(s, d.clan).length * 50;
+      s.gold[PLAYER] += g;
+      s.bondQueue.push({ id: 'letter', p: { clan: d.clan, lord: d.lord, mood: 'smile', sub: '先の恩に報いて',
+        text: '先の恩、片時も忘れてはおらぬ。わずかだが受け取ってほしい。これで貸し借りなしだ、とは言わぬ。', gift: `金 ${g} が届いた` } });
+    }
+    if (s.rel[d.clan]) changeFriend(s, d.clan, 5);
+    addNews(s, `${CLANS[d.clan].name}当主・${lord.name}、${pName()}に恩を返す`, '敵味方を超えた義理', 40);
+    return false;
+  });
 }
