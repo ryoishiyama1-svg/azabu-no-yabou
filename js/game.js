@@ -38,10 +38,17 @@ function project(lat, lon) {
   const x = lon >= 139.62 ? 700 + (lon - 139.62) * 3200 : 700 - (139.62 - lon) * 1300;
   return { x, y: (35.80 - lat) * 3200 };
 }
+// 首都圏版：東京の中は project と同じ。東京の外（神奈川・埼玉・千葉）は縮めて、地図が大きくなりすぎないようにする
+function projectWide(lat, lon) {
+  const p = project(Math.min(35.80, Math.max(35.55, lat)), Math.min(139.90, Math.max(139.30, lon)));
+  const x = p.x + (lon > 139.90 ? (lon - 139.90) * 1100 : lon < 139.30 ? -(139.30 - lon) * 800 : 0);
+  const y = p.y + (lat > 35.80 ? -(lat - 35.80) * 1300 : lat < 35.55 ? (35.55 - lat) * 1300 : 0);
+  return { x, y };
+}
 
-function buildMap(filter = () => true) {
-  const nodes = SCHOOL_ROWS.filter(filter).map(([id, name, short, ward, lat, lon, clan]) => ({
-    id, name, short, ward, clan: clan || 'none', ...project(lat, lon),
+function buildMap(filter = SCENARIOS.tokyo.filter, proj = project) {
+  const nodes = SCHOOL_ROWS.filter(filter).map(([id, name, short, ward, lat, lon, clan, pref]) => ({
+    id, name, short, ward, pref: pref || null, clan: clan || 'none', ...proj(lat, lon),
   }));
 
   // 近すぎる城を押し広げる
@@ -69,7 +76,7 @@ function buildMap(filter = () => true) {
   const height = Math.max(...nodes.map((n) => n.y)) + PAD;
   // 川や湾を描くための「緯度経度 → 地図座標」
   const geo = (lat, lon) => {
-    const p = project(lat, lon);
+    const p = proj(lat, lon);
     return { x: p.x - minX + PAD, y: p.y - minY + PAD };
   };
 
@@ -102,7 +109,7 @@ let MAP_SCENARIO = 'tokyo';
 function setScenario(id) {
   const key = SCENARIOS[id] ? id : 'tokyo';
   if (key !== MAP_SCENARIO) {
-    MAP = buildMap(SCENARIOS[key].filter);
+    MAP = buildMap(SCENARIOS[key].filter, SCENARIOS[key].wide ? projectWide : project);
     MAP_SCENARIO = key;
   }
   return key;

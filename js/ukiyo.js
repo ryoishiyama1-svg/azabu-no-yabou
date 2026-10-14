@@ -50,6 +50,9 @@ const UKIYO = (() => {
         <g transform="translate(0,-10)">${[0, 72, 144, 216, 288].map((a) => `<path d="M0,-3 Q-8,-18 0,-22 Q8,-18 0,-3Z" fill="${INK}" transform="rotate(${a})"/>`).join('')}</g>`,
       waseda: `<path d="M0,28 L0,4" stroke="${INK}" stroke-width="5"/><path d="M0,6 Q-32,0 -26,-22 Q-12,-32 0,-16 Q12,-32 26,-22 Q32,0 0,6Z" fill="${INK}"/>`,
       nishi: `<path d="M-8,-30 A22,22 0 1 0 18,4 A17,17 0 1 1 -8,-30Z" fill="${INK}"/><path d="M-30,22 q8,-10 15,0 q8,-10 15,0 q8,-10 15,0 q8,-10 15,0" stroke="${INK}" stroke-width="5" fill="none"/>`,
+      eiko: `<path d="M0,-30 L13,-6 L-13,-6Z M-14,-2 L-1,22 L-27,22Z M14,-2 L27,22 L1,22Z" fill="${INK}"/>`,
+      urawa: `<g fill="${INK}">${[0, 72, 144, 216, 288].map((a) => `<circle cx="0" cy="-18" r="10" transform="rotate(${a})"/>`).join('')}</g><circle r="6" fill="${KINARI}"/>`,
+      shibumaku: `<path d="M-30,8 q7.5,-16 15,0 q7.5,-16 15,0 q7.5,-16 15,0 q7.5,-16 15,0 M-30,-10 q7.5,-16 15,0 q7.5,-16 15,0 q7.5,-16 15,0 q7.5,-16 15,0" stroke="${INK}" stroke-width="6" fill="none" stroke-linecap="round"/>`,
     }[clan] || '';
     return `<g transform="translate(${x},${y}) scale(${s})"><circle r="44" fill="${KINARI}" stroke="${INK}" stroke-width="6"/>${inner}</g>`;
   }

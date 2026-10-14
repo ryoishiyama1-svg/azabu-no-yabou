@@ -23,6 +23,16 @@ function crestInner(kind, fg) {
       return ring + rot(4, 90, 'M0,-2 L7.5,-10.5 L0,-19 L-7.5,-10.5 Z');
     case 'hiki': // 丸に二つ引
       return ring + `<rect x="-22" y="-10" width="44" height="6" fill="${fg}"/><rect x="-22" y="4" width="44" height="6" fill="${fg}"/>`;
+    case 'uroko': // 三つ鱗
+      return ring + `<path d="M0,-19 L9,-3 L-9,-3Z M-9.5,-1 L-0.5,15 L-18.5,15Z M9.5,-1 L18.5,15 L0.5,15Z" fill="${fg}"/>`;
+    case 'umebachi': // 梅鉢
+      return ring + Array.from({ length: 5 }, (_, k) => {
+        const a = (k * 2 * Math.PI) / 5;
+        return `<circle cx="${(Math.sin(a) * 12).toFixed(1)}" cy="${(-Math.cos(a) * 12).toFixed(1)}" r="6.5" fill="${fg}"/>`;
+      }).join('') + `<circle r="4" fill="none" stroke="${fg}" stroke-width="2"/>`;
+    case 'nami': // 丸に波
+      return ring + `<path d="M-21,6 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0 M-21,-6 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0" fill="none" stroke="${fg}" stroke-width="4" stroke-linecap="round"/>
+        <path d="M-18,14 H18" stroke="${fg}" stroke-width="4" stroke-linecap="round"/>`;
     default: // 丸
       return ring + `<circle r="6" fill="${fg}"/>`;
   }
@@ -452,9 +462,22 @@ const RIVERS = [
 const BAY = [[35.53, 139.775], [35.56, 139.768], [35.59, 139.762], [35.62, 139.754], [35.636, 139.76], [35.645, 139.772],
   [35.642, 139.80], [35.646, 139.83], [35.65, 139.86], [35.655, 139.90], [35.60, 139.98], [35.45, 139.98], [35.45, 139.775]];
 
+// 首都圏版の海：東京湾をまるごと（横浜・横須賀・房総の岸）と、相模湾
+const BAY_WIDE = [[35.53, 139.775], [35.56, 139.768], [35.59, 139.762], [35.62, 139.754], [35.636, 139.76], [35.645, 139.772],
+  [35.642, 139.80], [35.646, 139.83], [35.65, 139.86], [35.648, 139.90], [35.685, 139.985], [35.645, 140.04], [35.58, 140.09],
+  [35.48, 140.03], [35.38, 139.91], [35.31, 139.79], [35.18, 139.80], [35.18, 139.72], [35.25, 139.745], [35.28, 139.67],
+  [35.33, 139.64], [35.41, 139.665], [35.45, 139.65], [35.51, 139.74]];
+const SAGAMI = [[35.18, 139.05], [35.25, 139.15], [35.30, 139.40], [35.31, 139.48], [35.30, 139.55], [35.26, 139.60], [35.18, 139.64]];
+const RIVERS_WIDE = [
+  { name: '江戸川', label: 2, pts: [[35.98, 139.86], [35.88, 139.885], [35.80, 139.90], [35.74, 139.905], [35.68, 139.90], [35.65, 139.895]] },
+  { name: '相模川', label: 2, pts: [[35.60, 139.33], [35.52, 139.36], [35.44, 139.38], [35.36, 139.38], [35.32, 139.385]] },
+];
+const bayPoints = () => (MAP_SCENARIO === 'shutoken' ? BAY_WIDE : BAY);
+
 function sceneryMarkup() {
   const g = MAP.geo;
   const W = MAP.width, H = MAP.height;
+  const wide = MAP_SCENARIO === 'shutoken';
   let s = '';
 
   // 山（多摩の奥）
@@ -468,14 +491,20 @@ function sceneryMarkup() {
   </g>`;
 
   // 東京湾
-  const bay = BAY.map(([la, lo]) => g(la, lo));
+  const bay = bayPoints().map(([la, lo]) => g(la, lo));
   s += `<path class="bay" d="${pathFrom(bay, true)}"/>`;
   s += `<path class="bay-waves" d="${pathFrom(bay, true)}"/>`;
-  const bl = g(35.60, 139.86);
+  const bl = wide ? g(35.45, 139.85) : g(35.60, 139.86);
   s += `<text class="map-label sea" x="${bl.x}" y="${bl.y}">東京湾</text>`;
+  if (wide) {
+    const sg = SAGAMI.map(([la, lo]) => g(la, lo));
+    s += `<path class="bay" d="${pathFrom(sg, true)}"/><path class="bay-waves" d="${pathFrom(sg, true)}"/>`;
+    const sl = g(35.22, 139.40);
+    s += `<text class="map-label sea" x="${sl.x}" y="${sl.y}">相模湾</text>`;
+  }
 
   // 川
-  RIVERS.forEach((r) => {
+  (wide ? [...RIVERS, ...RIVERS_WIDE] : RIVERS).forEach((r) => {
     const pts = r.pts.map(([la, lo]) => g(la, lo));
     const d = smoothPath(pts);
     s += `<path class="river" d="${d}"/><path class="river-hi" d="${d}"/>`;
@@ -495,14 +524,25 @@ function sceneryMarkup() {
   });
 
   // 地域名
-  const tama = MAP.nodes.filter((n) => n.ward.endsWith('市'));
+  const tama = MAP.nodes.filter((n) => !n.pref && n.ward.endsWith('市'));
   if (tama.length) {
     const avgX = tama.reduce((a, n) => a + n.x, 0) / tama.length;
     s += `<text class="map-label region" x="${avgX.toFixed(0)}" y="${(Math.max(...tama.map((n) => n.y)) + 90).toFixed(0)}">多 摩</text>`;
   }
-  const ku = MAP.nodes.filter((n) => n.ward.endsWith('区'));
+  const ku = MAP.nodes.filter((n) => !n.pref && n.ward.endsWith('区'));
   const kx = ku.reduce((a, n) => a + n.x, 0) / ku.length;
-  s += `<text class="map-label region" x="${kx.toFixed(0)}" y="46">${MAP_SCENARIO === 'toshin' ? '江 戸 都 心' : '江 戸 二 十 三 区'}</text>`;
+  s += `<text class="map-label region" x="${kx.toFixed(0)}" y="${wide ? (Math.min(...ku.map((n) => n.y)) - 60).toFixed(0) : 46}">${MAP_SCENARIO === 'toshin' ? '江 戸 都 心' : '江 戸 二 十 三 区'}</text>`;
+  // 首都圏版：県の名（その県の学校の真ん中あたり）
+  if (wide) {
+    const avg = (ns, k) => ns.reduce((a, n) => a + n[k], 0) / ns.length;
+    const pos = { 神奈川: (ns) => [avg(ns, 'x') - 60, Math.max(...ns.map((n) => n.y)) + 70], 埼玉: (ns) => [avg(ns, 'x'), Math.min(...ns.map((n) => n.y)) - 60], 千葉: (ns) => [avg(ns, 'x') + 40, Math.max(...ns.map((n) => n.y)) + 70] };
+    Object.entries(pos).forEach(([pref, at]) => {
+      const ns = MAP.nodes.filter((n) => n.pref === pref);
+      if (!ns.length) return;
+      const [x, y] = at(ns);
+      s += `<text class="map-label region" x="${x.toFixed(0)}" y="${Math.min(H - 20, Math.max(40, y)).toFixed(0)}">${pref.split('').join(' ')}</text>`;
+    });
+  }
   return s;
 }
 
@@ -681,7 +721,7 @@ function seasonArt(kind) {
 // ---------- 地図の季節の木（春：桜、夏：青葉、秋：紅葉、冬：雪） ----------
 // 色はCSSで季節ごとに変える。城や湾に重ならない場所に、決まった配置で植える
 function seasonTrees() {
-  const bay = BAY.map(([la, lo]) => MAP.geo(la, lo));
+  const bay = bayPoints().map(([la, lo]) => MAP.geo(la, lo));
   const inBay = (x, y) => {
     let inside = false;
     for (let i = 0, j = bay.length - 1; i < bay.length; j = i++) {

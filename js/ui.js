@@ -275,7 +275,7 @@ function showSetup() {
   const clanList = () => {
     const ids = Object.keys(CLANS).filter((k) => k !== 'none' && SCHOOL_ROWS.some((r) => r[0] === k && SCENARIOS[st.scenario].filter(r)));
     return `<div class="clan-pick">${ids.map((k) => {
-      const locked = !rec.unlocked.includes(k);
+      const locked = !rec.unlocked.includes(k) && rec.unlocked.length <= 1; // 一度でも天下統一していれば、あとから増えた家も遊べる
       return `<button data-clan="${k}" class="${k === st.clan ? 'on' : ''}" ${locked ? 'disabled' : ''}>
         ${crestBadge(k, 36)}<b>${CLANS[k].name.replace('家', '')}</b>
         <small>${locked ? '🔒 天下統一で解放' : '★'.repeat(CLANS[k].stars) + '☆'.repeat(5 - CLANS[k].stars)}</small></button>`;
@@ -564,7 +564,9 @@ function zoomAt(newScale, cxScreen, cyScreen) {
   const sy = cyScreen === undefined ? mapwrap.clientHeight / 2 : cyScreen - rect.top;
   const mx = (mapwrap.scrollLeft + sx) / scale;
   const my = (mapwrap.scrollTop + sy) / scale;
-  scale = Math.min(1.8, Math.max(0.4, newScale));
+  // 引きは、地図の横幅が画面に収まるところまで（首都圏版のような大きな地図でも全体を見渡せる）
+  const minScale = Math.max(0.2, Math.min(0.4, mapwrap.clientWidth / MAP.width));
+  scale = Math.min(1.8, Math.max(minScale, newScale));
   applyScale();
   mapwrap.scrollLeft = mx * scale - sx;
   mapwrap.scrollTop = my * scale - sy;
@@ -3177,7 +3179,7 @@ function endingNumbers() {
 const FINALE_LINES = ['皆の者、よくぞここまでついてきてくれた！', 'この天下、皆で掴んだものだ', '学び舎に、泰平の世を', '先代たちよ、見ておられますか'];
 function showFinale(then) {
   const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord && g.clan === PLAYER);
-  const clans = Object.keys(CLANS).filter((k) => k !== 'none');
+  const clans = Object.keys(CLANS).filter((k) => k !== 'none' && MAP.byId[k]); // このシナリオに出た家だけ
   const ring = clans.map((k, i) => {
     const a = (i / clans.length) * Math.PI * 2 - Math.PI / 2;
     const x = 50 + Math.cos(a) * 44, y = 50 + Math.sin(a) * 44;

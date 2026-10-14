@@ -9,6 +9,10 @@ const CLANS = {
   hibiya: { name: '日比谷家', color: '#c99a12', crest: 'kikyo', stars: 2, note: '都心の真ん中。攻めも守りも忙しい' },
   waseda: { name: '早稲田家', color: '#7d3c98', crest: 'hishi', stars: 3, note: '山手の中心。四方に敵' },
   nishi: { name: '西家', color: '#12879b', crest: 'hiki', stars: 3, note: '多摩への入口を押さえる' },
+  // 首都圏版だけに出る家
+  eiko: { name: '栄光家', color: '#d9622b', crest: 'uroko', stars: 3, note: '古都鎌倉に構える相模の雄。海と山に守られる' },
+  urawa: { name: '浦和家', color: '#8a5a2b', crest: 'umebachi', stars: 3, note: '武蔵野の大地を束ねる。北から都を望む' },
+  shibumaku: { name: '渋幕家', color: '#c2417a', crest: 'nami', stars: 4, note: '湾の向こうの新興勢力。房総から一気に攻め上がる' },
   none: { name: '独立校', color: '#857b6c', crest: 'maru' },
 };
 
@@ -75,15 +79,63 @@ const SCHOOL_ROWS = [
   ['mitaka', '三鷹中等', '三鷹', '三鷹市', 35.6810, 139.5580],
   ['seikei', '成蹊', '成蹊', '武蔵野市', 35.7130, 139.5660],
   ['meimei', '明大明治', '明明', '調布市', 35.6550, 139.5560],
+
+  // ---------- 首都圏版だけに出る学校（8列目＝県。東京のシナリオには出ない） ----------
+  // 神奈川
+  ['eiko', '栄光学園', '栄光', '鎌倉市', 35.3420, 139.5330, 'eiko', '神奈川'],
+  ['seiko', '聖光学院', '聖光', '横浜市', 35.4330, 139.6480, null, '神奈川'],
+  ['ferris', 'フェリス女学院', 'フェリス', '横浜市', 35.4400, 139.6400, null, '神奈川'],
+  ['asano', '浅野', '浅野', '横浜市', 35.4810, 139.6260, null, '神奈川'],
+  ['suiran', '横浜翠嵐高校', '翠嵐', '横浜市', 35.4740, 139.6080, null, '神奈川'],
+  ['hakuyo', '柏陽高校', '柏陽', '横浜市', 35.3640, 139.5590, null, '神奈川'],
+  ['keiohiyoshi', '慶應義塾高校', '慶應', '横浜市', 35.5540, 139.6470, null, '神奈川'],
+  ['hosei2', '法政二高', '法政二', '川崎市', 35.5760, 139.6600, null, '神奈川'],
+  ['tamako', '多摩高校', '多摩高', '川崎市', 35.6140, 139.5620, null, '神奈川'],
+  ['shonan', '湘南高校', '湘南', '藤沢市', 35.3400, 139.4800, null, '神奈川'],
+  ['sfc', '慶應湘南藤沢', 'SFC', '藤沢市', 35.3880, 139.4270, null, '神奈川'],
+  ['kamagaku', '鎌倉学園', '鎌学', '鎌倉市', 35.3270, 139.5550, null, '神奈川'],
+  ['yokosuka', '横須賀高校', '横須賀', '横須賀市', 35.2700, 139.6600, null, '神奈川'],
+  ['yamato', '大和高校', '大和', '大和市', 35.4700, 139.4600, null, '神奈川'],
+  ['sagamihara', '相模原高校', '相模原', '相模原市', 35.5650, 139.3900, null, '神奈川'],
+  ['atsugi', '厚木高校', '厚木', '厚木市', 35.4400, 139.3600, null, '神奈川'],
+  ['konan', '平塚江南高校', '江南', '平塚市', 35.3300, 139.3400, null, '神奈川'],
+  ['odawara', '小田原高校', '小田原', '小田原市', 35.2600, 139.1500, null, '神奈川'],
+  // 埼玉
+  ['urawa', '浦和高校', '浦和', 'さいたま市', 35.8710, 139.6560, 'urawa', '埼玉'],
+  ['urawaichijo', '浦和第一女子', '浦和一女', 'さいたま市', 35.8580, 139.6450, null, '埼玉'],
+  ['omiya', '大宮高校', '大宮', 'さいたま市', 35.9100, 139.6330, null, '埼玉'],
+  ['sakaehigashi', '栄東', '栄東', 'さいたま市', 35.9370, 139.6730, null, '埼玉'],
+  ['kaichi', '開智', '開智', 'さいたま市', 35.9600, 139.7150, null, '埼玉'],
+  ['kawagoe', '川越高校', '川越', '川越市', 35.9200, 139.4850, null, '埼玉'],
+  ['kasukabe', '春日部高校', '春日部', '春日部市', 35.9790, 139.7530, null, '埼玉'],
+  ['kumagaya', '熊谷高校', '熊谷', '熊谷市', 36.1500, 139.3800, null, '埼玉'],
+  ['ageo', '上尾高校', '上尾', '上尾市', 35.9750, 139.5900, null, '埼玉'],
+  ['tokorokita', '所沢北高校', '所沢北', '所沢市', 35.8000, 139.4700, null, '埼玉'],
+  ['niiza', '立教新座', '立教新座', '新座市', 35.7930, 139.5600, null, '埼玉'],
+  ['kawaguchi', '川口市立高校', '川口', '川口市', 35.8150, 139.7300, null, '埼玉'],
+  ['koshigaya', '越谷北高校', '越谷北', '越谷市', 35.9000, 139.7900, null, '埼玉'],
+  // 千葉
+  ['shibumaku', '渋谷教育学園幕張', '渋幕', '千葉市', 35.6450, 140.0500, 'shibumaku', '千葉'],
+  ['chibako', '千葉高校', '千葉', '千葉市', 35.6050, 140.1230, null, '千葉'],
+  ['tohodai', '東邦大東邦', '東邦', '習志野市', 35.6900, 140.0400, null, '千葉'],
+  ['funako', '船橋高校', '船橋', '船橋市', 35.7000, 139.9950, null, '千葉'],
+  ['ichikawa', '市川学園', '市川', '市川市', 35.7400, 139.9300, null, '千葉'],
+  ['urayasu', '浦安高校', '浦安', '浦安市', 35.6600, 139.8950, null, '千葉'],
+  ['koganeko', '小金高校', '小金', '松戸市', 35.8200, 139.9300, null, '千葉'],
+  ['tokatsu', '東葛飾高校', '東葛', '柏市', 35.8600, 139.9700, null, '千葉'],
+  ['yachiyo', '八千代高校', '八千代', '八千代市', 35.7230, 140.1000, null, '千葉'],
+  ['sakura', '佐倉高校', '佐倉', '佐倉市', 35.7200, 140.2200, null, '千葉'],
+  ['narita', '成田高校', '成田', '成田市', 35.7800, 140.3200, null, '千葉'],
+  ['kisarazu', '木更津高校', '木更津', '木更津市', 35.3800, 139.9300, null, '千葉'],
 ];
 
 const SEASONS = ['春', '夏', '秋', '冬'];
 
 // ---------- 武将 ----------
 // 武将はすべて架空の人物。名前は下の一覧から組み合わせて作る
-const GIRLS_SCHOOLS = ['keijo', 'toyoeiwa', 'futaba', 'jg', 'oin', 'toshimaoka'];
+const GIRLS_SCHOOLS = ['keijo', 'toyoeiwa', 'futaba', 'jg', 'oin', 'toshimaoka', 'ferris', 'urawaichijo'];
 const BOYS_SCHOOLS = ['azabu', 'kaisei', 'tsukukoma', 'shiba', 'gyosei', 'waseda', 'sugamo', 'rikkyo',
-  'johoku', 'musashi', 'setagaya', 'kogyokusha', 'toho'];
+  'johoku', 'musashi', 'setagaya', 'kogyokusha', 'toho', 'eiko', 'seiko', 'asano', 'kamagaku', 'urawa', 'niiza', 'keiohiyoshi'];
 
 const SURNAMES = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '山本', '中村', '小林', '加藤', '吉田', '山田',
   '佐々木', '山口', '松本', '井上', '木村', '清水', '山崎', '池田', '橋本', '阿部', '石川', '前田', '藤田',
@@ -114,15 +166,20 @@ const SCENARIOS = {
   // grace = 旗揚げ直後、他家が麻布家を攻めてこない季節の数
   toshin: {
     name: '都心の陣', level: '入門', desc: '都心の約30校。短い時間で遊べる',
-    filter: (row) => CENTER_WARDS.includes(row[3]), grace: 8, aiIncome: 0.72, aiGold: 0.7,
+    filter: (row) => !row[7] && CENTER_WARDS.includes(row[3]), grace: 8, aiIncome: 0.72, aiGold: 0.7,
   },
   ku23: {
     name: '二十三区統一', level: '中編', desc: '二十三区の50校。五つの家がしのぎを削る',
-    filter: (row) => row[3].endsWith('区'), grace: 4, aiIncome: 1,
+    filter: (row) => !row[7] && row[3].endsWith('区'), grace: 4, aiIncome: 1,
   },
   tokyo: {
     name: '東京統一', level: '本編', desc: '多摩も含めた全61校を制覇する',
-    filter: () => true, grace: 2, aiIncome: 1,
+    filter: (row) => !row[7], grace: 2, aiIncome: 1,
+  },
+  // wide = 東京の外を縮めて描く地図（game.js の projectWide）
+  shutoken: {
+    name: '首都圏大戦', level: '大長編', desc: '神奈川・埼玉・千葉を加えた104校。九つの家が関東の覇を競う',
+    filter: () => true, grace: 3, aiIncome: 1, wide: true,
   },
 };
 
@@ -229,6 +286,7 @@ const PERSONAS = {
 };
 const CLAN_PERSONA = {
   kaisei: 'aggressive', tsukukoma: 'cunning', hibiya: 'diplomatic', waseda: 'expansive', nishi: 'cautious', azabu: 'balanced',
+  eiko: 'aggressive', urawa: 'expansive', shibumaku: 'cunning',
 };
 
 // 難易度
@@ -296,6 +354,9 @@ const SCHOOL_LORE = {
   hibiya: { motto: '都の真ん中に、伝統の灯', sight: '都心の時計塔', cry: '伝統の灯、しばしそなたに預けよう' },
   waseda: { motto: '大志を抱き、杜に集う', sight: '杜の大講堂', cry: '杜の大志、ここで潰えるとは……' },
   nishi: { motto: '西に開く、自主の門', sight: '西の丘の並木道', cry: '西の門は、まだ閉じてはおらぬ……' },
+  eiko: { motto: '古都に鍛えし、相模の魂', sight: '松林の丘の学び舎', cry: '鎌倉の意地、ここまでか……' },
+  urawa: { motto: '武蔵野を駆けよ、尚文昌武', sight: '欅並木の大校庭', cry: '武蔵野の風は、また吹く……' },
+  shibumaku: { motto: '海を越え、自ら調べ自ら考える', sight: '海辺の新都の学び舎', cry: '湾を越えた夢、ここで潰えるとは……' },
 };
 // それ以外の学校：特色ごとの校風（学校ごとに決まった一つを選ぶ）
 const TRAIT_MOTTOS = {
