@@ -2123,3 +2123,13 @@ a.btn.sh-dl { display: block; text-align: center; text-decoration: none; }
 .ne-row small { grid-column: 1 / -1; font-size: 10.5px; color: var(--muted); font-weight: 700; margin-bottom: -2px; }
 .ne-row input { min-width: 0; padding: 6px 8px; font-size: 14.5px; font-family: var(--mincho); font-weight: 800; border: 2px solid var(--ink); background: #fffaf0; }
 .ne-row input.short { font-family: var(--brush); font-weight: 400; }
+
+/* ---------- 海の道と水軍 ---------- */
+#map .road.sea { stroke: #2f70b2; stroke-dasharray: 2 9; stroke-width: 4; stroke-linecap: round; }
+#map .road.sea.hot { stroke: var(--red); }
+#map .boat .hull { fill: #5a3a22; stroke: var(--ink); stroke-width: 1.4; }
+#map .boat .mast { stroke: var(--ink); stroke-width: 1.6; }
+#map .boat .sail { fill: #f1e6cc; stroke: var(--ink); stroke-width: 1.2; }
+.b-sea { color: #a9d0f5; }
+.sea-hint { margin: 6px 0; padding: 5px 8px; font-size: 12.5px; font-weight: 700; background: #e3edf7; border-left: 5px solid #2f70b2; }
+.sea-hint b { margin-right: 6px; padding: 0 5px; font-family: var(--brush); font-weight: 400; color: #fff; background: #2f70b2; }

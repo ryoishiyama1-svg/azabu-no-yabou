@@ -748,7 +748,13 @@ function drawMap() {
   const roads = $('roads');
   MAP.edges.forEach(([a, b]) => {
     const A = MAP.byId[a], B = MAP.byId[b];
-    el('line', { class: 'road', x1: A.x, y1: A.y + 8, x2: B.x, y2: B.y + 8, 'data-a': a, 'data-b': b }, roads);
+    const sea = seaRoute(a, b); // 海の道：青い破線と小舟
+    el('line', { class: sea ? 'road sea' : 'road', x1: A.x, y1: A.y + 8, x2: B.x, y2: B.y + 8, 'data-a': a, 'data-b': b, 'data-sea': sea ? '1' : '' }, roads);
+    if (sea) {
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2 + 8, flip = B.x < A.x ? -1 : 1;
+      const boat = el('g', { class: 'boat', transform: `translate(${mx.toFixed(0)},${my.toFixed(0)}) scale(${flip},1)` }, roads);
+      boat.innerHTML = '<path class="hull" d="M-11,0 L11,0 L7,6 L-8,6Z"/><path class="mast" d="M0,0 V-14"/><path class="sail" d="M1,-13 L10,-4 L1,-3Z"/>';
+    }
   });
 
   const layer = $('castles');
@@ -897,7 +903,7 @@ function render() {
     const a = l.dataset.a, b = l.dataset.b;
     const hot = mode && ((a === mode.from && targets.includes(b)) || (b === mode.from && targets.includes(a)));
     const lit = !mode && selected && (a === selected || b === selected);
-    l.setAttribute('class', 'road' + (hot ? ' hot' : lit ? ' lit' : ''));
+    l.setAttribute('class', 'road' + (l.dataset.sea ? ' sea' : '') + (hot ? ' hot' : lit ? ' lit' : ''));
   });
 
   const banner = $('mode-banner');
@@ -1716,6 +1722,14 @@ function meibaArt(id, p) {
       <path d="M70,112 L170,70 L270,112Z" fill="#2a2a32" stroke="${K}" stroke-width="3"/>
       <g fill="#e8553f" stroke="#f3d27a" stroke-width="2">${[[112, 58], [170, 34], [228, 56]].map(([x, y]) => `<path transform="translate(${x},${y}) scale(0.8) translate(${-x},${-y})" d="M${x},${y + 40} q-18,-20 -4,-44 q4,14 12,10 q-2,-22 14,-34 q-4,22 10,32 q8,-6 6,-18 q18,26 -2,54Z"/>`).join('')}</g>
       <rect y="150" width="340" height="50" fill="#2a1a14"/>`;
+  } else if (id === 'dannoura') {
+    // 荒れた海に、両家の船団
+    const ship = (x, y, col, s, f) => `<g transform="translate(${x},${y}) scale(${f * s},${s})"><path d="M-30,0 L30,0 L22,14 L-24,14Z" fill="#5a3a22" stroke="${K}" stroke-width="2.5"/>
+      <path d="M0,0 V-46" stroke="${K}" stroke-width="3"/><rect x="2" y="-44" width="22" height="30" fill="${col}" stroke="${K}" stroke-width="2"/></g>`;
+    body = `<rect width="340" height="200" fill="#e8b878"/><circle cx="270" cy="56" r="34" fill="#c8372d"/>
+      <rect y="110" width="340" height="90" fill="#22406b"/>
+      <g fill="none" stroke="#f1e6cc" stroke-width="2.5" opacity=".8">${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 40 - 10},${140 + (i % 3) * 16} q10,-12 20,0 q10,-12 20,0"/>`).join('')}</g>
+      ${ship(70, 128, me, 1, 1)}${ship(130, 150, me, 0.8, 1)}${ship(250, 132, foe, 0.9, -1)}${ship(300, 154, foe, 0.7, -1)}`;
   } else {
     // 関ヶ原：霧の野で向き合う両軍と、二つの家紋
     body = `<rect width="340" height="200" fill="#c9cfc6"/><rect y="140" width="340" height="60" fill="#6b7a4a"/>
@@ -1734,6 +1748,7 @@ function showMeiba(m) {
   const where = p.to && MAP.byId[p.to] ? MAP.byId[p.to].name : '';
   const line = m.id === 'okehazama' ? `${where}を、${fmt(p.a)}の兵で${fmt(p.d)}の大軍から奪い取った。${g ? `${g.name}の統率が3上がった` : ''}`
     : m.id === 'nagashino' ? `${where}に押し寄せた${fmt(p.a)}の大軍を、${fmt(p.d)}の兵で退けた。${g ? `${g.name}の知略が3上がった` : ''}`
+    : m.id === 'dannoura' ? `${g ? g.name : '船団'}が海を越えて攻め寄せ、${CLANS[p.foe] ? CLANS[p.foe].name : ''}の本拠・${where}を落とした`
     : m.id === 'honnoji' ? `${g ? g.name : '家臣'}が${where}ごと${pName()}に背いた。「敵は、身内にあり」`
     : `${pName()}と${CLANS[p.foe] ? CLANS[p.foe].name : '最後の一家'}。${foeLord ? `${foeLord.name}「この一戦で、すべてが決まる」` : 'この戦いで、すべてが決まる'}`;
   let box = $('meiba');
@@ -2516,7 +2531,7 @@ function attackPlan(s, to) {
   const plans = srcs.map((from) => {
     const g = bestBy(idleGensAt(s, from), 'str');
     const n = sendOf(from);
-    const mult = atkMult(g) * atkKakun(s, PLAYER);
+    const mult = atkMult(g) * atkKakun(s, PLAYER) * seaPower(from, to, g); // 海越えは見込みも下がる
     const support = [];
     let total = n;
     const sups = supportCastles(s, PLAYER, to, from).filter((id) => !s.delegate[id])
@@ -2612,7 +2627,7 @@ function openAttack(from, to, plan = null) {
   function update() {
     const g = S.gens[gid];
     const total = amount + supportParts().reduce((a, p) => a + p.n, 0);
-    const ratio = (total * atkMult(g) * atkKakun(S, PLAYER)) / Math.max(1, power);
+    const ratio = (total * atkMult(g) * atkKakun(S, PLAYER) * seaPower(src, to, g)) / Math.max(1, power);
     // 作戦：読みが当たっている前提で、読み勝ちなら有利、読み負けなら不利に見積もる
     const gs = guessOf(g);
     const tr = tactic !== 'auto' && gs ? tacticResult(tactic, gs) : 0;
@@ -2641,6 +2656,7 @@ function openAttack(from, to, plan = null) {
       ${arrivedTroops(S, src) ? `<p class="hint">🚚 ${MAP.byId[src].short}に到着したばかりの ${fmt(arrivedTroops(S, src))} 兵は、今季は出陣できません</p>` : ''}
       <h3>大将</h3>
       <div class="glist pick">${gens.map((g) => genCard(g, { extra: (sworn(g) ? '<span class="shi-tag">志</span>' : '') + (g.id === gid ? '<span class="check">✔</span>' : '') })).join('')}</div>
+      ${seaRoute(src, to) ? `<p class="sea-hint"><b>海</b>${hasSuigun(S.gens[gid]) ? `${esc(S.gens[gid].name)}は水軍の将。海を越える攻めで、かえって有利（士気+${SEA.suigunMorale}）` : `海を越える攻め。攻め手は不利（士気-${SEA.morale}）。水軍の特技を持つ大将なら有利になる`}</p>` : ''}
       ${sworn(S.gens[gid]) ? `<p class="shi-hint"><b>志</b>${esc(S.gens[gid].name)}が「${esc(shiText(S, S.gens[gid]))}」と誓った城。士気+${SHI_MORALE}、落とせば覚醒</p>` : ''}
       <h3>出陣する兵（${MAP.byId[src].short}）</h3>
       <div class="slider-row"><input type="range" id="amt" min="10" max="${max}" step="10" value="${amount}"><b id="amt-v"></b></div>
@@ -2769,7 +2785,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
   box.innerHTML = `
     <div class="b-head"><div class="b-title ${B.decisive ? 'decisive' : ''}">${B.decisive ? '決 戦' : defense ? '籠 城 戦' : '合 戦'}</div>
       <div class="b-sub">${MAP.byId[B.to].name}の戦い${defense ? `（${pShort()}の守り）` : ''}
-        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}${B.bond && B.bond.side === me ? `<div class="b-tactic b-bond">絆の力：${esc(B.bond.a)}と${esc(B.bond.b)}（${BOND_TYPES[B.bond.type].name}）が並ぶ！ 士気+${BOND_MORALE}</div>` : ''}${B.shi && me === 'a' ? `<div class="b-tactic b-shi">志の城：${esc(B.shi.name)}が誓いの城に挑む！ 士気+${SHI_MORALE}</div>` : ''}</div>
+        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}${B.bond && B.bond.side === me ? `<div class="b-tactic b-bond">絆の力：${esc(B.bond.a)}と${esc(B.bond.b)}（${BOND_TYPES[B.bond.type].name}）が並ぶ！ 士気+${BOND_MORALE}</div>` : ''}${B.shi && me === 'a' ? `<div class="b-tactic b-shi">志の城：${esc(B.shi.name)}が誓いの城に挑む！ 士気+${SHI_MORALE}</div>` : ''}${B.sea ? `<div class="b-tactic b-sea">${B.sea.suigun ? `水軍：${esc(B.sea.name)}の船団が海を越えて攻め寄せる！ 攻め手の士気+${SEA.suigunMorale}` : `渡海：海を越えての攻め。攻め手の士気-${SEA.morale}`}</div>` : ''}</div>
     <div class="b-field">
       ${battleScene(B, S.turn)}
       <div class="b-cut" id="b-cut"></div>

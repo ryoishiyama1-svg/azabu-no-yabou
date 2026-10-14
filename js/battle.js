@@ -71,6 +71,12 @@ function startBattle(s, o) {
     B.a.morale = clamp(B.a.morale + SHI_MORALE, 15, 100);
     B.shi = { name: sg.name, kind: sg.shi.kind };
   }
+  // 海を越える合戦：攻め手は船の上から。水軍の大将なら勢いづき、そうでなければ士気が下がる
+  if (seaRoute(from, to)) {
+    const sui = hasSuigun(s.gens[gid]);
+    B.a.morale = clamp(B.a.morale + (sui ? SEA.suigunMorale : -SEA.morale), 15, 100);
+    B.sea = { suigun: sui, name: s.gens[gid] ? s.gens[gid].name : '' };
+  }
   if (attacker === PLAYER && !committed) support.forEach((sp) => addBondPts(s, s.gens[gid], s.gens[sp.gid], 'senyu', 2));
   return B;
 }

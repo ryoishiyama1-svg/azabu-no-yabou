@@ -796,7 +796,7 @@ function attack(s, from, to, n, gid, log, support = [], tactic = null) {
   const def = dst.def + (dg && dg.skill === 'teppeki' ? 0.3 : 0);
   // 作戦の読み合い：勝てば大きく有利、負ければ不利
   const tr = tactic ? tacticResult(tactic.a, tactic.d) : 0;
-  const am = atkMult(g) * atkKakun(s, attacker) * (tr > 0 ? 1.35 : tr < 0 ? 0.75 : 1);
+  const am = atkMult(g) * atkKakun(s, attacker) * (tr > 0 ? 1.35 : tr < 0 ? 0.75 : 1) * seaPower(from, to, g); // 海を越える攻めは不利（水軍なら有利）
   const dm = defMult(dg) * defKakun(s, defender) * (tr > 0 ? 0.8 : tr < 0 ? 1.25 : 1);
   const r = fight(n, dst.troops, def, am, dm, {
     totsugeki: g.skill === 'totsugeki',
@@ -1003,11 +1003,12 @@ function autoCastle(s, clan, id, cfg, dist, log) {
     const aim = (t) => defensePower(s, t) *
       (s.encircle && clan !== PLAYER && s.castles[t].owner === PLAYER ? 0.6 : 1) *
       (clan !== PLAYER && personaOf(clan).neutral && s.castles[t].owner === 'none' ? 0.7 : 1) * // 拡張型は独立校を優先
-      (jointTarget(s, clan, t) ? 0.5 : 1); // 共同出兵の標的を優先
+      (jointTarget(s, clan, t) ? 0.5 : 1) * // 共同出兵の標的を優先
+      (1 / seaPower(id, t, leader)); // 海を越える先は、水軍がいなければ後回し
     const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
     const need = defensePower(s, target) * cfg.ratio * (jointTarget(s, clan, target) ? 0.85 : 1) *
-      (rallyOn(s, clan) && s.castles[target].owner === PLAYER ? FINALE.rallyNeed : 1) + 100; // 大連合の大反攻は強気に攻める
+      (rallyOn(s, clan) && s.castles[target].owner === PLAYER ? FINALE.rallyNeed : 1) / seaPower(id, target, leader) + 100; // 大連合の大反攻は強気に・海越えは多めに
     let support = [];
     if (send * atkMult(leader) <= need) {
       // 一城で足りなければ、となりの城から援軍を集める
@@ -1912,6 +1913,7 @@ const MEIBA = {
   nagashino: { name: '長篠の守り', sub: '柵の内に大軍を退ける', desc: '倍を超える大軍の攻めを、柵の内でしのぎ切った' },
   honnoji: { name: '本能寺の変', sub: '敵は身内にあり', desc: '信じた家臣が、城ごと叛旗を翻した' },
   sekigahara: { name: '関ヶ原', sub: '天下分け目の大決戦', desc: '残るは二家。勝った方が天下を取る' },
+  dannoura: { name: '壇ノ浦', sub: '海の上の決戦', desc: '海を越えて攻め寄せ、名門の本拠を落とした' },
 };
 function meibaHit(s, id, p = {}) {
   s.meiba = s.meiba || {};
@@ -1930,6 +1932,7 @@ function meibaBattle(s, r) {
     const g = s.gens[r.gid];
     if (meibaHit(s, 'okehazama', { gid: r.gid, to: r.to, a: first.a, d: first.d }) && g) g.str = Math.min(99, g.str + 3);
   }
+  if (r.attacker === PLAYER && r.won && seaRoute(r.from, r.to) && isCapital(r.to, r.defender)) meibaHit(s, 'dannoura', { gid: r.gid, to: r.to, foe: r.defender });
   if (r.defender === PLAYER && !r.won && first.a >= first.d * 2) {
     const g = r.dgid && s.gens[r.dgid];
     if (meibaHit(s, 'nagashino', { gid: r.dgid, to: r.to, a: first.a, d: first.d }) && g) g.int = Math.min(99, g.int + 3);
@@ -1944,3 +1947,25 @@ function meibaTick(s) {
     meibaHit(s, 'sekigahara', { foe: rivals[0], lord: lord ? lord.id : null });
   }
 }
+
+// ---------- 海を越える合戦（水軍） ----------
+// 道の多くが海の上を通る城どうし（湾・海峡を越える道）は「海の道」。海を越えて攻めると、攻め手は不利（水軍の特技があれば逆に有利）
+const SEA = { power: 0.85, morale: 12, suigunPower: 1.05, suigunMorale: 8 };
+function seaRoute(a, b) {
+  if (!MAP.seaSet) {
+    MAP.seaSet = new Set();
+    const wet = typeof waterTest === 'function' ? waterTest() : null;
+    if (wet) {
+      MAP.edges.forEach(([x, y]) => {
+        const A = MAP.byId[x], B = MAP.byId[y], N = 12;
+        let n = 0;
+        for (let i = 1; i < N; i++) { const t = i / N; if (wet(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t)) n++; }
+        if (n / (N - 1) >= 0.35) { MAP.seaSet.add(`${x}|${y}`); MAP.seaSet.add(`${y}|${x}`); }
+      });
+    }
+  }
+  return MAP.seaSet.has(`${a}|${b}`);
+}
+const hasSuigun = (g) => !!g && g.skill === 'suigun';
+// 海を越えるときの強さの倍率（おまかせの合戦・勝つ見込みの見積もり）
+const seaPower = (from, to, g) => (seaRoute(from, to) ? (hasSuigun(g) ? SEA.suigunPower : SEA.power) : 1);

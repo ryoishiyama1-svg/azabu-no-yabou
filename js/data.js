@@ -354,6 +354,7 @@ const SKILLS = {
   shousai: { name: '商才', desc: '開発の効果1.5倍。いる城の収入+20%' },
   jinbou: { name: '人望', desc: '徴兵の効果1.5倍。登用が成功しやすい' },
   chikujou: { name: '築城', desc: '築城の効果2倍' },
+  suigun: { name: '水軍', desc: '海を越える合戦で不利にならず、士気+8' },
 };
 
 // シナリオ（どの学校を地図に出すか）
