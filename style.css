@@ -1912,3 +1912,26 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .wf-stamp.lost circle { fill: #6f6a60; }
 .wf-stamp.mine circle { stroke: #f3d27a; stroke-width: 4; }
 @keyframes wfStamp { from { opacity: 0; scale: 2.2; } }
+
+/* ---------- 季節の瓦版：総括（番付の増減・働き頭・我が家の一季） ---------- */
+.np-r b i, .np-nums i { font-style: normal; font-size: 10px; margin-left: 2px; }
+.np-r { grid-template-columns: 1.1em 16px 1fr 4.2em; }
+.np-r b { white-space: nowrap; }
+.np-r b i { display: inline; height: auto; min-width: 0; border-radius: 0; }
+i.up { color: #2f7a3a; }
+i.down { color: #b8262f; }
+.np-row2 { grid-template-columns: 1fr 1fr; margin-top: 6px; }
+.np-mvp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.np-mvp em { flex-basis: 100%; }
+.np-mvp .portrait { flex: none; border: 1.5px solid #2a2218; }
+.np-mvp div { min-width: 0; flex: 1; }
+.np-mvp b { display: block; font-size: 13px; }
+.np-mvp small { display: block; font-size: 10.5px; color: #b8262f; font-weight: 700; }
+.np-mvp p { margin: 2px 0 0; font-size: 11px; line-height: 1.35; color: #3a2e20; }
+.np-quiet { margin: 4px 0; font-size: 11px; color: #5a4a36; text-align: center; flex: 1; }
+.np-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; }
+.np-nums div { display: flex; align-items: baseline; gap: 4px; }
+.np-nums span { font-size: 10.5px; color: #5a4a36; min-width: 2em; }
+.np-nums b { font-size: 13px; }
+.np-next { margin: 4px 0 0; padding-top: 3px; border-top: 1px dashed #b9a67e; font-size: 10.5px; color: #5a4a36; }
+.np-next b { color: #2a2218; }

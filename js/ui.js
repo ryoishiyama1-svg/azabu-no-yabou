@@ -331,6 +331,7 @@ function startGame(isNew) {
   $('game').hidden = false;
   selected = null;
   mode = null;
+  if (!S.mark) S.mark = seasonMark(); // 季節の瓦版で増減を測る起点
   drawMap();
   render();
   centerOn(PLAYER);
@@ -3162,7 +3163,46 @@ const NEWS_FILLER = [
   ['秋風立つ、決戦の気配', '文化祭の裏で、諸家の思惑が交錯する'],
   ['冬ざれの学び舎、静かな攻防', '受験を前に、各家は守りを固める'],
 ];
+// 季節の総括：前の瓦版からの増減を測るための印（瓦版を出すたびに付け直す）
+function seasonMark() {
+  const cnt = {};
+  Object.keys(CLANS).forEach((k) => { if (k !== 'none') cnt[k] = castlesOf(S, k).length; });
+  const rec = {};
+  gensOf(S, PLAYER).forEach((g) => { const r = recOf(g); rec[g.id] = { w: r.w, cap: r.cap, def: r.def, dw: r.dw }; });
+  return { cnt, rec, troops: castlesOf(S, PLAYER).reduce((a, id) => a + S.castles[id].troops, 0), gens: gensOf(S, PLAYER).filter((g) => g.loc).length };
+}
+// 今季の働き頭：前の印から戦歴がいちばん伸びた自分の家の武将
+function seasonMvp(M) {
+  if (!M) return null;
+  let best = null, bestScore = 0;
+  gensOf(S, PLAYER).filter((g) => g.loc).forEach((g) => {
+    const r = recOf(g), o = M.rec[g.id] || { w: 0, cap: 0, def: 0, dw: 0 };
+    const d = { w: r.w - o.w, cap: r.cap - o.cap, def: r.def - o.def, dw: r.dw - o.dw };
+    const score = d.w + d.cap * 2 + d.def * 2 + d.dw * 2 + (g.shi && g.shi.done && g.shi.at >= S.turn - 1 ? 4 : 0);
+    if (score > bestScore) { best = { g, d }; bestScore = score; }
+  });
+  if (!best) return null;
+  const { g, d } = best;
+  const feats = [d.cap && `城を${d.cap}つ落とす`, d.def && `城を${d.def}度守り抜く`, d.dw && `一騎打ち${d.dw}勝`, !d.cap && d.w && `合戦${d.w}勝`,
+    g.shi && g.shi.done && g.shi.at >= S.turn - 1 && `志「${SHI[g.shi.kind].name}」成就`].filter(Boolean);
+  return { g, feats };
+}
+
 function showNewspaper(news, log, gain) {
+  const M = S.mark || null;
+  const delta = (k) => (M && M.cnt[k] !== undefined ? castlesOf(S, k).length - M.cnt[k] : 0);
+  const sign = (n) => (n > 0 ? `<i class="up">▲${fmt(n)}</i>` : n < 0 ? `<i class="down">▼${fmt(-n)}</i>` : '');
+  const mvp = seasonMvp(M);
+  const nowTroops = castlesOf(S, PLAYER).reduce((a, id) => a + S.castles[id].troops, 0);
+  const nowGens = gensOf(S, PLAYER).filter((g) => g.loc).length;
+  const nextEv = EVENTS[['spring', 'summer', 'autumn', 'winter'][(S.turn + 1) % 4]];
+  const mine = [
+    ['城', castlesOf(S, PLAYER).length, M ? castlesOf(S, PLAYER).length - M.cnt[PLAYER] : 0],
+    ['兵', fmt(nowTroops), M ? nowTroops - M.troops : 0],
+    ['金', `${gain >= 0 ? '+' : ''}${fmt(gain)}`, 0],
+    ['家臣', nowGens, M ? nowGens - M.gens : 0],
+  ];
+  S.mark = seasonMark();
   const sorted = news.slice().sort((a, b) => b.weight - a.weight);
   const [top, ...rest] = sorted;
   const head = top || { head: NEWS_FILLER[S.turn % 4][0], sub: NEWS_FILLER[S.turn % 4][1] };
@@ -3191,9 +3231,16 @@ function showNewspaper(news, log, gain) {
       <div class="np-row">
         <div class="np-box np-wx"><em>天気予報</em><span class="np-wxi">${wx.icon}</span><b>${wx.name}</b><small>${wx.desc}</small></div>
         <div class="np-box np-rank"><em>勢力番付</em>${ranks.slice(0, 6).map((k, i) => `<div class="np-r ${k === PLAYER ? 'me' : ''}">
-          <span>${i + 1}</span>${crestBadge(k, 14)}<i style="width:${(castlesOf(S, k).length / maxN) * 100}%;background:${CLANS[k].color}"></i><b>${castlesOf(S, k).length}</b></div>`).join('')}</div>
+          <span>${i + 1}</span>${crestBadge(k, 14)}<i style="width:${(castlesOf(S, k).length / maxN) * 100}%;background:${CLANS[k].color}"></i><b>${castlesOf(S, k).length}${sign(delta(k))}</b></div>`).join('')}</div>
       </div>
-      <p class="np-gold">💰 ${pName()}の収支 <b>${gain >= 0 ? '+' : ''}${fmt(gain)}</b>（収入 ${fmt(income(S, PLAYER))}）</p>
+      <div class="np-row np-row2">
+        <div class="np-box np-mvp"><em>今季の働き頭</em>${mvp
+          ? `${portrait(mvp.g, 46, 'laugh')}<div><b>${esc(mvp.g.name)}</b>${nickOf(mvp.g) ? `<small>「${esc(nickOf(mvp.g))}」</small>` : ''}<p>${mvp.feats.map(esc).join('・')}</p></div>`
+          : '<p class="np-quiet">今季は大きな手柄なし。<br>次の季こそ</p>'}</div>
+        <div class="np-box np-home"><em>${esc(pName())}の一季</em>
+          <div class="np-nums">${mine.map(([l, v, d]) => `<div><span>${l}</span><b>${v}</b>${l === '金' ? '' : sign(typeof d === 'number' && Math.abs(d) >= (l === '兵' ? 10 : 1) ? (l === '兵' ? Math.round(d) : d) : 0)}</div>`).join('')}</div>
+          <p class="np-next">来季の行事：<b>${nextEv ? esc(nextEv.title) : ''}</b>　収入 ${fmt(income(S, PLAYER))}/季</p></div>
+      </div>
       <details class="np-log"><summary>諸国の動きをすべて見る（${log.length}件）</summary>
         <ul class="log">${log.length ? log.map((l) => `<li>${esc(l)}</li>`).join('') : '<li>諸国に大きな動きはなかった。</li>'}</ul></details>
       <div class="kb-seal">瓦版<br>之印</div>
