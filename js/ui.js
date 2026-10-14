@@ -1431,6 +1431,42 @@ function showLetter(ev, then) {
   setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 800);
 }
 
+// ---------- 卒業生（OB・OG）の来訪 ----------
+const OB_LINES = {
+  engun: ['後輩の危機と聞いて、黙ってはおれぬ！', '大学の仲間を連れてきた。存分に使え', '母校の旗は、まだ折らせんぞ'],
+  keiko: ['どれ、腕を見てやろう', '俺の若い頃にそっくりだ。鍛えがいがある', '型は教えた。あとは自分で磨け'],
+  sashiire: ['皆で食べてくれ。腹が減っては戦はできぬ', 'バイト代が入ったのでな。遠慮はいらん', '後輩たちの活躍、遠くから見ているぞ'],
+};
+function showOB(ev, then) {
+  const p = ev.p, h = (S.hall || [])[p.hi];
+  if (!h) { then(); return; }
+  const g = { ...h, clan: PLAYER, grade: 3 };
+  const og = h.female ? 'OG' : 'OB';
+  const kohai = p.gid && S.gens[p.gid];
+  const eff = p.kind === 'engun' ? `${esc(MAP.byId[p.to].short)}に ${fmt(p.n)} の援兵が加わった`
+    : p.kind === 'keiko' && kohai ? `${esc(kohai.name)}の${STAT_NAMES[p.stat]}が 3 上がった`
+    : `金 ${fmt(p.gold || 0)} が届いた`;
+  let box = $('ob');
+  if (!box) { box = document.createElement('div'); box.id = 'ob'; box.className = 'kime ob'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="kime-card">
+      <div class="kime-title"><span class="ob-latin">${og}</span>、参上</div>
+      <div class="kime-frame">
+        ${portrait(g, 300, p.kind === 'engun' ? 'angry' : 'laugh')}
+        <div class="kime-name"><span>${esc(h.name)}</span>${h.nick ? `<small>「${esc(h.nick)}」</small>` : ''}</div>
+        <div class="ob-badge"><span class="ob-latin">${og}</span><small>${dateLabel(h.until)}卒</small></div>
+      </div>
+      <p class="kime-line">「${esc(pick(OB_LINES[p.kind] || OB_LINES.sashiire))}」</p>
+      <div class="ob-eff">${kohai && p.kind === 'keiko' ? portrait(kohai, 40, 'happy') : ''}<span>${eff}</span></div>
+      ${h.visits > 1 ? `<p class="ob-visits">${h.visits}度目の帰校</p>` : ''}
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(1); Sound.taiko(0.4, 0.9); Sound.kira();
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 900);
+}
+
 // ---------- 天下目前：節目の一枚絵と、最後の大連合 ----------
 const MILESTONES = {
   0.5: { title: '天下の半ば', lines: ['ようやく半ばか。だが、ここからが本当の戦いだ', '皆の者、天下の半分はわが手にあるぞ！'] },
@@ -1496,6 +1532,11 @@ function showRally(ev, then) {
 function runEvents(done) {
   if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
   const ev = S.pending[0];
+  if (ev.id === 'ob') {
+    closeModal();
+    showOB(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); render(); runEvents(done); });
+    return;
+  }
   if (ev.id === 'shi') {
     // 志、成就：覚醒の決め絵
     const g = S.gens[ev.p.gid];
@@ -1920,7 +1961,7 @@ function showHall(back) {
       <div>
         <b>${esc(h.name)}${h.lord ? '<span class="lord">当主</span>' : ''}</b>
         ${h.nick ? `<span class="nick">「${esc(h.nick)}」</span>` : ''}
-        <small>${dateLabel(h.since)}〜${dateLabel(h.until)}・合戦${h.rec.w}勝${h.rec.l}敗・落城${h.rec.cap}・一騎打ち${h.rec.dw}勝</small>
+        <small>${dateLabel(h.since)}〜${dateLabel(h.until)}・合戦${h.rec.w}勝${h.rec.l}敗・落城${h.rec.cap}・一騎打ち${h.rec.dw}勝${h.visits ? `・<b class="ob-count">帰校 ${h.visits}回</b>` : ''}</small>
         <em>「${esc(h.words)}」</em>
       </div>
     </div>`;

@@ -1286,6 +1286,8 @@ function endTurn(s) {
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
   s.pending = s.result ? [] : [...((s.finale && s.finale.queue) || []).splice(0), ...rollEvents(s)];
+  const ob = !s.result && obTick(s); // 卒業生の来訪
+  if (ob) s.pending.push(ob);
   if (!s.result && s.bondQueue && s.bondQueue.length) s.pending.push(...s.bondQueue.splice(0));
   s.log = log;
   return log;
@@ -1676,6 +1678,8 @@ function finaleTick(s, log) {
     });
     s.joint = null;
     F.queue.push({ id: 'rally', p: { head, lord: F.rally.lord, clans: members } });
+    const ob = obVisit(s, 'engun'); // 大連合の結成に、名を上げた卒業生が駆けつける
+    if (ob) F.queue.push(ob);
     log.push(`🔥 残る${members.length}家が「最後の大連合」を結成！ 盟主は${CLANS[head].name}。${FINALE.rallyTurns}季のあいだ大反攻に出る`);
     addDiploLog(s, `${CLANS[head].name}を盟主に「最後の大連合」が結成された`, 'bad');
     addNews(s, `最後の大連合、結成`, `盟主・${CLANS[head].name}、${pName()}に総攻撃を宣言`, 95);
@@ -1792,4 +1796,49 @@ function shiTick(s) {
     }
     if (!g.shi) shiAssign(s, g);
   });
+}
+
+// ---------- 卒業生（OB・OG）の再登場 ----------
+// 名を上げて卒業した自分の家の武将が、ときどき学び舎に戻ってくる：後輩に稽古（能力+3）・危うい城へ援軍・差し入れ（金）
+// s.hall の記録をそのまま使う。来訪の回数は h.visits に数える
+const OB = { chance: 0.2, minFame: 3, waitTurns: 2 };
+const obFame = (h) => h.rec.w + h.rec.cap + h.rec.dw * 2 + h.rec.def;
+function obCandidates(s) {
+  return (s.hall || []).map((h, i) => ({ h, i })).filter(({ h }) => h.clan === PLAYER && obFame(h) >= OB.minFame && s.turn - h.until >= OB.waitTurns);
+}
+// force：'engun' なら援軍を選ぶ（大連合の結成など）
+function obVisit(s, force) {
+  const cands = obCandidates(s);
+  if (!cands.length || !castlesOf(s, PLAYER).length) return null;
+  let x = Math.random() * cands.reduce((a, c) => a + obFame(c.h), 0);
+  const { h, i } = cands.find((c) => (x -= obFame(c.h)) <= 0) || cands[0];
+  const fame = obFame(h);
+  const best = ['str', 'int', 'pol', 'cha'].reduce((a, b) => (h[b] > h[a] ? b : a));
+  const risky = castlesOf(s, PLAYER).map((id) => [id, dangerOf(s, id, winChance)]).filter(([, t]) => t && t.keep < 0.7)
+    .sort((a, b) => a[1].keep - b[1].keep);
+  const kohai = gensOf(s, PLAYER).filter((g) => g.loc && !g.lord && g[best] < 95).sort((a, b) => (b.school === h.school) - (a.school === h.school) || a[best] - b[best])[0];
+  const kinds = force ? [force] : [risky.length && 'engun', kohai && 'keiko', 'sashiire'].filter(Boolean);
+  const kind = pick(kinds);
+  const p = { hi: i, kind };
+  if (kind === 'engun') {
+    const to = risky.length ? risky[0][0] : pick(castlesOf(s, PLAYER));
+    const n = Math.min(RULES.troopCap - s.castles[to].troops, Math.round((300 + fame * 40) / 10) * 10);
+    s.castles[to].troops += Math.max(0, n);
+    Object.assign(p, { to, n });
+  } else if (kind === 'keiko' && kohai) {
+    kohai[best] = Math.min(99, kohai[best] + 3);
+    if (!kohai.lord) kohai.loyal = Math.min(100, kohai.loyal + 3);
+    Object.assign(p, { gid: kohai.id, stat: best });
+  } else {
+    p.kind = 'sashiire';
+    p.gold = Math.round((200 + fame * 25) / 10) * 10;
+    s.gold[PLAYER] += p.gold;
+  }
+  h.visits = (h.visits || 0) + 1;
+  addNews(s, `OB・${h.name}、母校に帰る`, kind === 'engun' ? '後輩の危機に駆けつける' : kind === 'keiko' ? '後輩に稽古をつける' : '差し入れを手に', 45);
+  return { id: 'ob', p };
+}
+function obTick(s) {
+  if (Math.random() >= OB.chance) return null;
+  return obVisit(s);
 }

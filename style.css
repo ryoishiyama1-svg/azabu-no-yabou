@@ -1935,3 +1935,18 @@ i.down { color: #b8262f; }
 .np-nums b { font-size: 13px; }
 .np-next { margin: 4px 0 0; padding-top: 3px; border-top: 1px dashed #b9a67e; font-size: 10.5px; color: #5a4a36; }
 .np-next b { color: #2a2218; }
+
+/* ---------- 卒業生（OB・OG）の来訪 ---------- */
+.ob { background: radial-gradient(circle at 50% 40%, rgba(122, 59, 143, 0.35), transparent 62%), var(--seigaiha) rgba(28, 26, 23, 0.93); }
+.ob .kime-frame { box-shadow: 9px 9px 0 #7a3b8f; filter: sepia(0.18); }
+.ob-badge { position: absolute; left: 10px; bottom: 10px; padding: 4px 10px 5px; text-align: center; font-family: var(--brush); font-size: 24px; line-height: 1;
+  color: var(--paper); background: #7a3b8f; border: 3px solid var(--paper); box-shadow: 3px 3px 0 var(--ink); animation: kime-seal 0.3s cubic-bezier(0.2, 1.8, 0.4, 1) 0.9s both; }
+.ob-badge small { display: block; margin-top: 2px; font-family: var(--gothic); font-weight: 900; font-size: 10px; }
+.ob-eff { display: inline-flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 6px 12px; background: var(--paper); color: var(--ink); border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 #7a3b8f; font-weight: 900; font-size: 13.5px; animation: kime-bg 0.4s ease-out 1.2s both; }
+.ob-eff .portrait { border: 2px solid var(--ink); }
+.ob-visits { margin: 8px 0 0; font-size: 12px; color: #f3d27a; animation: kime-bg 0.4s ease-out 1.4s both; }
+.ob .kime-tap { animation-delay: 1.6s; }
+.ob-count { color: #7a3b8f; }
+.ob-latin { font-family: var(--gothic); font-weight: 900; letter-spacing: 0.04em; }
+.ob-badge .ob-latin { font-size: 21px; }
