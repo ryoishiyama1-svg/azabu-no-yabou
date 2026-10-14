@@ -268,6 +268,33 @@ function showImport(n, back) {
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
 $('btn-zukan').onclick = () => { Sound.unlock(); Sound.tap(); showZukan(); };
 
+// ---------- 当主の年表（巻物） ----------
+// an = chronicleOf(S) か、戦績に残った年表。当主の代ごとに帯を引き、その代の出来事を季の順に並べる
+function showChronicle(an, back) {
+  const sc = SCENARIOS[an.scenario] || SCENARIOS.tokyo;
+  const lords = an.lords.length ? an.lords : [{ name: '（当主不在）', from: 0, kakun: 'cha' }];
+  const eras = lords.map((l, i) => ({ ...l, to: i + 1 < lords.length ? lords[i + 1].from : an.turn + 1 }));
+  const color = CLANS[an.player] ? CLANS[an.player].color : '#857b6c';
+  const seal = an.result === 'win' ? '天下<br>統一' : an.result === 'lose' ? '落日' : '戦<br>半ば';
+  const body = eras.map((e, i) => {
+    const evs = an.events.filter((x) => x.turn >= e.from && x.turn < e.to);
+    return `<div class="cr-era">
+      <div class="cr-lord"><span>${['初', '二', '三', '四', '五', '六', '七', '八', '九', '十'][i] || i + 1}代</span><b>${esc(e.name)}</b>
+        <small>${KAKUN[e.kakun] ? `家訓「${KAKUN[e.kakun].name}」・` : ''}${dateLabel(e.from)}〜${dateLabel(Math.max(e.from, e.to - 1))}</small></div>
+      ${evs.length ? evs.map((x) => `<div class="cr-ev ${x.big ? 'big' : ''}"><time>${dateLabel(x.turn)}</time><p><b>${esc(x.head)}</b>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</p></div>`).join('')
+        : '<p class="cr-quiet">この代は、静かに力を蓄えた</p>'}
+    </div>`;
+  }).join('');
+  openModal(`<div class="chronicle" style="--c:${color}">
+      <div class="cr-head">${CLANS[an.player] ? crestBadge(an.player, 46) : ''}<div><h2>${esc(an.house)}の年表</h2>
+        <small>${EDITIONS[edOf(an.scenario)].name}・${sc.name}・${an.turn}季</small></div><span class="cr-seal">${seal}</span></div>
+      <div class="cr-scroll">${body}</div>
+    </div>
+    ${back ? '<button class="btn plain" id="cr-back">戻る</button>' : ''}
+    <button class="btn plain" data-close>閉じる</button>`);
+  if (back) $('cr-back').onclick = () => { Sound.tap(); back(); };
+}
+
 // ---------- 学校図鑑 ----------
 // 版の札で切り替え。治めた学校は札に校風と名物、まだの学校は「？」と土地だけ
 let ZUKAN_ED = 'tokyo';
@@ -3653,9 +3680,11 @@ function showEnding() {
     ${endingNumbers()}
     <h3>歴代当主</h3>
     ${lordsHistory()}
+    <button class="btn" id="see-annals">年表を見る</button>
     <button class="btn red" id="again">もう一度</button>
     <button class="btn plain" id="to-title">タイトルへ</button>`);
   $('again').onclick = () => { clearSave(); closeModal(); showSetup(); };
+  $('see-annals').onclick = () => { Sound.tap(); showChronicle(chronicleOf(S), showEnding); };
   $('to-title').onclick = () => { clearSave(); closeModal(); showTitle(); };
 }
 
@@ -3708,12 +3737,14 @@ function showRecords() {
     <h3>家ごとの勝利</h3>
     ${clans}
     <p class="hint">${rec.unlocked.length > 1 ? '🔓 すべての家で遊べます' : '🔒 一度天下統一すると、他の家でも遊べるようになります'}</p>
+    ${(rec.annals || []).length ? `<h3>天下取りの年表</h3><div class="an-list">${rec.annals.map((a, i) => `<button class="an-row" data-ann="${i}">${CLANS[a.player] ? crestBadge(a.player, 26) : ''}<b>${esc(a.house)}</b><small>${(SCENARIOS[a.scenario] || SCENARIOS.tokyo).name}・${a.turn}季・${new Date(a.at).getMonth() + 1}/${new Date(a.at).getDate()}</small><i class="${a.result}">${a.result === 'win' ? '統一' : '落日'}</i></button>`).join('')}</div>` : ''}
     <h3>名場面帖</h3>
     <div class="mb-book-grid">${Object.entries(MEIBA).map(([id, m]) => (rec.meiba || {})[id] ? `<div class="mb-slot got"><b>${m.name}</b><small>${m.sub}</small></div>` : `<div class="mb-slot"><b>？？？</b><small>${m.desc.split("。")[0]}…</small></div>`).join("")}</div>
     <h3>実績の印</h3>
     <div class="ach-meter"><i style="width:${Math.round((got / ACHIEVEMENTS.length) * 100)}%"></i><span>${got} / ${ACHIEVEMENTS.length}</span></div>
     <div class="seal-grid">${ACHIEVEMENTS.map((a) => achSeal(a, !!rec.ach[a.id])).join('')}</div>
     <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll("[data-ann]").forEach((b) => { b.onclick = () => { Sound.tap(); showChronicle(rec.annals[+b.dataset.ann], showRecords); }; });
 }
 
 // ---------- デバッグモード（テスト用の隠し機能） ----------
@@ -3801,6 +3832,7 @@ $('btn-menu').onclick = () => {
     <button class="btn plain" id="m-diplo">外交</button>
     <button class="btn plain" id="m-settings">設定（合戦のおまかせ・速さ）</button>
     <button class="btn plain" id="m-records">戦績・実績</button>
+    <button class="btn plain" id="m-annals">年表（この天下取りのあゆみ）</button>
     <button class="btn plain" id="m-zukan">学校図鑑</button>
     <button class="btn plain" id="m-export">セーブの書き出し（枠${currentSlot}）</button>
     <button class="btn plain" id="m-help">遊び方</button>
@@ -3811,6 +3843,7 @@ $('btn-menu').onclick = () => {
   $('m-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
   $('m-records').onclick = () => { Sound.tap(); showRecords(); };
   $('m-zukan').onclick = () => { Sound.tap(); save(); showZukan(edOf(S.scenario)); };
+  $('m-annals').onclick = () => { Sound.tap(); showChronicle(chronicleOf(S)); };
   $('m-settings').onclick = () => { Sound.tap(); showSettings(); };
   $('m-export').onclick = () => { Sound.tap(); save(); showExport(currentSlot, closeModal); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };

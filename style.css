@@ -2076,3 +2076,32 @@ table.best tr.ed-row th { padding-top: 8px; text-align: left; font-family: var(-
 .mb-slot small { font-size: 10.5px; color: var(--muted); }
 .mb-slot.got { border: 2px solid var(--ink); background: linear-gradient(160deg, #fbf3dc, #f3e1a6); box-shadow: 3px 3px 0 var(--red); }
 .mb-slot.got b { color: var(--red); }
+
+/* ---------- 当主の年表（巻物） ---------- */
+.chronicle { text-align: left; }
+.cr-head { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 3px double var(--ink); }
+.cr-head h2 { margin: 0; font-size: 22px; }
+.cr-head small { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.cr-seal { margin-left: auto; flex: none; width: 50px; height: 50px; display: grid; place-items: center; text-align: center; font-family: var(--brush); font-size: 13px; line-height: 1.1; color: #fff;
+  background: var(--red); box-shadow: inset 0 0 0 3px var(--red), inset 0 0 0 4.5px #fff; transform: rotate(-6deg); }
+.cr-scroll { max-height: 56vh; overflow-y: auto; padding: 4px 4px 4px 0; background: var(--fiber), var(--washi), #f6eedb; border-left: 10px solid var(--c); border-right: 10px solid var(--c); }
+.cr-era { padding: 0 10px 8px; }
+.cr-lord { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0 -10px 6px; padding: 6px 10px; background: var(--ink); color: var(--paper); }
+.cr-lord span { font-family: var(--brush); font-size: 15px; color: #f3d27a; }
+.cr-lord b { font-family: var(--mincho); font-size: 16px; }
+.cr-lord small { flex-basis: 100%; font-size: 11px; opacity: 0.8; }
+.cr-ev { display: grid; grid-template-columns: 74px 1fr; gap: 6px; position: relative; padding: 4px 0 6px 14px; border-left: 2px solid var(--ink); margin-left: 4px; }
+.cr-ev::before { content: ''; position: absolute; left: -6px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink); }
+.cr-ev.big::before { background: var(--red); width: 12px; height: 12px; left: -7px; }
+.cr-ev time { font-size: 11px; font-weight: 800; color: var(--muted); }
+.cr-ev p { margin: 0; }
+.cr-ev b { display: block; font-family: var(--mincho); font-size: 13.5px; line-height: 1.4; }
+.cr-ev.big b { color: var(--red); }
+.cr-ev small { display: block; font-size: 11px; color: var(--muted); }
+.cr-quiet { margin: 0 0 4px; font-size: 12px; color: var(--muted); font-style: italic; }
+.an-list { display: grid; gap: 5px; }
+.an-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; cursor: pointer; text-align: left; background: #fffaf0; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); color: var(--ink); font-family: var(--gothic); }
+.an-row b { font-family: var(--mincho); font-size: 14px; }
+.an-row small { flex: 1; font-size: 11px; color: var(--muted); }
+.an-row i { font-style: normal; padding: 1px 6px; font-family: var(--brush); font-size: 13px; color: #fff; background: #6f6a60; }
+.an-row i.win { background: var(--red); }

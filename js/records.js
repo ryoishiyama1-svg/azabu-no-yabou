@@ -76,10 +76,29 @@ function checkAchievements(s) {
 }
 
 // ゲームが終わったとき：戦績を記録し、実績と他家の解放を調べる
+// ---------- 当主の年表 ----------
+// 一度の天下取りを、大きな出来事と歴代当主で年表にする。遊び終えたゲームは rec.annals に残す（新しい順に10件）
+function chronicleOf(s) {
+  const house = CLANS[s.player] ? CLANS[s.player].name : '';
+  const home = MAP.byId[s.player];
+  const first = s.lords && s.lords[0];
+  const events = (s.saga || []).filter((e) => e.weight >= 45).sort((a, b) => a.turn - b.turn).slice(-60)
+    .map((e) => ({ turn: e.turn, head: e.head, sub: e.sub, big: e.weight >= 88 }));
+  // はじまり（旗揚げ）と、おわり（天下統一か落日）
+  events.unshift({ turn: 0, head: `${house}、${home ? home.ward : ''}の地に旗を揚げる`, sub: first ? `当主・${first.name}` : '', big: false });
+  if (s.result) events.push({ turn: s.turn, head: s.result === 'win' ? `${house}、天下統一` : `${house}、滅亡`, sub: s.result === 'win' ? `${MAP.nodes.length}校を平定` : '最後の城が落ちた', big: true });
+  return {
+    at: Date.now(), scenario: s.scenario, player: s.player, house, result: s.result || null, turn: s.turn,
+    lords: (s.lords || []).map((l) => ({ name: l.name, from: l.from, kakun: l.kakun })),
+    events,
+  };
+}
+
 function recordEnding(s) {
   if (!s || s.debugUsed || s.recorded) return { got: [], unlockedNow: false };
   s.recorded = true;
   const rec = loadRecords();
+  rec.annals = [chronicleOf(s), ...(rec.annals || [])].slice(0, 10);
   rec.plays++;
   let unlockedNow = false;
   if (s.result === 'win') {
