@@ -284,7 +284,7 @@ function showSetup() {
     const scs = scenariosOf(k);
     const big = scs.reduce((a, s) => (scenarioSize(s) > scenarioSize(a) ? s : a), scs[0]);
     const lead = CLANS[e.lead];
-    return `<button data-ed="${k}" class="${k === st.ed ? 'on' : ''}" style="--c:${lead.color}">
+    return `<button data-ed="${k}" class="${k === st.ed ? 'on' : ''}" style="--c:${e.color || lead.color}">
       <span class="ed-mark">${e.mark}</span><b>${e.name}</b><small>${e.desc}</small>
       <em>最大${scenarioSize(big)}校・${scenarioClans(big).length}家${scs.length > 1 ? `・${scs.length}つの戦い` : ''}</em></button>`;
   }).join('')}</div>`;
