@@ -2178,3 +2178,21 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .fusuma { display: none; }
 }
+
+/* ---------- 籠城戦と兵糧攻め ---------- */
+.ks-siege { --k: #8a5a2b; }
+#map .siegemark .pole { stroke: var(--ink); stroke-width: 1.4; }
+#map .siegemark .flag { fill: var(--sc, var(--red)); stroke: var(--ink); stroke-width: 0.8; }
+#map .siegemark .sg-tag rect { fill: #8a5a2b; stroke: var(--ink); stroke-width: 1.5; }
+#map .siegemark .sg-tag text { fill: #fff; font-family: var(--brush); font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+.siege-plan { margin: 8px 0; padding: 8px 10px; background: #fbf3dc; border: 2px solid var(--ink); }
+.siege-plan p { margin: 0 0 4px; font-size: 12.5px; font-weight: 700; line-height: 1.5; }
+.siege-plan b { margin-right: 6px; padding: 0 5px; font-family: var(--brush); font-weight: 400; color: var(--paper); background: #8a5a2b; }
+.siege-plan .warn-line b { background: var(--red); }
+.siege-plan span { color: var(--red); }
+.siege-card { display: flex; align-items: center; gap: 8px; margin: 6px 0 4px; padding: 6px 8px; background: #fbf3dc; border: 2px solid var(--ink); box-shadow: 3px 3px 0 #8a5a2b; }
+.siege-card .sk { flex: none; display: grid; place-items: center; width: 34px; height: 34px; font-family: var(--brush); font-size: 22px; color: var(--paper); background: #8a5a2b; }
+.siege-card b { display: block; font-family: var(--mincho); font-size: 15px; }
+.siege-card small { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.siege-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0 0 6px; }
+.siege-btns .btn { margin: 0; padding: 8px; font-size: 15px; }

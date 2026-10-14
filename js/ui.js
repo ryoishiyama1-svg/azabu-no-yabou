@@ -269,6 +269,68 @@ $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
 $('btn-zukan').onclick = () => { Sound.unlock(); Sound.tap(); showZukan(); };
 $('btn-names').onclick = () => { Sound.unlock(); Sound.tap(); showNameEditor(); };
 
+// ---------- 籠城戦：包囲の命令 ----------
+// 何季で開城しそうか（城兵が季ごとに減って、囲む兵の6割を切るまで。最短でも2季）
+function siegeEta(troops, n, ratio = SIEGE.surrenderRatio) {
+  let t = troops, k = 0;
+  while (k < 20 && (k < SIEGE.surrenderAfter || t >= n * ratio)) { t *= 1 - SIEGE.starve; k++; }
+  return k >= 20 ? null : k;
+}
+function openSiege(from, to) {
+  const c = S.castles[to];
+  const gens = idleGensAt(S, from).sort((a, b) => b.str - a.str);
+  if (!gens.length) { mode = null; render(); return; }
+  let gid = gens[0].id;
+  const max = readyTroops(S, from);
+  let n = Math.min(max, Math.round((max * 0.8) / 10) * 10 || max);
+  const helpers = MAP.adj[to].filter((id) => c.owner !== 'none' && S.castles[id].owner === c.owner && S.castles[id].troops >= 400);
+  const draw = () => {
+    const eta = siegeEta(c.troops, n, siegeRatio(S, to));
+    openModal(`<h2>${MAP.byId[to].name} 包囲</h2>
+      <p style="text-align:center;margin:0 0 6px">${clanChip(c.owner)}<br>城兵 <b>${fmt(c.troops)}</b> ・ 防御 <b>${c.def.toFixed(1)}</b></p>
+      <h3>囲む大将</h3>
+      <div class="glist pick">${gens.map((g) => genCard(g, { extra: g.id === gid ? '<span class="check">✔</span>' : '' })).join('')}</div>
+      <h3>囲む兵（${MAP.byId[from].short}）</h3>
+      <div class="slider-row"><input type="range" id="sg-n" min="10" max="${max}" step="10" value="${n}"><b id="sg-v">${fmt(n)}</b></div>
+      <div class="siege-plan">
+        <p><b>兵糧攻め</b>季ごとに城兵が${Math.round(SIEGE.starve * 100)}%減り、防御が${SIEGE.defLoss}下がる。囲まれた城の収入は止まる</p>
+        <p><b>開城</b>${SIEGE.surrenderAfter}季を過ぎ、城兵が囲む兵の${Math.round(siegeRatio(S, to) * 100)}%を切ると門を開くことがある${isCapital(to, c.owner) ? "（家の本拠は粘る）" : ""}<span id="sg-eta">${eta ? `（見込み：およそ${eta}季）` : '（この兵では開城まで遠い）'}</span></p>
+        ${helpers.length ? `<p class="warn-line"><b>後詰め</b>となりの${helpers.map((id) => MAP.byId[id].short).join('・')}から救援が来ることがある</p>` : ''}
+        <p><b>総攻め</b>いつでも囲む兵でそのまま攻めかかれる</p>
+      </div>
+      <button class="btn red" id="sg-go">包囲する</button>
+      <button class="btn plain" data-close>やめる</button>`);
+    modalBody.querySelectorAll('.glist.pick .gcard').forEach((cd) => { cd.onclick = () => { Sound.tap(); gid = cd.dataset.gid; draw(); }; });
+    $('sg-n').oninput = (e) => {
+      n = +e.target.value;
+      $('sg-v').textContent = fmt(n);
+      const k = siegeEta(c.troops, n, siegeRatio(S, to));
+      $('sg-eta').textContent = k ? `（見込み：およそ${k}季）` : '（この兵では開城まで遠い）';
+    };
+    $('sg-go').onclick = () => {
+      Sound.taiko(0, 1); Sound.horagai();
+      startSiege(S, from, to, n, gid);
+      mode = null; selected = to;
+      closeModal(); save(); render();
+      toast(`🏯 ${esc(S.gens[gid].name)}が${MAP.byId[to].short}を囲んだ`);
+    };
+  };
+  draw();
+}
+// 総攻め：囲んでいた兵で、そのまま合戦へ
+function siegeAssault(to) {
+  const sg = siegeOf(S, to);
+  if (!sg) return;
+  const o = assaultFromSiege(S, sg);
+  const B = startBattle(S, { ...o, tactic: { a: pick(Object.keys(TACTICS)), d: aiTactic(S, to) }, playerSide: 'a' });
+  mode = null;
+  closeModal();
+  runBattle(B, {
+    auto: getSettings().attackMode === 'auto',
+    onClose: (r) => { selected = r.won ? to : o.from; render(); achievementToast(checkAchievements(S)); if (S.result) showEnding(); },
+  });
+}
+
 // ---------- 名前の編集（学校・家） ----------
 // 版ごとに、家の名と学校の名（正式名・地図の名）を書き換える。架空の名前にする切り替えも。保存すると読み込み直して当てる
 let NAME_ED = 'tokyo';
@@ -779,6 +841,7 @@ function drawMap() {
         <g class="gbadge" transform="translate(17,-19)"><circle r="8"/><text></text></g>
         <g class="danger" transform="translate(-19,-16) rotate(-8)"><rect x="-9" y="-9" width="18" height="18"/><text>危</text></g>
         <g class="chance" transform="translate(-19,-16) rotate(-8)" style="display:none"><rect x="-9" y="-9" width="18" height="18"/><text>攻</text></g>
+        <g class="siegemark" style="display:none">${[200, 240, 280, 320, 340, 20].map((a) => { const r = (a * Math.PI) / 180, x = (Math.cos(r) * 34).toFixed(0), y = (8 + Math.sin(r) * 22).toFixed(0); return `<g transform="translate(${x},${y})"><path class="pole" d="M0,6 V-12"/><rect class="flag" x="0.5" y="-12" width="6" height="9"/></g>`; }).join("")}<g class="sg-tag" transform="translate(0,-40)"><rect x="-17" y="-8" width="34" height="16"/><text></text></g></g>
         <text class="facmark" x="-14" y="-22"></text>
         <text class="troops" y="48"></text>`;
       g.addEventListener('click', () => onCastleTap(n.id));
@@ -882,6 +945,10 @@ function render() {
     dz.setAttribute('class', `danger ${lvl}`);
     dz.querySelector('text').textContent = lvl === 'hi' ? '危' : '注';
     g.querySelector('.chance').style.display = chances.includes(id) ? '' : 'none';
+    // 包囲の陣：囲んでいる城のまわりに、自分の家の旗と季の数
+    const sgm = g.querySelector('.siegemark'), sgo = siegeOf(S, id);
+    sgm.style.display = sgo ? '' : 'none';
+    if (sgo) { sgm.style.setProperty('--sc', CLANS[PLAYER].color); sgm.querySelector('text').textContent = `${'〇一二三四五六七八九十'[Math.min(10, sgo.turns)] || sgo.turns}季`; }
     // 城下町：経済の段階に合わせて町並みを見せる。段階が上がったら、新しく建ったものが跳ねて現れる
     const lv = townLevel(c.eco), was = g.dataset.town;
     if (String(lv) !== was) {
@@ -896,7 +963,7 @@ function render() {
     }
     g.classList.toggle('front', !!th);
     const ring = g.querySelector('.ring');
-    const kind = mode && (mode.kind === 'attack' || mode.kind === 'scheme' ? 'target' : 'friend');
+    const kind = mode && (['attack', 'scheme', 'siege'].includes(mode.kind) ? 'target' : 'friend');
     ring.setAttribute('class', 'ring ' + (targets.includes(id) ? kind : id === selected ? 'sel' : ''));
   });
 
@@ -910,6 +977,7 @@ function render() {
   const banner = $('mode-banner');
   if (mode) {
     const label = mode.kind === 'attack' ? '⚔ 攻める城を選べ'
+      : mode.kind === 'siege' ? '🏯 囲む城を選べ'
       : mode.kind === 'move' ? '🐎 兵を送る城を選べ'
       : mode.kind === 'scheme' ? `🎭 計略「${SCHEMES[mode.scheme].name}」の相手を選べ`
       : `🚶 ${esc(S.gens[mode.gid].name)}の移動先を選べ`;
@@ -927,6 +995,7 @@ function render() {
 function modeTargets() {
   if (!mode) return [];
   if (mode.kind === 'scheme') return schemeTargets(S, mode.from, mode.scheme);
+  if (mode.kind === 'siege') return hostileNeighbors(S, mode.from).filter((t) => canSiege(S, mode.from, t));
   return mode.kind === 'attack' ? hostileNeighbors(S, mode.from) : ownNeighbors(S, mode.from);
 }
 
@@ -986,6 +1055,7 @@ function renderPanel() {
     body = `${hint ? `<p class="hint">${hint}</p>` : ''}
       <div class="cmds">
         <button class="btn red" id="c-attack" ${dis(hostileNeighbors(S, selected).length && readyTroops(S, selected) > 0)}><span class="k">攻</span>出陣<small>敵城を攻める</small></button>
+        <button class="btn" id="c-siege" ${dis(hostileNeighbors(S, selected).some((t) => canSiege(S, selected, t)) && readyTroops(S, selected) > 0)}><span class="k">囲</span>包囲<small>兵糧攻め</small></button>
         <button class="btn" id="c-move" ${dis(ownNeighbors(S, selected).length && readyTroops(S, selected) > 0)}><span class="k">送</span>輸送<small>兵を送る</small></button>
         <button class="btn" id="c-gen" ${dis(ownNeighbors(S, selected).length)}><span class="k">移</span>移動<small>武将を移す</small></button>
         <button class="btn" id="c-recruit" ${dis(canRecruit(S, selected))}><span class="k">兵</span>徴兵<small>金${RULES.recruitCost}</small></button>
@@ -1015,6 +1085,15 @@ function renderPanel() {
         const sw = gensOf(S, PLAYER).filter((g) => g.shi && !g.shi.done && ['bokou', 'castle'].includes(g.shi.kind) && g.shi.target === selected);
         return sw.length ? `<p class="shi-hint"><b>志</b>${sw.map((g) => esc(g.name)).join('・')}が、この城を落とすと誓っている（大将にすると士気+${SHI_MORALE}）</p>` : '';
       })()}
+      ${(() => {
+        // 包囲している城：兵糧攻めの進み具合と、総攻め・囲みを解く
+        const sg = siegeOf(S, selected);
+        if (!sg) return '';
+        const g = S.gens[sg.gid], eta = siegeEta(c.troops, sg.n, siegeRatio(S, selected));
+        return `<div class="siege-card"><span class="sk">囲</span><div><b>包囲 ${sg.turns}季目</b>
+          <small>${g ? esc(g.name) : ''}の${fmt(sg.n)}兵が囲む・城兵は季ごとに${Math.round(SIEGE.starve * 100)}%減る${eta ? `・開城の見込み あと${Math.max(0, eta - sg.turns)}季` : ''}</small></div></div>
+          <div class="siege-btns"><button class="btn red" id="c-assault">総攻め</button><button class="btn plain" id="c-lift">囲みを解く</button></div>`;
+      })()}
       ${planHtml}
       <div class="cmds">
         <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
@@ -1039,6 +1118,7 @@ let attackIdx = -1; // 「攻め口」ボタンで、次に見せる城
 // 軍議：家の様子（数字の札・天下と勢力図）と、今季の献策（やるべきことの札。タップでその城や画面へ）
 let idleIdx = -1;   // 「命令の残る城」の札で、次に見せる城
 let shiIdx = -1;    // 「志の城」の札で、次に見せる城
+let siegeIdx = -1;  // 「包囲中の城」の札で、次に見せる城
 function councilAgenda() {
   const items = []; // { id, kind, k: 札の字, title, sub, ids?: 順に見せる城 }
   const risky = castlesOf(S, PLAYER).map((id) => [id, dangerOf(S, id, winChance)]).filter(([, t]) => t && t.keep < 0.5)
@@ -1047,6 +1127,9 @@ function councilAgenda() {
   if (risky.length) items.push({ id: 'danger-warn', kind: 'danger', k: '危', title: `守りの危うい城 ${risky.length}`, sub: names(risky), ids: risky });
   const ch = attackChances(S).map((pl) => pl.to);
   if (ch.length) items.push({ id: 'attack-warn', kind: 'attack', k: '攻', title: `勝算のある攻め口 ${ch.length}`, sub: names(ch), ids: ch });
+  // 包囲中の城：兵糧攻めの進み具合（総攻めの頃合いを見る）
+  const sieges = S.sieges || [];
+  if (sieges.length) items.push({ id: 'siege-warn', kind: 'siege', k: '囲', title: `包囲中の城 ${sieges.length}`, sub: sieges.map((sg) => `${MAP.byId[sg.to].short} ${sg.turns}季目`).join('・'), ids: sieges.map((sg) => sg.to) });
   // 志の城：誓いの城が、いま攻められるところにある武将
   const sworn = gensOf(S, PLAYER).filter((g) => g.loc && g.shi && !g.shi.done && ['bokou', 'castle'].includes(g.shi.kind) && attackSources(g.shi.target).length);
   if (sworn.length) {
@@ -1136,6 +1219,7 @@ function renderCouncil() {
   cycle('attack-warn', () => attackIdx, (i) => { attackIdx = i; });
   cycle('shi-warn', () => shiIdx, (i) => { shiIdx = i; });
   cycle('idle-warn', () => idleIdx, (i) => { idleIdx = i; });
+  cycle('siege-warn', () => siegeIdx, (i) => { siegeIdx = i; });
   if ($('loyal-warn')) $('loyal-warn').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）'); };
 }
 
@@ -1723,6 +1807,13 @@ function meibaArt(id, p) {
       <path d="M70,112 L170,70 L270,112Z" fill="#2a2a32" stroke="${K}" stroke-width="3"/>
       <g fill="#e8553f" stroke="#f3d27a" stroke-width="2">${[[112, 58], [170, 34], [228, 56]].map(([x, y]) => `<path transform="translate(${x},${y}) scale(0.8) translate(${-x},${-y})" d="M${x},${y + 40} q-18,-20 -4,-44 q4,14 12,10 q-2,-22 14,-34 q-4,22 10,32 q8,-6 6,-18 q18,26 -2,54Z"/>`).join('')}</g>
       <rect y="150" width="340" height="50" fill="#2a1a14"/>`;
+  } else if (id === 'hiboshi') {
+    // 夜、三日月の下で城を幾重にも囲む陣と篝火
+    body = `<rect width="340" height="200" fill="#1e2438"/><path d="M262,30 a22,22 0 1 0 14,40 a18,18 0 1 1 -14,-40Z" fill="#f3d27a"/>
+      <rect y="150" width="340" height="50" fill="#2a2a20"/>
+      <g transform="translate(170,138) scale(2.2)" style="--c:${foe}">${castleMarkup(false).replace(/class="roof"/g, `fill="${foe}" stroke="${K}" stroke-width="1.6" class="roof"`).replace(/class="wall"/g, 'fill="#cfc4a8" stroke="#1c1a17" stroke-width="1.6" class="wall"').replace(/class="stone"/g, 'fill="#6f6a60" stroke="#1c1a17" class="stone"').replace(/class="window"/g, 'fill="#1c1a17" class="window"').replace(/class="snow"[^/]*\/>/g, '').replace(/class="(shadow|stone-line|clock)"/g, 'fill="none" stroke="none" class="$1"')}</g>
+      ${banners(6, 20, 182, me, 22)}${banners(6, 212, 182, me, 22)}
+      <g fill="#e8553f">${[[60, 166], [150, 172], [250, 168], [310, 174]].map(([x, y]) => `<path d="M${x},${y} q-6,-8 0,-16 q6,8 0,16Z"/>`).join('')}</g>`;
   } else if (id === 'dannoura') {
     // 荒れた海に、両家の船団
     const ship = (x, y, col, s, f) => `<g transform="translate(${x},${y}) scale(${f * s},${s})"><path d="M-30,0 L30,0 L22,14 L-24,14Z" fill="#5a3a22" stroke="${K}" stroke-width="2.5"/>
@@ -1749,6 +1840,7 @@ function showMeiba(m) {
   const where = p.to && MAP.byId[p.to] ? MAP.byId[p.to].name : '';
   const line = m.id === 'okehazama' ? `${where}を、${fmt(p.a)}の兵で${fmt(p.d)}の大軍から奪い取った。${g ? `${g.name}の統率が3上がった` : ''}`
     : m.id === 'nagashino' ? `${where}に押し寄せた${fmt(p.a)}の大軍を、${fmt(p.d)}の兵で退けた。${g ? `${g.name}の知略が3上がった` : ''}`
+    : m.id === 'hiboshi' ? `${p.turns}季にわたる包囲の末、兵糧の尽きた${where}が門を開いた。${g ? `囲み続けた${g.name}、見事` : ''}`
     : m.id === 'dannoura' ? `${g ? g.name : '船団'}が海を越えて攻め寄せ、${CLANS[p.foe] ? CLANS[p.foe].name : ''}の本拠・${where}を落とした`
     : m.id === 'honnoji' ? `${g ? g.name : '家臣'}が${where}ごと${pName()}に背いた。「敵は、身内にあり」`
     : `${pName()}と${CLANS[p.foe] ? CLANS[p.foe].name : '最後の一家'}。${foeLord ? `${foeLord.name}「この一戦で、すべてが決まる」` : 'この戦いで、すべてが決まる'}`;
@@ -2154,6 +2246,9 @@ function bindPanel() {
   on('c-close', () => { Sound.tap(); selected = null; render(); });
   on('c-attack', () => { Sound.taiko(0, 0.6); mode = { kind: 'attack', from: selected }; render(); });
   on('c-move', () => { Sound.tap(); mode = { kind: 'move', from: selected }; render(); });
+  on('c-siege', () => { Sound.taiko(0, 0.5); mode = { kind: 'siege', from: selected }; render(); });
+  on('c-assault', () => { Sound.taiko(0, 1); siegeAssault(selected); });
+  on('c-lift', () => { Sound.tap(); const sg = siegeOf(S, selected); if (sg) { liftSiege(S, sg); save(); render(); toast('囲みを解き、兵を引き上げた'); } });
   on('c-gen', () => { Sound.tap(); chooseGeneralToMove(selected); });
   on('c-recruit', () => act(recruit, 'cha', '徴兵'));
   on('c-develop', () => act(develop, 'pol', '開発'));
@@ -2416,6 +2511,7 @@ function onCastleTap(id) {
   if (mode) {
     if (modeTargets().includes(id)) {
       if (mode.kind === 'attack') openAttack(mode.from, id);
+      else if (mode.kind === 'siege') openSiege(mode.from, id);
       else if (mode.kind === 'scheme') openSchemeTarget(id);
       else if (mode.kind === 'move') openMove(mode.from, id);
       else doMoveGeneral(mode.gid, id);
