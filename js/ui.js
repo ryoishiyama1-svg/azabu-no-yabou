@@ -810,7 +810,16 @@ function renderCouncil() {
       const ch = attackChances(S);
       return ch.length ? `<button class="warn attack-warn" id="attack-warn" data-ids="${ch.map((pl) => pl.to).join(',')}"><b>攻</b>勝算のある攻め口が ${ch.length}つ：${ch.slice(0, 3).map((pl) => MAP.byId[pl.to].short).join('・')}${ch.length > 3 ? ' ほか' : ''}（タップで移動）</button>` : '';
     })()}
-    ${S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : ''}
+    ${(() => {
+      const R = S.finale && S.finale.rally;
+      if (R && rallyOn(S, R.head)) return `<p class="warn rally-warn">🔥 最後の大連合（盟主 ${CLANS[R.head].name}）の大反攻：あと${R.until - S.turn}季。前線の守りを固めよ</p>`;
+      return S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : '';
+    })()}
+    ${(() => {
+      // 天下への道のり：節目（半ば・王手・目前）の目盛りつき
+      const n = castlesOf(S, PLAYER).length, all = MAP.nodes.length;
+      return `<div class="tenka"><span>天下</span><div class="tk-bar"><i style="width:${(n / all * 100).toFixed(1)}%"></i>${FINALE.marks.map((m) => `<em style="left:${m * 100}%" class="${n / all >= m ? 'on' : ''}"></em>`).join('')}</div><b>あと${all - n}校</b></div>`;
+    })()}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
     <div class="bulk">
       <button class="btn" id="bulk-recruit" ${S.gold[PLAYER] >= RULES.recruitCost && idleGens ? '' : 'disabled'}>全城で徴兵</button>
@@ -1369,10 +1378,76 @@ function showLetter(ev, then) {
   setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 800);
 }
 
+// ---------- 天下目前：節目の一枚絵と、最後の大連合 ----------
+const MILESTONES = {
+  0.5: { title: '天下の半ば', lines: ['ようやく半ばか。だが、ここからが本当の戦いだ', '皆の者、天下の半分はわが手にあるぞ！'] },
+  0.75: { title: '天下に王手', lines: ['天下は、もう手の届くところにある', '気を抜くな。追いつめられた者ほど手強いものだ'] },
+  0.9: { title: '天下目前', lines: ['あと一息。最後まで、誰ひとり欠けるでないぞ', '天下統一の日は近い。いざ、仕上げにかかる！'] },
+};
+// 天下絵図：すべての城を家の色の升目で並べる（自分の家が先、残りは家ごと）
+function tenkaGrid(s) {
+  const order = (k) => (k === PLAYER ? 0 : k === 'none' ? 2 : 1);
+  const ids = Object.keys(s.castles).sort((a, b) => order(s.castles[a].owner) - order(s.castles[b].owner) || s.castles[a].owner.localeCompare(s.castles[b].owner));
+  return `<div class="tk-grid">${ids.map((id, i) => {
+    const o = s.castles[id].owner;
+    return `<i class="${o === PLAYER ? 'me' : ''}" style="--c:${o === 'none' ? '#857b6c' : CLANS[o].color};animation-delay:${(0.4 + i * 0.018).toFixed(2)}s"></i>`;
+  }).join('')}</div>`;
+}
+function showMilestone(ev, then) {
+  const M = MILESTONES[ev.p.mark];
+  const lord = lordOf(S);
+  const rest = aiClans().filter((k) => castlesOf(S, k).length);
+  const left = MAP.nodes.length - castlesOf(S, PLAYER).length;
+  let box = $('milestone');
+  if (!box) { box = document.createElement('div'); box.id = 'milestone'; box.className = 'kime milestone'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="ms-card">
+      <div class="ms-title">${M.title}</div>
+      <div class="ms-frame">${tenkaGrid(S)}
+        <div class="ms-count"><b>${castlesOf(S, PLAYER).length}</b><span>／${MAP.nodes.length}校</span></div>
+      </div>
+      ${lord ? `<div class="conq-cry">${portrait(lord, 56, ev.p.mark >= 0.9 ? 'laugh' : 'smile')}<p><b>${esc(lord.name)}</b>「${esc(pick(M.lines))}」</p></div>` : ''}
+      <p class="ms-rest">${left ? `残るは${left}校` : ''}${rest.length ? `　${rest.map((k) => crestBadge(k, 22)).join('')}` : ''}</p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(2); Sound.taiko(0.5, 1); Sound.taiko(0.8, 1.1); Sound.kira();
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 1200);
+}
+function showRally(ev, then) {
+  const p = ev.p, head = p.head;
+  const lord = S.gens[p.lord];
+  let box = $('rally');
+  if (!box) { box = document.createElement('div'); box.id = 'rally'; box.className = 'kime rally'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="kime-card">
+      <div class="kime-title">最後の大連合</div>
+      <div class="rl-crests">${p.clans.map((k, i) => `<span style="animation-delay:${(0.5 + i * 0.15).toFixed(2)}s">${crestBadge(k, 38)}</span>`).join('')}</div>
+      ${lord ? `<div class="kime-frame" style="--c:${CLANS[head].color}">
+        ${portrait(lord, 300, 'angry')}
+        <div class="kime-name"><span>${esc(lord.name)}</span><small>連合の盟主</small></div>
+        <div class="kime-seal">${esc(CLANS[head].name.replace('家', ''))}<br>之印</div>
+      </div>` : ''}
+      <p class="kime-line">「${esc(pName())}よ、天下はまだ渡さぬ！ 我ら${p.clans.length}家、いまこそ一つとなって総攻撃を仕掛ける！」</p>
+      <p class="rl-sub">${FINALE.rallyTurns}季のあいだ、連合が大反攻に出る。連合の前線の城には兵が集まった</p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.horagai(); Sound.taiko(0.9, 1.2); Sound.taiko(1.2, 1.2);
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 1300);
+}
+
 // ---------- イベント ----------
 function runEvents(done) {
   if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
   const ev = S.pending[0];
+  if (ev.id === 'milestone' || ev.id === 'rally') {
+    closeModal();
+    (ev.id === 'rally' ? showRally : showMilestone)(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); });
+    return;
+  }
   if (ev.id === 'letter') {
     closeModal();
     showLetter(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); });

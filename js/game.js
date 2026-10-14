@@ -983,7 +983,8 @@ function autoCastle(s, clan, id, cfg, dist, log) {
       (jointTarget(s, clan, t) ? 0.5 : 1); // 共同出兵の標的を優先
     const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
-    const need = defensePower(s, target) * cfg.ratio * (jointTarget(s, clan, target) ? 0.85 : 1) + 100;
+    const need = defensePower(s, target) * cfg.ratio * (jointTarget(s, clan, target) ? 0.85 : 1) *
+      (rallyOn(s, clan) && s.castles[target].owner === PLAYER ? FINALE.rallyNeed : 1) + 100; // 大連合の大反攻は強気に攻める
     let support = [];
     if (send * atkMult(leader) <= need) {
       // 一城で足りなければ、となりの城から援軍を集める
@@ -1271,10 +1272,11 @@ function endTurn(s) {
   bondTick(s);
   aiClans().forEach((k) => { if (castlesOf(s, k).length) aiLordOf(s, k); });
   debtTick(s);
+  finaleTick(s, log);
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
-  s.pending = s.result ? [] : rollEvents(s);
+  s.pending = s.result ? [] : [...((s.finale && s.finale.queue) || []).splice(0), ...rollEvents(s)];
   if (!s.result && s.bondQueue && s.bondQueue.length) s.pending.push(...s.bondQueue.splice(0));
   s.log = log;
   return log;
@@ -1620,4 +1622,66 @@ function debtTick(s) {
     addNews(s, `${CLANS[d.clan].name}当主・${lord.name}、${pName()}に恩を返す`, '敵味方を超えた義理', 40);
     return false;
   });
+}
+
+// ---------- 天下目前（終盤の山場） ----------
+// 節目（城の半分・4分の3・9割）で一枚絵。4分の3を越えると、残る家が「最後の大連合」を組んで大反攻に出る
+// 同じころから、となりの独立校が自ら帰順してくる（終盤の掃除を短くする）
+const FINALE = { marks: [0.5, 0.75, 0.9], rallyShare: 0.75, rallyTurns: 3, rallyBoost: 0.4, rallyGold: 800, rallyNeed: 0.8, kijun: 0.3, kijunMax: 2 };
+const shareOf = (s) => castlesOf(s, PLAYER).length / MAP.nodes.length;
+const rallyOn = (s, clan) => !!(s.finale && s.finale.rally && s.turn < s.finale.rally.until && s.finale.rally.clans.includes(clan));
+function finaleTick(s, log) {
+  const F = s.finale || (s.finale = { marks: [], queue: [] });
+  F.queue = F.queue || [];
+  const share = shareOf(s);
+  if (share >= 1) return;
+  // 一度にいくつも越えたときは、いちばん上の節目だけ見せる
+  const passed = FINALE.marks.filter((m) => share >= m && !F.marks.includes(m));
+  if (passed.length) {
+    const m = Math.max(...passed);
+    F.marks.push(...passed);
+    F.queue.push({ id: 'milestone', p: { mark: m, n: castlesOf(s, PLAYER).length } });
+    addNews(s, m >= 0.9 ? `${pName()}、天下目前` : m >= 0.75 ? `${pName()}、天下に王手` : `${pName()}、天下の半ばを制す`, `残るは${MAP.nodes.length - castlesOf(s, PLAYER).length}校`, 90);
+  }
+  // 最後の大連合
+  const members = aiClans().filter((k) => castlesOf(s, k).length && !(s.rel[k] && s.rel[k].sister));
+  if (share >= FINALE.rallyShare && !F.rally && members.length) {
+    const head = members.reduce((a, b) => (castlesOf(s, a).length >= castlesOf(s, b).length ? a : b));
+    const lord = aiLordOf(s, head);
+    F.rally = { head, clans: members, until: s.turn + FINALE.rallyTurns, lord: lord ? lord.id : null };
+    s.encircle = true;
+    members.forEach((k) => {
+      if (s.rel[k]) { s.rel[k].ally = 0; s.rel[k].truce = 0; s.rel[k].trade = 0; changeFriend(s, k, -30); }
+      s.gold[k] += FINALE.rallyGold;
+      // 自分の家と接する城に、連合の兵が集まる
+      castlesOf(s, k).filter((id) => MAP.adj[id].some((n) => s.castles[n].owner === PLAYER)).forEach((id) => {
+        const c = s.castles[id];
+        c.troops = Math.min(RULES.troopCap, Math.round((c.troops * (1 + FINALE.rallyBoost)) / 10) * 10);
+      });
+    });
+    s.joint = null;
+    F.queue.push({ id: 'rally', p: { head, lord: F.rally.lord, clans: members } });
+    log.push(`🔥 残る${members.length}家が「最後の大連合」を結成！ 盟主は${CLANS[head].name}。${FINALE.rallyTurns}季のあいだ大反攻に出る`);
+    addDiploLog(s, `${CLANS[head].name}を盟主に「最後の大連合」が結成された`, 'bad');
+    addNews(s, `最後の大連合、結成`, `盟主・${CLANS[head].name}、${pName()}に総攻撃を宣言`, 95);
+  }
+  if (F.rally && !F.rally.over && s.turn >= F.rally.until) {
+    F.rally.over = true;
+    log.push(`🏳️ 最後の大連合の大反攻が終わった。連合の勢いは衰えた`);
+    addNews(s, '大連合の反攻、尽きる', `${pName()}、総攻撃をしのぎ切る`, 85);
+  }
+  // 独立校の帰順
+  if (share >= FINALE.rallyShare) {
+    const near = Object.keys(s.castles).filter((id) => s.castles[id].owner === 'none' && MAP.adj[id].some((n) => s.castles[n].owner === PLAYER));
+    let n = 0;
+    near.sort(() => Math.random() - 0.5).forEach((id) => {
+      if (n >= FINALE.kijunMax || Math.random() >= FINALE.kijun) return;
+      n++;
+      Object.values(s.gens).filter((g) => g.loc === id && g.clan === 'none').forEach((g) => { g.clan = PLAYER; g.loyal = randInt(60, 75); });
+      s.castles[id].owner = PLAYER;
+      s.delegate[id] = true; // 帰順した城は、ひとまず委任しておく
+      log.push(`🎌 ${MAP.byId[id].name}が、${pName()}の威光に帰順した`);
+      addNews(s, `${MAP.byId[id].short}、${pName()}に帰順`, '戦わずして門を開く', 60);
+    });
+  }
 }
