@@ -536,6 +536,7 @@ function drawMap() {
       g.innerHTML = `
         <circle class="hit" r="34" cy="8"/>
         <ellipse class="ring" cx="0" cy="14" rx="27" ry="10"/>
+        ${townMarkup()}
         <g class="keep">${castleMarkup(n.clan !== 'none')}</g>
         <g class="plate" transform="translate(0,27)">
           <rect x="${-w / 2}" y="-8.5" width="${w}" height="17"/>
@@ -647,6 +648,18 @@ function render() {
     dz.setAttribute('class', `danger ${lvl}`);
     dz.querySelector('text').textContent = lvl === 'hi' ? '危' : '注';
     g.querySelector('.chance').style.display = chances.includes(id) ? '' : 'none';
+    // 城下町：経済の段階に合わせて町並みを見せる。段階が上がったら、新しく建ったものが跳ねて現れる
+    const lv = townLevel(c.eco), was = g.dataset.town;
+    if (String(lv) !== was) {
+      g.dataset.town = lv;
+      g.querySelectorAll('.town [data-lv]').forEach((t) => {
+        const need = +t.dataset.lv;
+        const show = t.classList.contains('field') ? lv === 0 : lv >= need;
+        t.style.display = show ? '' : 'none';
+        t.classList.toggle('pop', show && was !== undefined && need > +was);
+      });
+      if (was !== undefined && lv > +was && own) toast(`🏮 ${MAP.byId[id].short}が「${TOWN_LEVELS[lv].name}」に育った`);
+    }
     g.classList.toggle('front', !!th);
     const ring = g.querySelector('.ring');
     const kind = mode && (mode.kind === 'attack' || mode.kind === 'scheme' ? 'target' : 'friend');
@@ -706,7 +719,7 @@ function renderPanel() {
     <div class="stats">
       <div class="stat"><span class="n">${fmt(c.troops)}</span><span class="l">兵 力</span></div>
       <div class="stat"><span class="n">${c.def.toFixed(1)}</span><span class="l">防 御</span></div>
-      <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span></div>
+      <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span><small class="town-name">${TOWN_LEVELS[townLevel(c.eco)].name}${townLevel(c.eco) < TOWN_LEVELS.length - 1 ? `・次は${TOWN_LEVELS[townLevel(c.eco) + 1].eco}` : ''}</small></div>
     </div>
     ${(() => {
       if (!own) return '';

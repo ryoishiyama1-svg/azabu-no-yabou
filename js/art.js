@@ -738,3 +738,32 @@ function titleSeasonArt(season) {
   const snow = Array.from({ length: 46 }, () => `<circle cx="${(r() * 400).toFixed(0)}" cy="${(r() * 600).toFixed(0)}" r="${(1.5 + r() * 2.5).toFixed(1)}" fill="#fffaf0" stroke="${K}" stroke-width=".6"/>`).join('');
   return branch + ume + snow;
 }
+
+// ---------- 城下町（経済で育つ町並み） ----------
+// 城の左右に町家・のぼり・屋台・提灯が増えていく。data-lv の段階に達したものだけ見せる（ui.js の render で切り替え）
+const TOWN_LEVELS = [
+  { eco: 0, name: '田畑の村' },
+  { eco: 70, name: '門前町' },
+  { eco: 100, name: '宿場町' },
+  { eco: 140, name: '城下町' },
+  { eco: 190, name: '天下の大都' },
+];
+const townLevel = (eco) => TOWN_LEVELS.reduce((lv, t, i) => (eco >= t.eco ? i : lv), 0);
+function townMarkup() {
+  const house = (x, y, lv, s = 1) => `<g class="th" data-lv="${lv}" transform="translate(${x},${y}) scale(${s})">
+    <rect class="tw" x="-4.5" y="-5" width="9" height="6"/><rect class="tdoor" x="-1.3" y="-2.6" width="2.6" height="3.6"/>
+    <path class="tr" d="M-6,-4.6 L0,-9.5 L6,-4.6Z"/></g>`;
+  const nobori = (x, y, lv) => `<g class="tn" data-lv="${lv}" transform="translate(${x},${y})">
+    <path class="pole" d="M0,2 V-17 M0,-16 H4.5"/><rect class="flag" x="0.6" y="-16" width="4.2" height="12"/></g>`;
+  return `<g class="town">
+    <path class="field" data-lv="0" d="M-46,15 l12,-4 l12,4 l-12,4Z M22,15 l12,-4 l12,4 l-12,4Z"/>
+    ${house(-33, 13, 1)}${house(33, 13, 1)}
+    ${house(-43, 9, 2, 0.9)}${house(43, 9, 2, 0.9)}${nobori(-25, 13, 2)}${nobori(25, 13, 2)}
+    <g class="ty" data-lv="3" transform="translate(-38,20)"><rect class="tw" x="-5" y="-4" width="10" height="5"/><path class="awning" d="M-6.5,-4 L-5,-8 H5 L6.5,-4Z"/></g>
+    <g class="tl" data-lv="3" transform="translate(38,19)"><path class="pole" d="M0,2 V-7"/><ellipse class="lamp" cx="0" cy="-8" rx="2.6" ry="3.4"/></g>
+    <g class="tf" data-lv="4"><path class="string" d="M-46,-1 Q-36,5 -26,0 M26,0 Q36,5 46,-1"/>
+      ${[-41, -36, -31, 31, 36, 41].map((x) => `<circle class="lamp" cx="${x}" cy="${Math.abs(x) === 36 ? 3.2 : 1.8}" r="1.7"/>`).join('')}</g>
+    ${house(-46, 18, 4, 0.8)}${house(46, 18, 4, 0.8)}
+    <g class="tk" data-lv="4" transform="translate(-48,4)"><path class="pole" d="M-3,8 L0,-10 L3,8 M-2.2,2 H2.2 M-1.4,-4 H1.4"/><path class="tr" d="M-3.5,-10 L0,-13.5 L3.5,-10Z"/></g>
+  </g>`;
+}

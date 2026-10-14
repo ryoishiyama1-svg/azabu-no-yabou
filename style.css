@@ -1873,3 +1873,20 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .ks-idle { --k: var(--ai); }
 .cn-calm { margin: 0; padding: 8px 10px; font-family: var(--mincho); font-weight: 800; font-size: 13px; color: var(--muted); background: #f3eee2; border-left: 5px solid #a39a86; }
 .cn-agenda .reinforce { margin: 0; }
+
+/* ---------- 城下町：経済で育つ町並み ---------- */
+#map .town .tw { fill: #f6eedb; stroke: var(--ink); stroke-width: 1; }
+#map .town .tdoor { fill: #5a4632; }
+#map .town .tr { fill: #4a4d57; stroke: var(--ink); stroke-width: 1; stroke-linejoin: round; }
+#map .town .pole { fill: none; stroke: #4a3328; stroke-width: 1.2; stroke-linecap: round; }
+#map .town .flag { fill: var(--c); stroke: var(--ink); stroke-width: 0.8; }
+#map .town .awning { fill: #c8372d; stroke: var(--ink); stroke-width: 0.9; }
+#map .town .lamp { fill: #e8553f; stroke: var(--ink); stroke-width: 0.7; }
+#map .town .string { fill: none; stroke: var(--ink); stroke-width: 0.7; }
+#map .town .field { fill: #c9b77a; stroke: #8f7d48; stroke-width: 0.8; opacity: 0.8; }
+#map .town .tn .flag { animation: nobori 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: left top; }
+@keyframes nobori { 50% { transform: skewY(6deg) scaleX(0.9); } }
+#map .town .pop > * { animation: townPop 0.6s cubic-bezier(0.2, 1.8, 0.4, 1) both; transform-box: fill-box; transform-origin: center bottom; }
+@keyframes townPop { from { transform: scale(0) translateY(6px); opacity: 0; } }
+#mapwrap[data-season="3"] #map .town .tr { fill: #fffaf0; }
+.stat .town-name { display: block; margin-top: 1px; font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; }
