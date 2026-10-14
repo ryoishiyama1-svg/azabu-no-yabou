@@ -2220,3 +2220,18 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .ch-seal.got b { color: var(--ink); }
 .siege-card.under { box-shadow: 3px 3px 0 var(--red); background: #fbe5e2; }
 .siege-card.under .sk { background: var(--red); animation: dangerPulse 1.6s ease-in-out infinite; }
+
+/* ---------- 茶の湯 ---------- */
+.tea-btn { display: flex; align-items: baseline; justify-content: center; gap: 8px; width: 100%; margin: 6px 0 2px; font-size: 16px; }
+.tea-btn small { font-size: 11px; font-weight: 700; opacity: 0.8; }
+.tea-room { position: relative; margin: 0 0 8px; border: 3px solid var(--ink); box-shadow: 4px 4px 0 #6b7a4a; overflow: hidden; }
+.tea-bg { display: block; width: 100%; height: auto; }
+.tea-people { position: absolute; left: 0; right: 0; bottom: 6px; display: flex; align-items: flex-end; justify-content: center; gap: 10px; }
+.tea-people > div { text-align: center; }
+.tea-people .portrait { border: 2px solid var(--ink); background: var(--paper); }
+.tea-people small { display: block; font-size: 10px; font-weight: 800; background: rgba(255, 250, 240, 0.85); }
+.tea-bowl { font-size: 26px; margin-bottom: 18px; }
+.tea-topic { font-family: var(--mincho); font-size: 14px; color: var(--muted); }
+.tea-talk p { margin: 0 0 8px; font-family: var(--mincho); font-weight: 800; font-size: 14px; line-height: 1.6; }
+.tea-talk b { display: block; font-size: 12px; color: #6b7a4a; }
+.tea-eff { margin: 0 0 10px; padding: 8px 10px 8px 26px; background: #f3eee2; border-left: 5px solid #6b7a4a; font-size: 12.5px; font-weight: 700; }

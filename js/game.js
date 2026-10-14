@@ -2122,3 +2122,75 @@ const AI_SIEGE_CHANCE = 0.5;
 const retakeTarget = (s, clan, t) => !!(s.lastLost && s.lastLost[clan] && s.lastLost[clan].id === t && s.turn - s.lastLost[clan].turn <= 3);
 // 城が2つ以下の家（独立校はのぞく）は、ほかの家から狙われやすい
 const weakHouse = (s, owner) => owner !== 'none' && !!CLANS[owner] && castlesOf(s, owner).length <= 2;
+
+// ---------- 茶の湯（家臣との交流） ----------
+// 季に一度、家臣を一人か二人招いて茶会を開く。話題によって本音が聞け、忠誠・絆・能力・献策が動く
+const TEA = { cost: 100, loyal: 4, lowLoyal: 40, lowBonus: 10, bond: 3 };
+const TEA_TOPICS = {
+  shi: { name: '志を語る', desc: '胸に秘めた志を聞く' },
+  house: { name: '家の行く末', desc: 'これからの戦の見通しを聞く' },
+  buyuu: { name: '武勇談', desc: '手柄話に花を咲かせる' },
+  bokou: { name: '母校の話', desc: 'ふるさとの学び舎の思い出を聞く' },
+};
+// 性格：いちばん高い能力で、口ぶりが変わる
+const teaNature = (g) => ({ str: 'gou', int: 'rei', pol: 'jitsu', cha: 'sha' })[['str', 'int', 'pol', 'cha'].reduce((a, k) => (g[k] > g[a] ? k : a), 'str')];
+const TEA_LINES = {
+  shi: {
+    gou: (s, g) => `${shiText(s, g) || '天下に名を轟かせること'}。この腕で必ず果たしてみせます！`,
+    rei: (s, g) => `${shiText(s, g) || '家の行く末を見届けること'}……そのための道筋は、もう見えております`,
+    jitsu: (s, g) => `私の志は「${shiText(s, g) || 'この家を支え抜くこと'}」。地道に積み上げてまいります`,
+    sha: (s, g) => `ふふ、殿にだけ明かします。「${shiText(s, g) || '皆で笑って天下を迎えること'}」が私の夢です`,
+  },
+  house: {
+    gou: () => '攻めて攻めて攻め抜く。それが一番の守りでございます！',
+    rei: () => '静かに見ておりますが、危うい城がひとつございます。お耳を拝借',
+    jitsu: () => '年貢と兵糧を蓄えることが肝要かと。地味ですが、それが勝ち筋です',
+    sha: () => '他家にも話の分かる者がおります。手を結ぶ道もお考えあれ',
+  },
+  buyuu: {
+    gou: (s, g) => `あの合戦では${recOf(g).w}度勝ちました！ 次は一騎打ちで名を上げたいものです`,
+    rei: (s, g) => `勝ち戦は${recOf(g).w}度。どれも、敵の読みを外したのが勝因でしたな`,
+    jitsu: () => '武勇ではかないませぬが、兵站なら誰にも負けませぬ',
+    sha: () => '私の手柄など……皆が支えてくれたおかげです',
+  },
+  bokou: {
+    gou: (s, g) => `${MAP.byId[g.school] ? MAP.byId[g.school].short : '母校'}の校庭で鍛えた日々が、今の私を作りました`,
+    rei: (s, g) => `${MAP.byId[g.school] ? MAP.byId[g.school].short : '母校'}の図書室が、私の兵法書でした`,
+    jitsu: (s, g) => `${MAP.byId[g.school] ? MAP.byId[g.school].short : '母校'}の恩師に、地道さを教わりました`,
+    sha: (s, g) => `${MAP.byId[g.school] ? MAP.byId[g.school].short : '母校'}の仲間は、今も元気でしょうか`,
+  },
+};
+const canTea = (s) => s.teaTurn !== s.turn && s.gold[PLAYER] >= TEA.cost && gensOf(s, PLAYER).filter((g) => g.loc && !g.lord).length > 0;
+// 茶会を開く。gids = 招く家臣（1〜2人）。返り値 = { lines: [{ gid, text }], effects: [文] }
+function teaParty(s, gids, topic) {
+  s.teaTurn = s.turn;
+  s.gold[PLAYER] -= TEA.cost;
+  const guests = gids.map((id) => s.gens[id]).filter(Boolean);
+  const lines = [], effects = [];
+  guests.forEach((g) => {
+    const nat = teaNature(g);
+    lines.push({ gid: g.id, text: TEA_LINES[topic][nat](s, g) });
+    // 忠誠：茶の席で心がほぐれる。忠誠の低い者は本音を吐き出して、大きく持ち直す
+    const low = g.loyal < TEA.lowLoyal;
+    changeLoyal(g, TEA.loyal + (low ? TEA.lowBonus : 0));
+    effects.push(`${g.name}の忠誠が${TEA.loyal + (low ? TEA.lowBonus : 0)}上がった${low ? '（胸のつかえが取れたようだ）' : ''}`);
+    if (topic === 'shi' && g.shi && !g.shi.done) { changeLoyal(g, 3); effects.push(`${g.name}は志「${SHI[g.shi.kind].name}」に燃えている（忠誠+3）`); }
+    if (topic === 'buyuu' && nat === 'gou' && g.str < 99) { g.str = Math.min(99, g.str + 1); effects.push(`${g.name}の統率が1上がった`); }
+    if (topic === 'bokou' && g.school && s.castles[g.school] && s.castles[g.school].owner !== PLAYER) { changeLoyal(g, 4); effects.push(`${g.name}は母校を思い、胸を熱くした（忠誠+4）`); }
+  });
+  // 家の行く末：知略の高い家臣が、いちばん危うい城を教えてくれる
+  if (topic === 'house') {
+    const sage = guests.find((g) => teaNature(g) === 'rei' || g.int >= 75);
+    if (sage) {
+      const risky = castlesOf(s, PLAYER).map((id) => [id, dangerOf(s, id, typeof winChance === 'function' ? winChance : () => 0.5)]).filter(([, t]) => t).sort((a, b) => a[1].keep - b[1].keep)[0];
+      if (risky && risky[1].keep < 0.85) effects.push(`献策：${sage.name}「${MAP.byId[risky[0]].name}の守りが薄うございます。攻められれば持ちこたえる見込み 約${Math.round(risky[1].keep * 100)}%」`);
+      else effects.push(`献策：${sage.name}「いまのところ、危うい城はございませぬ。攻めに転じる好機かと」`);
+    }
+  }
+  // 二人を招けば、親しくなる
+  if (guests.length === 2) {
+    addBondPts(s, guests[0], guests[1], 'shin', TEA.bond);
+    effects.push(`${guests[0].name}と${guests[1].name}が打ち解けた（親友の絆が近づく）`);
+  }
+  return { lines, effects };
+}

@@ -317,6 +317,57 @@ function openSiege(from, to) {
   };
   draw();
 }
+// ---------- 茶の湯：家臣を招いて茶会を開く ----------
+function teaRoom(guests, lord) {
+  // 茶室：畳・炉・茶碗と、向かい合う当主と客
+  const K = '#1c1a17';
+  return `<div class="tea-room">
+    <svg viewBox="0 0 340 120" class="tea-bg" aria-hidden="true"><rect width="340" height="120" fill="#e8dcc0"/>
+      <rect y="70" width="340" height="50" fill="#c9b77a"/><g stroke="#8f7d48" stroke-width="2">${[0, 85, 170, 255, 340].map((x) => `<line x1="${x}" y1="70" x2="${x}" y2="120"/>`).join('')}<line x1="0" y1="95" x2="340" y2="95"/></g>
+      <rect x="20" y="10" width="60" height="56" fill="#f4efe2" stroke="${K}" stroke-width="2"/><path d="M50,14 V62" stroke="${K}" stroke-width="1.5"/>
+      <rect x="150" y="80" width="40" height="22" fill="#5a3a22" stroke="${K}" stroke-width="2"/><path d="M158,82 q12,-14 24,0" fill="#6b7a4a" stroke="${K}" stroke-width="2"/>
+      <path d="M160,60 q2,-12 -4,-20 M172,58 q4,-12 -2,-22" stroke="#bfb6a6" stroke-width="2" fill="none" opacity=".8"/></svg>
+    <div class="tea-people">${lord ? `<div>${portrait(lord, 70, 'smile', 'R')}<small>${esc(lord.name)}</small></div>` : ''}<span class="tea-bowl">🍵</span>${guests.map((g) => `<div>${portrait(g, 70, 'smile')}<small>${esc(g.name)}</small></div>`).join('')}</div>
+  </div>`;
+}
+function showTea() {
+  if (!canTea(S)) { toast(S.teaTurn === S.turn ? 'この季の茶会はもう開いた' : `茶会には金${TEA.cost}がいる`); return; }
+  const cands = gensOf(S, PLAYER).filter((g) => g.loc && !g.lord).sort((a, b) => a.loyal - b.loyal);
+  const pickd = new Set();
+  let topic = 'shi';
+  const draw = () => {
+    openModal(`<h2>茶の湯</h2>
+      <p class="hint">家臣を一人か二人、茶室に招く（金${TEA.cost}・季に一度）。忠誠の低い者ほど、本音を話して心を開く</p>
+      <h3>招く家臣（${pickd.size}/2）</h3>
+      <div class="glist pick tea-pick">${cands.map((g) => genCard(g, { extra: pickd.has(g.id) ? '<span class="check">✔</span>' : '' })).join('')}</div>
+      <h3>話題</h3>
+      <div class="tactics">${Object.entries(TEA_TOPICS).map(([k, t]) => `<button data-topic="${k}" class="${k === topic ? 'on' : ''}"><b>${t.name}</b><small>${t.desc}</small></button>`).join('')}</div>
+      <button class="btn red" id="tea-go" ${pickd.size ? '' : 'disabled'}>茶会を開く</button>
+      <button class="btn plain" data-close>やめる</button>`);
+    modalBody.querySelectorAll('.tea-pick .gcard').forEach((c) => {
+      c.onclick = () => {
+        Sound.tap();
+        const id = c.dataset.gid;
+        if (pickd.has(id)) pickd.delete(id); else if (pickd.size < 2) pickd.add(id);
+        const top = modalBody.scrollTop; draw(); modalBody.scrollTop = top;
+      };
+    });
+    modalBody.querySelectorAll('[data-topic]').forEach((b) => { b.onclick = () => { Sound.tap(); topic = b.dataset.topic; const top = modalBody.scrollTop; draw(); modalBody.scrollTop = top; }; });
+    $('tea-go').onclick = () => {
+      const guests = [...pickd].map((id) => S.gens[id]);
+      const r = teaParty(S, [...pickd], topic);
+      save(); render();
+      Sound.hyoshigi(1); Sound.kira();
+      openModal(`<h2>茶の湯　<small class="tea-topic">${TEA_TOPICS[topic].name}</small></h2>
+        ${teaRoom(guests, lordOf(S))}
+        <div class="tea-talk">${r.lines.map((l) => `<p><b>${esc(S.gens[l.gid].name)}</b>「${esc(l.text)}」</p>`).join('')}</div>
+        <ul class="tea-eff">${r.effects.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>
+        <button class="btn red" data-close>茶会を終える</button>`);
+    };
+  };
+  draw();
+}
+
 // 後詰め：囲まれた自分の城へ、となりの自分の城から救援を出す
 function openRelief(to) {
   const sg = siegeOf(S, to);
@@ -1253,8 +1304,10 @@ function renderCouncil() {
       <button class="btn" id="bulk-develop" ${S.gold[PLAYER] >= RULES.developCost && idleGens ? '' : 'disabled'}>全城で開発</button>
       <button class="btn" id="btn-diplo">外 交</button>
     </div>
+    <button class="btn tea-btn" id="btn-tea" ${canTea(S) ? "" : "disabled"}>🍵 茶の湯<small>${S.teaTurn === S.turn ? "この季の茶会は済んだ" : `家臣を招いて本音を聞く・金${TEA.cost}`}</small></button>
     <button class="btn red end-btn" id="btn-end">ターン終了</button></div>`;
   $('btn-end').onclick = onEndTurn;
+  $('btn-tea').onclick = () => { Sound.tap(); showTea(); };
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
   $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
