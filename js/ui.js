@@ -788,43 +788,72 @@ function renderPanel() {
 
 let dangerIdx = -1; // 「危うい城」ボタンで、次に見せる城
 let attackIdx = -1; // 「攻め口」ボタンで、次に見せる城
+// 軍議：家の様子（数字の札・天下と勢力図）と、今季の献策（やるべきことの札。タップでその城や画面へ）
+let idleIdx = -1;   // 「命令の残る城」の札で、次に見せる城
+let shiIdx = -1;    // 「志の城」の札で、次に見せる城
+function councilAgenda() {
+  const items = []; // { id, kind, k: 札の字, title, sub, ids?: 順に見せる城 }
+  const risky = castlesOf(S, PLAYER).map((id) => [id, dangerOf(S, id, winChance)]).filter(([, t]) => t && t.keep < 0.5)
+    .sort((a, b) => a[1].keep - b[1].keep).map(([id]) => id);
+  const names = (ids) => `${ids.slice(0, 3).map((id) => MAP.byId[id].short).join('・')}${ids.length > 3 ? ' ほか' : ''}`;
+  if (risky.length) items.push({ id: 'danger-warn', kind: 'danger', k: '危', title: `守りの危うい城 ${risky.length}`, sub: names(risky), ids: risky });
+  const ch = attackChances(S).map((pl) => pl.to);
+  if (ch.length) items.push({ id: 'attack-warn', kind: 'attack', k: '攻', title: `勝算のある攻め口 ${ch.length}`, sub: names(ch), ids: ch });
+  // 志の城：誓いの城が、いま攻められるところにある武将
+  const sworn = gensOf(S, PLAYER).filter((g) => g.loc && g.shi && !g.shi.done && ['bokou', 'castle'].includes(g.shi.kind) && attackSources(g.shi.target).length);
+  if (sworn.length) {
+    const ids = [...new Set(sworn.map((g) => g.shi.target))];
+    items.push({ id: 'shi-warn', kind: 'shi', k: '志', title: `志の城に手が届く ${sworn.length}人`, sub: sworn.slice(0, 2).map((g) => `${g.name.split(' ')[1] || g.name}→${MAP.byId[g.shi.target].short}`).join('・'), ids });
+  }
+  const low = gensOf(S, PLAYER).filter((g) => !g.lord && g.loc && g.loyal < LOYAL.leaveBelow).length;
+  if (low) items.push({ id: 'loyal-warn', kind: 'loyal', k: '忠', title: `忠誠の低い家臣 ${low}人`, sub: '出奔や謀反のおそれ。褒美で引き留める' });
+  const idle = castlesOf(S, PLAYER).filter((id) => !S.delegate[id] && idleGensAt(S, id).length);
+  if (idle.length) items.push({ id: 'idle-warn', kind: 'idle', k: '令', title: `命令の残る城 ${idle.length}`, sub: `${names(idle)}（武将 ${idle.reduce((a, id) => a + idleGensAt(S, id).length, 0)}人）`, ids: idle });
+  return items;
+}
 function renderCouncil() {
   const counts = Object.keys(CLANS)
     .map((k) => [k, castlesOf(S, k).length])
     .filter(([, n]) => n > 0)
-    .sort((a, b) => (a[0] === PLAYER ? -1 : b[0] === PLAYER ? 1 : b[1] - a[1]));
-  const idleGens = gensOf(S, PLAYER).filter((g) => !S.acted[g.id] && g.loc && !S.delegate[g.loc]).length;
-  const delegCount = castlesOf(S, PLAYER).filter((id) => S.delegate[id]).length;
+    .sort((a, b) => (a[0] === PLAYER ? -1 : b[0] === PLAYER ? 1 : a[0] === 'none' ? 1 : b[0] === 'none' ? -1 : b[1] - a[1]));
+  const mine = castlesOf(S, PLAYER);
+  const gens = gensOf(S, PLAYER).filter((g) => g.loc);
+  const idleGens = gens.filter((g) => !S.acted[g.id] && !S.delegate[g.loc]).length;
+  const delegCount = mine.filter((id) => S.delegate[id]).length;
+  const troops = mine.reduce((a, id) => a + S.castles[id].troops, 0);
+  const lord = lordOf(S);
+  const all = MAP.nodes.length;
+  const agenda = councilAgenda();
+  const R = S.finale && S.finale.rally;
+  const alarm = R && rallyOn(S, R.head)
+    ? `<p class="warn rally-warn">🔥 最後の大連合（盟主 ${CLANS[R.head].name}）の大反攻：あと${R.until - S.turn}季。前線の守りを固めよ</p>`
+    : S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : '';
+  const tile = (k, v, sub) => `<div class="cn-tile"><span class="l">${k}</span><span class="n">${v}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
   panel.innerHTML = `<div class="council">
-    <div class="p-head"><h2>軍議</h2><span class="p-sub">${SCENARIOS[S.scenario].name} ／ 武将 ${gensOf(S, PLAYER).length}人 ／ 収入 ${fmt(income(S, PLAYER))}</span></div>
-    <p class="kakun">${S.lords.length}代目 ${esc((lordOf(S) || {}).name || '（当主不在）')} ・ 家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small>${S.debug ? ' <b class="dbg">DEBUG</b>' : ''}</p>
-    <p class="hint">城をタップして命令しましょう。命令できる武将：<b>${idleGens}人</b>${delegCount ? `　委任中の城：<b>${delegCount}</b>` : ''}</p>
-    ${(() => {
-      const low = gensOf(S, PLAYER).filter((g) => !g.lord && g.loc && g.loyal < LOYAL.leaveBelow).length;
-      return low ? `<button class="warn loyal-warn" id="loyal-warn">⚠ 忠誠の低い家臣が ${low}人。出奔や謀反のおそれあり（タップで褒美）</button>` : '';
-    })()}
-    ${(() => {
-      // 危うい城：攻められたら守り切れる見込みが5割を切る城。タップで順に見ていく
-      const risky = castlesOf(S, PLAYER).map((id) => [id, dangerOf(S, id, winChance)]).filter(([, t]) => t && t.keep < 0.5)
-        .sort((a, b) => a[1].keep - b[1].keep).map(([id]) => id);
-      return risky.length ? `<button class="warn danger-warn" id="danger-warn" data-ids="${risky.join(',')}">危 守りの危うい城が ${risky.length}つ：${risky.slice(0, 3).map((id) => MAP.byId[id].short).join('・')}${risky.length > 3 ? ' ほか' : ''}（タップで移動）</button>${castlesOf(S, PLAYER).some((id) => reinforcePlan(S, id)) ? '<button class="reinforce" onclick="bulkReinforce()"><b>援兵</b>危うい城へ、となりから送れるだけ兵を送る<small>送る側が危うくならない分だけ。輸送役の武将が1人ずつ動く</small></button>' : ''}` : '';
-    })()}
-    ${(() => {
-      // 攻め口：勝算があって、送り出しても自分の城が危うくならない敵城。タップで順に見ていく
-      const ch = attackChances(S);
-      return ch.length ? `<button class="warn attack-warn" id="attack-warn" data-ids="${ch.map((pl) => pl.to).join(',')}"><b>攻</b>勝算のある攻め口が ${ch.length}つ：${ch.slice(0, 3).map((pl) => MAP.byId[pl.to].short).join('・')}${ch.length > 3 ? ' ほか' : ''}（タップで移動）</button>` : '';
-    })()}
-    ${(() => {
-      const R = S.finale && S.finale.rally;
-      if (R && rallyOn(S, R.head)) return `<p class="warn rally-warn">🔥 最後の大連合（盟主 ${CLANS[R.head].name}）の大反攻：あと${R.until - S.turn}季。前線の守りを固めよ</p>`;
-      return S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : '';
-    })()}
-    ${(() => {
-      // 天下への道のり：節目（半ば・王手・目前）の目盛りつき
-      const n = castlesOf(S, PLAYER).length, all = MAP.nodes.length;
-      return `<div class="tenka"><span>天下</span><div class="tk-bar"><i style="width:${(n / all * 100).toFixed(1)}%"></i>${FINALE.marks.map((m) => `<em style="left:${m * 100}%" class="${n / all >= m ? 'on' : ''}"></em>`).join('')}</div><b>あと${all - n}校</b></div>`;
-    })()}
-    <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
+    <div class="cn-head">
+      ${lord ? portrait(lord, 48) : crestBadge(PLAYER, 48)}
+      <div class="cn-who"><h2>軍議<small>${dateLabel(S.turn)}</small></h2>
+        <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p></div>
+      ${S.debug ? '<b class="dbg">DEBUG</b>' : ''}
+    </div>
+    <div class="cn-tiles">
+      ${tile('金', fmt(S.gold[PLAYER]), `季 +${fmt(income(S, PLAYER))}`)}
+      ${tile('兵', fmt(troops), `${mine.length}城`)}
+      ${tile('令', `${idleGens}<i>/${gens.length}</i>`, delegCount ? `委任 ${delegCount}城` : '命令できる武将')}
+      ${tile('城', `${mine.length}<i>/${all}</i>`, SCENARIOS[S.scenario].name)}
+    </div>
+    ${alarm}
+    <div class="tenka"><span>天下</span><div class="tk-bar"><i style="width:${(mine.length / all * 100).toFixed(1)}%"></i>${FINALE.marks.map((m) => `<em style="left:${m * 100}%" class="${mine.length / all >= m ? 'on' : ''}"></em>`).join('')}</div><b>あと${all - mine.length}校</b></div>
+    <button class="cn-power" id="cn-power" aria-label="勢力図（タップで外交）">
+      <span class="cn-bar">${counts.map(([k, n]) => `<i style="flex:${n};--c:${k === 'none' ? '#b9b09c' : CLANS[k].color}" class="${k === PLAYER ? 'me' : ''}"></i>`).join('')}</span>
+      <span class="cn-legend">${counts.filter(([k]) => k !== 'none').map(([k, n]) => `<span>${crestBadge(k, 16)}${n}${relIcon(k)}</span>`).join('')}${counts.some(([k]) => k === 'none') ? `<span class="nn">独立 ${castlesOf(S, 'none').length}</span>` : ''}</span>
+    </button>
+    <h3 class="cn-h">今季の献策</h3>
+    <div class="cn-agenda">
+      ${agenda.length ? agenda.map((a) => `<button class="ks ks-${a.kind}" id="${a.id}" ${a.ids ? `data-ids="${a.ids.join(',')}"` : ''}><span class="ks-k">${a.k}</span><span class="ks-t"><b>${esc(a.title)}</b><small>${esc(a.sub)}</small></span><span class="ks-a">›</span></button>`).join('')
+        : '<p class="cn-calm">静かな季節。命令はすべて済んだ。ターンを終えて次の季へ</p>'}
+      ${agenda.some((a) => a.kind === 'danger') && mine.some((id) => reinforcePlan(S, id)) ? '<button class="reinforce" onclick="bulkReinforce()"><b>援兵</b>危うい城へ、となりから送れるだけ兵を送る<small>送る側が危うくならない分だけ。輸送役の武将が1人ずつ動く</small></button>' : ''}
+    </div>
     <div class="bulk">
       <button class="btn" id="bulk-recruit" ${S.gold[PLAYER] >= RULES.recruitCost && idleGens ? '' : 'disabled'}>全城で徴兵</button>
       <button class="btn" id="bulk-develop" ${S.gold[PLAYER] >= RULES.developCost && idleGens ? '' : 'disabled'}>全城で開発</button>
@@ -835,22 +864,25 @@ function renderCouncil() {
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
   $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
-  if ($('danger-warn')) $('danger-warn').onclick = () => {
-    Sound.tap();
-    const ids = $('danger-warn').dataset.ids.split(',');
-    dangerIdx = (dangerIdx + 1) % ids.length;
-    selected = ids[dangerIdx];
-    render();
-    centerOn(selected);
+  $('cn-power').onclick = () => { Sound.tap(); showDiplomacy(); };
+  // 城を順に見せる札（押すたびに次の城へ）
+  const cycle = (id, getIdx, setIdx) => {
+    const b = $(id);
+    if (!b) return;
+    b.onclick = () => {
+      Sound.tap();
+      const ids = b.dataset.ids.split(',');
+      const i = (getIdx() + 1) % ids.length;
+      setIdx(i);
+      selected = ids[i];
+      render();
+      centerOn(selected);
+    };
   };
-  if ($('attack-warn')) $('attack-warn').onclick = () => {
-    Sound.tap();
-    const ids = $('attack-warn').dataset.ids.split(',');
-    attackIdx = (attackIdx + 1) % ids.length;
-    selected = ids[attackIdx];
-    render();
-    centerOn(selected);
-  };
+  cycle('danger-warn', () => dangerIdx, (i) => { dangerIdx = i; });
+  cycle('attack-warn', () => attackIdx, (i) => { attackIdx = i; });
+  cycle('shi-warn', () => shiIdx, (i) => { shiIdx = i; });
+  cycle('idle-warn', () => idleIdx, (i) => { idleIdx = i; });
   if ($('loyal-warn')) $('loyal-warn').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）'); };
 }
 

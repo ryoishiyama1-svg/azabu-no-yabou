@@ -1829,3 +1829,47 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .shi-done b { font-family: var(--mincho); font-size: 16px; }
 .shi-done small { font-size: 11.5px; font-weight: 700; }
 .shi-eff { margin: 10px 0 0; font-size: 13px; font-weight: 700; color: #f3d27a; line-height: 1.6; animation: kime-bg 0.4s ease-out 1.5s both; }
+
+/* ---------- 軍議：司令部 ---------- */
+.cn-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.cn-head > .portrait, .cn-head > svg { flex: none; border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--red); background: var(--paper); }
+.cn-who { min-width: 0; }
+.council .cn-who h2 { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: 24px; line-height: 1.1; }
+.cn-who h2 small { font-family: var(--mincho); font-weight: 800; font-size: 12.5px; color: var(--red); }
+.cn-who .kakun { margin: 2px 0 0; font-size: 12px; }
+.cn-who .kakun small { font-size: 11px; }
+.cn-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 8px; }
+.cn-tile { position: relative; padding: 4px 4px 5px 26px; background: #fffaf0; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); min-width: 0; }
+.cn-tile .l { position: absolute; left: 0; top: 0; bottom: 0; width: 20px; display: grid; place-items: center; font-family: var(--brush); font-size: 15px; color: var(--paper); background: var(--ink); }
+.cn-tile:nth-child(1) .l { background: #b98a12; }
+.cn-tile:nth-child(2) .l { background: var(--red); }
+.cn-tile:nth-child(3) .l { background: var(--ai); }
+.cn-tile .n { display: block; font-family: var(--gothic); font-weight: 900; font-size: 17px; line-height: 1.15; white-space: nowrap; }
+.cn-tile .n i { font-style: normal; font-size: 11px; color: var(--muted); }
+.cn-tile small { display: block; font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cn-power { display: block; width: 100%; margin: 0 0 8px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer; }
+.cn-bar { display: flex; height: 14px; border: 2px solid var(--ink); overflow: hidden; }
+.cn-bar i { background: var(--c); border-right: 1px solid rgba(28, 26, 23, 0.5); }
+.cn-bar i.me { box-shadow: inset 0 0 0 2px #f3d27a; }
+.cn-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-family: var(--gothic); font-weight: 900; font-size: 12px; }
+.cn-legend > span { display: inline-flex; align-items: center; gap: 3px; }
+.cn-legend .nn { color: var(--muted); font-weight: 700; }
+.cn-h { display: flex; align-items: center; gap: 8px; margin: 6px 0 6px; font-family: var(--brush); font-weight: 400; font-size: 17px; }
+.cn-h::after { content: ''; flex: 1; height: 2px; background: repeating-linear-gradient(90deg, var(--ink) 0 6px, transparent 6px 10px); }
+.cn-agenda { display: grid; gap: 6px; margin: 0 0 8px; }
+.ks { --k: var(--ink); display: grid; grid-template-columns: 40px 1fr auto; align-items: stretch; width: 100%; padding: 0; text-align: left; cursor: pointer;
+  background: #fffaf0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--k); color: var(--ink); font-family: var(--gothic); }
+.ks:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--k); }
+.ks .ks-k { display: grid; place-items: center; font-family: var(--brush); font-size: 22px; color: var(--paper); background: var(--k); }
+.ks .ks-t { padding: 5px 8px; min-width: 0; }
+.ks .ks-t b { display: block; font-weight: 900; font-size: 14px; }
+.ks .ks-t small { display: block; font-size: 11.5px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ks .ks-a { display: grid; place-items: center; padding: 0 10px; font-size: 22px; font-weight: 900; color: var(--k); }
+.ks-danger { --k: var(--red); }
+.ks-danger .ks-k { animation: dangerPulse 1.6s ease-in-out infinite; }
+.ks-attack { --k: var(--wakatake); }
+.ks-shi { --k: #b98a12; }
+.ks-loyal { --k: #7a3b8f; }
+.ks-idle { --k: var(--ai); }
+.cn-calm { margin: 0; padding: 8px 10px; font-family: var(--mincho); font-weight: 800; font-size: 13px; color: var(--muted); background: #f3eee2; border-left: 5px solid #a39a86; }
+.cn-agenda .reinforce { margin: 0; }
