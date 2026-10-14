@@ -17,7 +17,12 @@ let CELLS = null;
 
 // ---------- 保存（今遊んでいる枠に自動で保存） ----------
 migrateOldSave();
-function save() { writeSlot(currentSlot, S); }
+function save() {
+  // 学校図鑑：新しく治めた学校を載せる（初めての学校だけ知らせる）。数えた印ごと保存するため、先に調べる
+  const fresh = zukanSync(S);
+  writeSlot(currentSlot, S);
+  if (fresh.length && typeof toast === 'function') toast(`📖 学校図鑑に${fresh.length > 2 ? `${fresh.length}校` : fresh.map((id) => `「${MAP.byId[id] ? MAP.byId[id].name : id}」`).join('')}が載った`);
+}
 function clearSave() { deleteSlot(currentSlot); }
 function anySave() {
   for (let n = 1; n <= SLOT_COUNT; n++) if (slotSummary(n)) return true;
@@ -261,6 +266,56 @@ function showImport(n, back) {
   };
 }
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
+$('btn-zukan').onclick = () => { Sound.unlock(); Sound.tap(); showZukan(); };
+
+// ---------- 学校図鑑 ----------
+// 版の札で切り替え。治めた学校は札に校風と名物、まだの学校は「？」と土地だけ
+let ZUKAN_ED = 'tokyo';
+function showZukan(ed = ZUKAN_ED) {
+  ZUKAN_ED = ed;
+  const rec = loadRecords();
+  const z = rec.zukan || {};
+  const total = zukanAll().length, got = zukanAll().filter((id) => z[id]).length;
+  const rowOf = (id) => SCHOOL_ROWS.find((r) => r[0] === id);
+  const ids = zukanIds(ed);
+  const have = ids.filter((id) => z[id]).length;
+  const full = have === ids.length;
+  const tabs = Object.entries(EDITIONS).map(([k, e]) => {
+    const all = zukanIds(k), n = all.filter((id) => z[id]).length;
+    return `<button data-zed="${k}" class="${k === ed ? 'on' : ''}" style="--c:${e.color || CLANS[e.lead].color}"><b>${e.mark}</b><span>${n}/${all.length}</span>${n === all.length ? '<i>制</i>' : ''}</button>`;
+  }).join('');
+  const card = (id) => {
+    const r = rowOf(id), e = z[id];
+    if (!e) return `<div class="zk-card no"><b>？</b><small>${esc(r[7] || '東京')}・${esc(r[3])}</small></div>`;
+    const house = CLANS[id] && r[6] === id;
+    return `<button class="zk-card" data-zid="${id}">${house ? crestBadge(id, 22) : ''}<b>${esc(r[2])}</b><small>${esc(r[3])}</small>${e.n > 1 ? `<em>×${e.n}</em>` : ''}</button>`;
+  };
+  openModal(`<h2>学校図鑑</h2>
+    <p class="zk-total">収録 <b>${got}</b> / ${total}校<span class="zk-bar"><i style="width:${(got / total * 100).toFixed(1)}%"></i></span></p>
+    <div class="zk-tabs">${tabs}</div>
+    <p class="zk-head">${EDITIONS[ed].name}　<b>${have}</b> / ${ids.length}校 ${full ? '<span class="zk-seal">全校<br>制覇</span>' : ''}</p>
+    <div class="zk-grid">${ids.map(card).join('')}</div>
+    <p class="hint">自分の家が治めた学校が載ります（版をまたいで集まります）。札をタップすると校風と名物</p>
+    <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-zed]').forEach((b) => { b.onclick = () => { Sound.tap(); showZukan(b.dataset.zed); }; });
+  modalBody.querySelectorAll('[data-zid]').forEach((b) => { b.onclick = () => { Sound.tap(); showZukanEntry(b.dataset.zid); }; });
+}
+function showZukanEntry(id) {
+  const r = SCHOOL_ROWS.find((x) => x[0] === id), e = (loadRecords().zukan || {})[id];
+  const lo = schoolLore(id), tr = TRAITS[traitOf(id)];
+  const house = CLANS[id] && r[6] === id;
+  const d = new Date(e.at);
+  openModal(`<div class="zk-entry">
+      <div class="zk-plate" style="--c:${house ? CLANS[id].color : '#857b6c'}">${house ? crestBadge(id, 54) : `<svg viewBox="-30 -36 60 60" width="54" height="54" class="zk-castle" style="--c:#857b6c">${castleMarkup(false)}</svg>`}
+        <div><b>${esc(r[1])}</b><small>${esc(r[7] || '東京')}・${esc(r[3])}${house ? `・${CLANS[id].name}の本拠` : ''}</small></div></div>
+      <p class="zk-motto"><span>校風</span>「${esc(lo.motto)}」</p>
+      ${lo.sight ? `<p class="zk-line"><span>名物</span>${esc(lo.sight)}</p>` : ''}
+      <p class="zk-line"><span>特色</span>${esc(tr.name)}：${esc(tr.desc)}</p>
+      <p class="zk-line"><span>記録</span>${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日に初めて治める・${e.n}度の旗揚げで治めた</p>
+    </div>
+    <button class="btn plain" id="zk-back">図鑑へ戻る</button>`);
+  $('zk-back').onclick = () => { Sound.tap(); showZukan(); };
+}
 $('btn-records').onclick = () => { Sound.unlock(); Sound.tap(); showRecords(); };
 
 // シナリオ・家・当主の名前・難易度を決める
@@ -3665,6 +3720,7 @@ $('btn-menu').onclick = () => {
     <button class="btn plain" id="m-diplo">外交</button>
     <button class="btn plain" id="m-settings">設定（合戦のおまかせ・速さ）</button>
     <button class="btn plain" id="m-records">戦績・実績</button>
+    <button class="btn plain" id="m-zukan">学校図鑑</button>
     <button class="btn plain" id="m-export">セーブの書き出し（枠${currentSlot}）</button>
     <button class="btn plain" id="m-help">遊び方</button>
     ${debugOn() ? '<button class="btn plain" id="m-debug">🛠 デバッグ</button>' : ''}
@@ -3673,6 +3729,7 @@ $('btn-menu').onclick = () => {
   $('m-roster').onclick = () => { Sound.tap(); showRoster(); };
   $('m-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
   $('m-records').onclick = () => { Sound.tap(); showRecords(); };
+  $('m-zukan').onclick = () => { Sound.tap(); save(); showZukan(edOf(S.scenario)); };
   $('m-settings').onclick = () => { Sound.tap(); showSettings(); };
   $('m-export').onclick = () => { Sound.tap(); save(); showExport(currentSlot, closeModal); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };

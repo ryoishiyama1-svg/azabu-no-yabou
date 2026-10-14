@@ -26,7 +26,35 @@ const ACHIEVEMENTS = [
   { id: 'rival', icon: '宿', name: '宿命の好敵手', desc: '宿敵が生まれる', play: (s) => Object.values(s.rivals || {}).some((n) => n >= RIVAL_AT) },
   { id: 'legend', icon: '伝', name: '語り継がれる者', desc: '名を上げた武将が列伝に名を残す', play: (s) => (s.hall || []).some((h) => h.rec.w + h.rec.cap + h.rec.dw * 2 + h.rec.def >= 10) },
   { id: 'first_lose', icon: '落', name: '落日を知る', desc: '初めて敗北する', end: (s) => s.result === 'lose' },
+  { id: 'zukan50', icon: '鑑', name: '名門録', desc: '学校図鑑に50校を載せる', play: (s, rec) => Object.keys(rec.zukan || {}).length >= 50 },
+  { id: 'zukan_ed', icon: '録', name: '一国の図鑑', desc: 'ひとつの版の学校をすべて図鑑に載せる', play: (s, rec) => Object.keys(EDITIONS).some((ed) => zukanIds(ed).every((id) => (rec.zukan || {})[id])) },
 ];
+
+// ---------- 学校図鑑（すべてのゲームを通して、自分の家が治めた学校を集める） ----------
+// rec.zukan[学校id] = { at: 初めて治めた時刻, n: 治めたゲームの数, ed: 初めて治めた版 }
+// s.zukanSeen = そのゲームで数えた学校（同じゲームで二度は数えない）
+function zukanSync(s) {
+  if (!s || s.debugUsed || !s.castles) return [];
+  s.zukanSeen = s.zukanSeen || {};
+  const mine = Object.keys(s.castles).filter((id) => s.castles[id].owner === s.player && !s.zukanSeen[id]);
+  if (!mine.length) return [];
+  const rec = loadRecords();
+  rec.zukan = rec.zukan || {};
+  const fresh = [];
+  mine.forEach((id) => {
+    s.zukanSeen[id] = true;
+    if (rec.zukan[id]) rec.zukan[id].n++;
+    else { rec.zukan[id] = { at: Date.now(), n: 1, ed: edOf(s.scenario) }; fresh.push(id); }
+  });
+  saveRecords(rec);
+  return fresh;
+}
+// その版に出てくる学校（版のどれかのシナリオに出る学校）
+function zukanIds(ed) {
+  const scs = scenariosOf(ed).map((k) => SCENARIOS[k]);
+  return SCHOOL_ROWS.filter((r) => scs.some((sc) => sc.filter(r))).map((r) => r[0]);
+}
+const zukanAll = () => [...new Set(SCHOOL_ROWS.map((r) => r[0]))];
 
 function loadRecords() {
   let r = null;
