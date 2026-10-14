@@ -1270,6 +1270,7 @@ function endTurn(s) {
   aiLoyaltyTick(s, log);
   traitTick(s);
   bondTick(s);
+  shiTick(s);
   aiClans().forEach((k) => { if (castlesOf(s, k).length) aiLordOf(s, k); });
   debtTick(s);
   finaleTick(s, log);
@@ -1297,14 +1298,14 @@ function recOf(g) {
 // 合戦の結果を、攻めた大将と守った大将の戦歴に記す（attack と endBattle の両方から呼ぶ）
 function recordBattle(s, r) {
   const ga = s.gens[r.gid], gd = r.dgid ? s.gens[r.dgid] : null;
-  if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; } else a.l++; }
+  if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; shiHit(s, ga, 'cap', r.to); } else a.l++; }
   addClash(s, ga, gd, 1);
   countClanClash(s, r);
-  if (gd) { const d = recOf(gd); if (r.won) d.l++; else { d.w++; d.def++; } }
+  if (gd) { const d = recOf(gd); if (r.won) d.l++; else { d.w++; d.def++; shiHit(s, gd, 'def'); } }
 }
 function recordDuel(s, winner, loser) {
   addClash(s, winner, loser, 2);
-  if (winner) { recOf(winner).dw++; if (winner.clan === PLAYER) s.stats.duelWins = (s.stats.duelWins || 0) + 1; }
+  if (winner) { recOf(winner).dw++; if (winner.clan === PLAYER) s.stats.duelWins = (s.stats.duelWins || 0) + 1; shiHit(s, winner, 'duel', loser); }
   if (loser) recOf(loser).dl++;
 }
 
@@ -1324,6 +1325,7 @@ const NICKNAMES = [
   [(r) => r.l >= 5 && r.w <= 1, () => '七転び八起き'],
 ];
 function nickOf(g) {
+  if (g.shi && g.shi.done && g.shi.title) return g.shi.title; // 志を果たした者の異名がいちばん
   const r = recOf(g);
   const hit = NICKNAMES.find(([test]) => test(r, g));
   return hit ? hit[1](g) : null;
@@ -1684,4 +1686,96 @@ function finaleTick(s, log) {
       addNews(s, `${MAP.byId[id].short}、${pName()}に帰順`, '戦わずして門を開く', 60);
     });
   }
+}
+
+// ---------- 志（武将ひとりひとりの目標） ----------
+// g.shi = { kind, target, need, base, done }。自分の家の武将に一つずつ。果たすと「覚醒」：能力が伸び、異名がつき、決め絵の場面
+// rec：戦歴の数で測る志（base からいくつ増えたか）
+const SHI = {
+  bokou: { name: '母校奪還', title: () => '母校の英雄', text: (s, h) => `母校・${MAP.byId[h.target].short}を、この手で取り戻す`, line: 'ただいま。……帰ってきたぞ、わが学び舎よ' },
+  castle: { name: '名城攻略', title: (h) => `${MAP.byId[h.target].short}落とし`, text: (s, h) => `${MAP.byId[h.target].name}を、この手で落とす`, line: 'ついに落としたぞ。この城を、ずっと見上げてきた' },
+  conquer: { name: '城取り', rec: 'cap', title: () => '城取り名人', text: (s, h) => `合戦で城を${h.need}つ落とす`, line: '落とした城の数が、わが誇りだ' },
+  duel: { name: '剣の道', rec: 'dw', title: () => '剣聖', text: (s, h) => `一騎打ちで${h.need}度勝つ`, line: '剣の道、ようやく一つ極めたり' },
+  shield: { name: '不落', rec: 'def', title: () => '守護神', text: (s, h) => `攻め寄せる敵から、城を${h.need}度守り抜く`, line: 'この城には、指一本触れさせぬ' },
+  debate: { name: '弁舌', title: () => '弁舌の士', text: () => '舌戦で城を開かせる', line: '言葉は刃より強し。それを証してみせた' },
+  grow: { name: '町づくり', title: () => '名奉行', text: (s, h) => `${MAP.byId[h.target].short}を、経済${h.need}の町に育てる`, line: '城下がにぎわう。これぞ政の醍醐味よ' },
+  rival: { name: '宿敵超え', title: () => '宿敵超え', text: (s, h) => `宿敵・${s.gens[h.target] ? s.gens[h.target].name : '？'}に、一騎打ちで勝つ`, line: 'やっと……やっと貴様を越えられた' },
+};
+const SHI_MORALE = 10;
+const SHI_BOOST = { main: 6, rest: 2, loyal: 15 };
+const shiText = (s, g) => (g.shi && SHI[g.shi.kind] ? SHI[g.shi.kind].text(s, g.shi) : '');
+// [いまの数, 要る数]。数で測らない志は 0/1
+function shiProgress(g) {
+  const h = g.shi, D = h && SHI[h.kind];
+  if (!D) return [0, 1];
+  if (h.done) return [h.need || 1, h.need || 1];
+  if (D.rec) return [Math.min(h.need, recOf(g)[D.rec] - h.base), h.need];
+  return [0, 1];
+}
+function shiAssign(s, g) {
+  const r = recOf(g);
+  const best = ['str', 'int', 'pol', 'cha'].reduce((a, b) => (g[b] > g[a] ? b : a));
+  const hostile = Object.keys(s.castles).filter((id) => s.castles[id].owner !== PLAYER);
+  const front = hostile.filter((id) => MAP.adj[id].some((n) => s.castles[n].owner === PLAYER));
+  // 前線の先にある名門（本拠）を優先して、狙う城を選ぶ
+  const aim = () => {
+    const caps = hostile.filter((id) => isCapital(id, s.castles[id].owner));
+    const near = caps.filter((id) => MAP.adj[id].some((n) => front.includes(n) || s.castles[n].owner === PLAYER));
+    return near.length ? pick(near) : front.length ? pick(front) : null;
+  };
+  const opts = []; // [重み, kind, target]
+  if (g.school && s.castles[g.school] && s.castles[g.school].owner !== PLAYER) opts.push([4, 'bokou', g.school]);
+  const rv = rivalOf(s, g);
+  if (rv && rv.g.clan !== PLAYER) opts.push([4, 'rival', rv.g.id]);
+  const t = aim();
+  if (best === 'str') opts.push([2, 'duel'], [2, 'conquer'], ...(t ? [[2, 'castle', t]] : []));
+  if (best === 'int') opts.push([2, 'shield'], [2, 'debate']);
+  if (best === 'pol' && g.loc && s.castles[g.loc] && s.castles[g.loc].owner === PLAYER && s.castles[g.loc].eco < RULES.ecoCap - 30) opts.push([3, 'grow', g.loc]);
+  if (best === 'cha') opts.push([2, 'debate'], ...(t ? [[2, 'castle', t]] : []));
+  if (!opts.length) opts.push([1, 'conquer'], [1, 'shield']);
+  let x = Math.random() * opts.reduce((a, o) => a + o[0], 0);
+  const [, kind, target] = opts.find((o) => (x -= o[0]) <= 0) || opts[0];
+  const h = { kind, target: target || null, done: false };
+  if (SHI[kind].rec) { h.need = kind === 'conquer' ? 3 : 2; h.base = r[SHI[kind].rec]; }
+  if (kind === 'grow') h.need = Math.min(RULES.ecoCap, Math.ceil((s.castles[target].eco + 40) / 10) * 10);
+  g.shi = h;
+}
+// 志の出来事：'cap'（城を落とした：arg=城）／'duel'（一騎打ちに勝った：arg=相手）／'def'（守り抜いた）／'debate'（舌戦で開城）
+function shiHit(s, g, ev, arg) {
+  const h = g && g.clan === PLAYER && g.shi;
+  if (!h || h.done) return;
+  const D = SHI[h.kind];
+  const ok = (h.kind === 'bokou' || h.kind === 'castle') ? ev === 'cap' && arg === h.target
+    : h.kind === 'rival' ? ev === 'duel' && arg && arg.id === h.target
+    : h.kind === 'debate' ? ev === 'debate'
+    : D.rec ? recOf(g)[D.rec] - h.base >= h.need
+    : false;
+  if (ok) shiDone(s, g);
+}
+function shiDone(s, g) {
+  const h = g.shi;
+  h.done = true;
+  h.at = s.turn;
+  const best = ['str', 'int', 'pol', 'cha'].reduce((a, b) => (g[b] > g[a] ? b : a));
+  ['str', 'int', 'pol', 'cha'].forEach((k) => { g[k] = Math.min(99, g[k] + (k === best ? SHI_BOOST.main : SHI_BOOST.rest)); });
+  if (!g.lord) g.loyal = Math.min(100, (g.loyal || 0) + SHI_BOOST.loyal);
+  h.title = SHI[h.kind].title(h);
+  s.bondQueue = s.bondQueue || [];
+  s.bondQueue.push({ id: 'shi', p: { gid: g.id, best } });
+  addNews(s, `${g.name}、志を果たす`, `「${SHI[h.kind].name}」──人呼んで「${h.title}」`, 70);
+}
+// 季節ごと：志のない武将に志を、果たせなくなった志は立て直す。町づくりはここで測る
+function shiTick(s) {
+  gensOf(s, PLAYER).forEach((g) => {
+    if (!g.loc) return;
+    const h = g.shi;
+    if (h && !h.done) {
+      const gone = ((h.kind === 'bokou' || h.kind === 'castle') && s.castles[h.target].owner === PLAYER) // ほかの者が落とした
+        || (h.kind === 'rival' && (!s.gens[h.target] || ['graduated', PLAYER].includes(s.gens[h.target].clan)))
+        || (h.kind === 'grow' && s.castles[h.target].owner !== PLAYER);
+      if (h.kind === 'grow' && !gone && s.castles[h.target].eco >= h.need) { shiDone(s, g); return; }
+      if (gone) delete g.shi;
+    }
+    if (!g.shi) shiAssign(s, g);
+  });
 }

@@ -763,6 +763,10 @@ function renderPanel() {
         <button class="reinforce strike" id="c-plan"><b>出陣</b>この案で攻める<small>${oddsLabel(plan.p)[0]}・総勢 ${fmt(plan.total)} 兵${isCapital(selected, c.owner) ? '・本拠を落とせば残る城が降ることも' : ''}</small></button>`;
     })();
     body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}・性格「${personaOf(c.owner).name}」</p>` : ''}
+      ${(() => {
+        const sw = gensOf(S, PLAYER).filter((g) => g.shi && !g.shi.done && ['bokou', 'castle'].includes(g.shi.kind) && g.shi.target === selected);
+        return sw.length ? `<p class="shi-hint"><b>志</b>${sw.map((g) => esc(g.name)).join('・')}が、この城を落とすと誓っている（大将にすると士気+${SHI_MORALE}）</p>` : '';
+      })()}
       ${planHtml}
       <div class="cmds">
         <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
@@ -1443,6 +1447,19 @@ function showRally(ev, then) {
 function runEvents(done) {
   if (!S.pending || !S.pending.length) { closeModal(); done(); return; }
   const ev = S.pending[0];
+  if (ev.id === 'shi') {
+    // 志、成就：覚醒の決め絵
+    const g = S.gens[ev.p.gid];
+    const next = () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); };
+    if (!g || !g.shi) { next(); return; }
+    closeModal();
+    const D = SHI[g.shi.kind];
+    const boost = ['str', 'int', 'pol', 'cha'].map((k) => `${STAT_NAMES[k]}+${k === ev.p.best ? SHI_BOOST.main : SHI_BOOST.rest}`).join(' ');
+    showKime(g, '志、成就', D.line, next, 'laugh', `<div class="shi-done"><span>志</span><b>${esc(D.name)}</b><small>${esc(shiText(S, g))}</small></div>
+      <p class="shi-eff">覚醒！ ${boost}<br>人呼んで「${esc(g.shi.title)}」</p>`);
+    Sound.kira();
+    return;
+  }
   if (ev.id === 'milestone' || ev.id === 'rally') {
     closeModal();
     (ev.id === 'rally' ? showRally : showMilestone)(ev, () => { if (S.pending[0] === ev) S.pending.shift(); save(); runEvents(done); });
@@ -1775,7 +1792,7 @@ function drawDebate(Dt) {
 }
 
 // ---------- 決め絵：ここぞの場面で、武将の大きな一枚絵を出す。タップで閉じる ----------
-function showKime(g, title, line, then, mood = 'smile') {
+function showKime(g, title, line, then, mood = 'smile', extra = '') {
   if (!g) { if (then) then(); return; }
   let box = $('kime');
   if (!box) {
@@ -1792,7 +1809,7 @@ function showKime(g, title, line, then, mood = 'smile') {
         <div class="kime-name"><span>${esc(g.name)}</span>${nick ? `<small>「${esc(nick)}」</small>` : ''}</div>
         <div class="kime-seal">${esc(CLANS[g.clan] ? CLANS[g.clan].name.replace('家', '') : '浪人')}<br>之印</div>
       </div>
-      ${line ? `<p class="kime-line">「${esc(line)}」</p>` : ''}
+      ${line ? `<p class="kime-line">「${esc(line)}」</p>` : ''}${extra}
       <p class="kime-tap">画面をタップ</p>
     </div>`;
   box.hidden = false;
@@ -1811,7 +1828,7 @@ function showKime(g, title, line, then, mood = 'smile') {
 function isLegend(g) {
   if (!g) return false;
   const r = recOf(g);
-  return !!g.lord || r.w + r.cap + r.dw * 2 + r.def >= 10;
+  return !!g.lord || !!(g.shi && g.shi.done) || r.w + r.cap + r.dw * 2 + r.def >= 10;
 }
 
 // 家宝の欄：持っている家宝と、蔵の家宝を持たせるボタン
@@ -1865,6 +1882,16 @@ function showHall(back) {
   $('hall-back').onclick = () => { Sound.tap(); (back || closeModal)(); };
 }
 
+// 志の札：何を誓ったか、どこまで来たか
+function shiBox(g) {
+  const h = g.shi;
+  if (!h || !SHI[h.kind]) return '';
+  const [cur, need] = shiProgress(g);
+  const dots = need > 1 && !h.done ? `<span class="shi-dots">${Array.from({ length: need }, (_, i) => `<i class="${i < cur ? 'on' : ''}"></i>`).join('')}</span>` : '';
+  return `<div class="shi-box ${h.done ? 'done' : ''}"><span>志</span><div><b>${esc(SHI[h.kind].name)}${h.done ? '<em>成就</em>' : ''}</b>
+    <small>${esc(shiText(S, g))}</small>${dots}${!h.done && ['bokou', 'castle'].includes(h.kind) ? '<small class="shi-tip">この城を大将として攻めると、士気が上がる</small>' : ''}</div></div>`;
+}
+
 function showGeneral(gid) {
   const g = S.gens[gid];
   Sound.tap();
@@ -1872,6 +1899,7 @@ function showGeneral(gid) {
       ${portrait(g, 96)}
       <h2>${esc(g.name)}</h2>
       ${nickOf(g) ? `<p class="nick-big">「${esc(nickOf(g))}」</p>` : ''}
+      ${shiBox(g)}
       ${(() => { const rv = rivalOf(S, g); return rv ? `<p class="rival-line">宿敵：<b>${esc(rv.g.name)}</b>（${CLANS[rv.g.clan] ? CLANS[rv.g.clan].name : '浪人'}・${rv.n}度の対決）</p>` : ''; })()}
       ${bondsOf(S, g).map((bd) => { const o = S.gens[bd.other]; return o ? `<p class="bond-line"><span>${BOND_TYPES[bd.type].name}</span><b>${esc(o.name)}</b>${bd.type === 'shitei' ? (bd.a === g.id ? '（弟子）' : '（師）') : ''}<small>${BOND_TYPES[bd.type].desc}</small></p>` : ''; }).join('')}
       <p class="hint">${esc(g.title)}（${MAP.byId[g.school].name}出身）${g.lord ? `・${pName()}当主` : ''}</p>
@@ -2147,7 +2175,9 @@ function openAttack(from, to, plan = null) {
     const max = readyTroops(S, src);
     amount = Math.min(max, Math.round((max * 0.8) / 10) * 10 || max);
     const gens = idleGensAt(S, src).sort((a, b) => b.str - a.str);
-    if (!gens.find((g) => g.id === gid)) gid = gens[0].id;
+    // 志の城：この城を落とすと誓った武将（いれば、はじめから大将に選んでおく）
+    const sworn = (g) => g.shi && !g.shi.done && ['bokou', 'castle'].includes(g.shi.kind) && g.shi.target === to;
+    if (!gens.find((g) => g.id === gid)) gid = (gens.find(sworn) || gens[0]).id;
     const sup = supportList();
     openModal(`<h2>${MAP.byId[to].name} 攻め</h2>
       <p style="text-align:center;margin:0 0 6px">${clanChip(t.owner)}<br>守備 <b>${fmt(t.troops)}</b> 兵 × 防御 <b>${t.def.toFixed(1)}</b><br>
@@ -2156,7 +2186,8 @@ function openAttack(from, to, plan = null) {
         `<button data-src="${id}" class="${id === src ? 'on' : ''}"><span>${MAP.byId[id].name}</span><span>兵 ${fmt(readyTroops(S, id))}</span></button>`).join('')}</div>` : ''}
       ${arrivedTroops(S, src) ? `<p class="hint">🚚 ${MAP.byId[src].short}に到着したばかりの ${fmt(arrivedTroops(S, src))} 兵は、今季は出陣できません</p>` : ''}
       <h3>大将</h3>
-      <div class="glist pick">${gens.map((g) => genCard(g, { extra: g.id === gid ? '<span class="check">✔</span>' : '' })).join('')}</div>
+      <div class="glist pick">${gens.map((g) => genCard(g, { extra: (sworn(g) ? '<span class="shi-tag">志</span>' : '') + (g.id === gid ? '<span class="check">✔</span>' : '') })).join('')}</div>
+      ${sworn(S.gens[gid]) ? `<p class="shi-hint"><b>志</b>${esc(S.gens[gid].name)}が「${esc(shiText(S, S.gens[gid]))}」と誓った城。士気+${SHI_MORALE}、落とせば覚醒</p>` : ''}
       <h3>出陣する兵（${MAP.byId[src].short}）</h3>
       <div class="slider-row"><input type="range" id="amt" min="10" max="${max}" step="10" value="${amount}"><b id="amt-v"></b></div>
       ${sup.length ? `<h3>援軍</h3><div class="src-list">${sup.map((id) => {
@@ -2284,7 +2315,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
   box.innerHTML = `
     <div class="b-head"><div class="b-title ${B.decisive ? 'decisive' : ''}">${B.decisive ? '決 戦' : defense ? '籠 城 戦' : '合 戦'}</div>
       <div class="b-sub">${MAP.byId[B.to].name}の戦い${defense ? `（${pShort()}の守り）` : ''}
-        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}${B.bond && B.bond.side === me ? `<div class="b-tactic b-bond">絆の力：${esc(B.bond.a)}と${esc(B.bond.b)}（${BOND_TYPES[B.bond.type].name}）が並ぶ！ 士気+${BOND_MORALE}</div>` : ''}</div>
+        <span class="b-wx" title="${WEATHER[B.weather].desc}">${WEATHER[B.weather].icon} ${WEATHER[B.weather].name}</span></div>${tac}${B.bond && B.bond.side === me ? `<div class="b-tactic b-bond">絆の力：${esc(B.bond.a)}と${esc(B.bond.b)}（${BOND_TYPES[B.bond.type].name}）が並ぶ！ 士気+${BOND_MORALE}</div>` : ''}${B.shi && me === 'a' ? `<div class="b-tactic b-shi">志の城：${esc(B.shi.name)}が誓いの城に挑む！ 士気+${SHI_MORALE}</div>` : ''}</div>
     <div class="b-field">
       ${battleScene(B, S.turn)}
       <div class="b-cut" id="b-cut"></div>

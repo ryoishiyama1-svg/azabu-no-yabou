@@ -65,6 +65,12 @@ function startBattle(s, o) {
     const partner = bondPartnerIn(s, leader, side === 'a' ? support.map((sp) => sp.gid) : gensAt(s, to).map((g) => g.id));
     if (partner) { B[side].morale = clamp(B[side].morale + BOND_MORALE, 15, 100); B.bond = { side, a: leader.name, b: partner.name, type: bondBetween(s, leader, partner).type }; }
   }
+  // 志の城：大将が「この手で落とす」と誓った城を攻めると、士気が上がる
+  const sg = s.gens[gid];
+  if (attacker === PLAYER && sg && sg.shi && !sg.shi.done && ['bokou', 'castle'].includes(sg.shi.kind) && sg.shi.target === to) {
+    B.a.morale = clamp(B.a.morale + SHI_MORALE, 15, 100);
+    B.shi = { name: sg.name, kind: sg.shi.kind };
+  }
   if (attacker === PLAYER && !committed) support.forEach((sp) => addBondPts(s, s.gens[gid], s.gens[sp.gid], 'senyu', 2));
   return B;
 }

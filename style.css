@@ -1806,3 +1806,26 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .tk-bar em { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; background: var(--ink); }
 .tk-bar em.on { background: #f3d27a; box-shadow: 0 0 0 1px var(--ink); }
 .tenka b { flex: none; font-family: var(--gothic); font-weight: 900; font-size: 13px; }
+
+/* ---------- 志：武将の誓い ---------- */
+.shi-box { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0 8px; padding: 8px 10px; text-align: left; background: #fffaf0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--gold); }
+.shi-box > span { flex: none; display: grid; place-items: center; width: 34px; height: 34px; font-family: var(--brush); font-size: 22px; color: var(--paper); background: var(--ink); }
+.shi-box b { display: block; font-family: var(--mincho); font-size: 15px; }
+.shi-box b em { font-style: normal; margin-left: 6px; padding: 0 6px; font-family: var(--brush); font-weight: 400; font-size: 13px; color: var(--paper); background: var(--red); }
+.shi-box small { display: block; font-size: 12.5px; font-weight: 700; }
+.shi-box small.shi-tip { margin-top: 2px; font-weight: 500; color: var(--muted); font-size: 11.5px; }
+.shi-box.done { background: linear-gradient(160deg, #fbf3dc, #f3e1a6 55%, #fbf3dc); box-shadow: 3px 3px 0 var(--red); }
+.shi-box.done > span { background: var(--red); }
+.shi-dots { display: flex; gap: 4px; margin-top: 4px; }
+.shi-dots i { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 50%; background: #e6dcc4; }
+.shi-dots i.on { background: var(--gold); }
+.shi-tag { flex: none; margin-left: 4px; padding: 0 5px; font-family: var(--brush); font-size: 14px; color: var(--paper); background: var(--ink); box-shadow: 2px 2px 0 var(--gold); }
+.shi-hint { margin: 6px 0; padding: 5px 8px; font-size: 12.5px; font-weight: 700; background: #fbf1d6; border-left: 5px solid var(--gold); }
+.shi-hint b { margin-right: 6px; padding: 0 5px; font-family: var(--brush); font-weight: 400; color: var(--paper); background: var(--ink); }
+.b-shi { color: #f3d27a; }
+.shi-done { display: inline-flex; align-items: center; gap: 8px; margin: 14px 0 0; padding: 6px 12px; background: var(--paper); color: var(--ink); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--gold);
+  animation: kime-seal 0.35s cubic-bezier(0.2, 1.8, 0.4, 1) 1.1s both; }
+.shi-done span { font-family: var(--brush); font-size: 22px; color: var(--paper); background: var(--red); padding: 0 6px; }
+.shi-done b { font-family: var(--mincho); font-size: 16px; }
+.shi-done small { font-size: 11.5px; font-weight: 700; }
+.shi-eff { margin: 10px 0 0; font-size: 13px; font-weight: 700; color: #f3d27a; line-height: 1.6; animation: kime-bg 0.4s ease-out 1.5s both; }
