@@ -2218,3 +2218,5 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .ch-seal.got { border: 2px solid var(--ink); background: linear-gradient(160deg, #fbf3dc, #f3e1a6); box-shadow: 3px 3px 0 var(--red); }
 .ch-seal.got span { background: var(--red); }
 .ch-seal.got b { color: var(--ink); }
+.siege-card.under { box-shadow: 3px 3px 0 var(--red); background: #fbe5e2; }
+.siege-card.under .sk { background: var(--red); animation: dangerPulse 1.6s ease-in-out infinite; }

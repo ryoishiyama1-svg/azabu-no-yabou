@@ -1007,7 +1007,9 @@ function autoCastle(s, clan, id, cfg, dist, log) {
       (s.encircle && clan !== PLAYER && s.castles[t].owner === PLAYER ? 0.6 : 1) *
       (clan !== PLAYER && personaOf(clan).neutral && s.castles[t].owner === 'none' ? 0.7 : 1) * // 拡張型は独立校を優先
       (jointTarget(s, clan, t) ? 0.5 : 1) * // 共同出兵の標的を優先
-      (1 / seaPower(id, t, leader)); // 海を越える先は、水軍がいなければ後回し
+      (1 / seaPower(id, t, leader)) * // 海を越える先は、水軍がいなければ後回し
+      (clan !== PLAYER && retakeTarget(s, clan, t) ? 0.6 : 1) * // 奪われたばかりの城は取り返しに行く
+      (clan !== PLAYER && weakHouse(s, s.castles[t].owner) ? 0.8 : 1); // 弱った家から先に討つ
     const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
     const need = defensePower(s, target) * cfg.ratio * (jointTarget(s, clan, target) ? 0.85 : 1) *
@@ -1044,6 +1046,12 @@ function autoCastle(s, clan, id, cfg, dist, log) {
           log.push(ok ? `🤝 ${s.gens[gid].name}が${pName()}に加わった` : `🚶 ${s.gens[gid].name}は登用を断って去った`);
         });
       }
+    } else if (clan !== PLAYER && s.turn >= graceTurns(s) && !(s.sieges || []).some((x) => siegeClan(x) === clan) &&
+      canSiege(s, id, target, clan) && send >= s.castles[target].troops * 1.3 && Math.random() < AI_SIEGE_CHANCE) {
+      // 力攻めでは落ちない堅い城は、囲んで兵糧攻めにする（一家に一つの囲みまで）
+      startSiege(s, id, target, send, leader.id, clan);
+      if (s.castles[target].owner === PLAYER) log.push(`🏯 ${CLANS[clan].name}の${leader.name}が ${MAP.byId[target].name} を囲んだ！`);
+      return;
     }
   }
   // 残った武将：徴兵 → 築城
@@ -1338,6 +1346,8 @@ function recordBattle(s, r) {
     s.moves.push({ from: r.from, to: r.to, att: r.attacker, def: r.defender, won: !!r.won });
     (r.surrendered || []).forEach((id) => s.moves.push({ from: r.to, to: id, att: r.attacker, def: r.defender, won: true, kind: 'fall' }));
   }
+  // 他家の知恵：城を失った家は、しばらく取り返しを狙う
+  if (r.won && r.defender !== 'none' && r.defender !== PLAYER && CLANS[r.defender]) { s.lastLost = s.lastLost || {}; s.lastLost[r.defender] = { id: r.to, turn: s.turn }; }
   if (r.won && r.attacker === PLAYER && CLANS[r.defender] && r.defender !== 'none' && s.stats) s.stats.clanCaps = (s.stats.clanCaps || 0) + 1; // 他家から奪った城
   const ga = s.gens[r.gid], gd = r.dgid ? s.gens[r.dgid] : null;
   if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; shiHit(s, ga, 'cap', r.to); } else a.l++; }
@@ -1978,31 +1988,36 @@ const hasSuigun = (g) => !!g && g.skill === 'suigun';
 const seaPower = (from, to, g) => (seaRoute(from, to) ? (hasSuigun(g) ? SEA.suigunPower : SEA.power) : 1);
 
 // ---------- 籠城戦と兵糧攻め ----------
-// s.sieges = [{ from, to, gid, n, turns }]：自分の家の軍勢が敵城を囲む。囲まれた城は季ごとに兵が減り、守りが崩れ、収入が止まる
-// 囲んで2季を過ぎ、城兵が囲む兵の6割を切ると、開城することがある。囲まれた家は、となりの城から後詰め（救援）を送ってくる
+// s.sieges = [{ clan, from, to, gid, n, turns }]：ある家の軍勢が敵城を囲む（clan が無い古いデータは自分の家）。
+// 囲まれた城は季ごとに兵が減り、守りが崩れ、収入が止まる。囲んで2季を過ぎ、城兵が囲む兵の6割を切ると、開城することがある
+// 他家が囲まれたときは、となりの城から後詰め（救援）が来る。自分の城が囲まれたときは、自分で後詰めを送る（reliefSiege）
 const SIEGE = { starve: 0.12, defLoss: 0.1, surrenderAfter: 2, surrenderRatio: 0.6, capitalRatio: 0.45, surrenderChance: 0.5, reliefChance: 0.4 };
 // 家の本拠は誇りにかけて粘る（開城するのは、城兵が囲む兵の45%を切ってから）
 const siegeRatio = (s, to) => (isCapital(to, s.castles[to].owner) ? SIEGE.capitalRatio : SIEGE.surrenderRatio);
-const siegeOf = (s, to) => (s.sieges || []).find((g) => g.to === to) || null;
+const siegeClan = (sg) => sg.clan || PLAYER;
+const siegeOf = (s, to) => (s.sieges || []).find((g) => g.to === to) || null;            // どの家の囲みでも
+const mySiege = (s, to) => (s.sieges || []).find((g) => g.to === to && siegeClan(g) === PLAYER) || null; // 自分の家の囲み
 const isBesieged = (s, id) => !!siegeOf(s, id);
-function canSiege(s, from, to) {
+function canSiege(s, from, to, clan = PLAYER) {
   const c = s.castles[to];
-  return s.castles[from].owner === PLAYER && MAP.adj[from].includes(to) && c.owner !== PLAYER && !atPeace(s, PLAYER, c.owner) && !isBesieged(s, to);
+  return s.castles[from].owner === clan && MAP.adj[from].includes(to) && c.owner !== clan && !atPeace(s, clan, c.owner) && !isBesieged(s, to);
 }
-function startSiege(s, from, to, n, gid) {
+function startSiege(s, from, to, n, gid, clan = PLAYER) {
   n = Math.max(0, Math.min(n, s.castles[from].troops)); // 城にいる兵より多くは出せない
   s.sieges = s.sieges || [];
   s.castles[from].troops -= n;
   s.acted[gid] = true;
   const def = s.castles[to].owner;
-  if (s.rel[def]) changeFriend(s, def, -10);
-  s.sieges.push({ from, to, gid, n, turns: 0 });
-  addNews(s, `${pName()}、${MAP.byId[to].name}を包囲`, `${s.gens[gid].name}が${fmtN(n)}の兵で城を囲む`, 55);
+  if (clan === PLAYER && s.rel[def]) changeFriend(s, def, -10);
+  if (def === PLAYER && s.rel[clan]) changeFriend(s, clan, -10);
+  s.sieges.push({ clan, from, to, gid, n, turns: 0 });
+  addNews(s, `${CLANS[clan].name}、${MAP.byId[to].name}を包囲`, `${s.gens[gid] ? s.gens[gid].name : ''}が${fmtN(n)}の兵で城を囲む`, def === PLAYER ? 75 : 55);
 }
 const fmtN = (n) => Math.round(n).toLocaleString('ja-JP');
-// 囲みを解いて兵を帰す（自分の城が残っていれば）
+// 囲みを解いて兵を帰す（出陣元の城がまだその家のものなら）
 function liftSiege(s, sg) {
-  if (s.castles[sg.from].owner === PLAYER) s.castles[sg.from].troops = Math.min(RULES.troopCap, s.castles[sg.from].troops + sg.n);
+  const c = siegeClan(sg);
+  if (s.castles[sg.from].owner === c) s.castles[sg.from].troops = Math.min(RULES.troopCap, s.castles[sg.from].troops + sg.n);
   s.sieges = s.sieges.filter((x) => x !== sg);
 }
 // 包囲から総攻め：囲んでいた兵でそのまま攻める（合戦の準備に渡す。兵はすでに城の外）
@@ -2010,19 +2025,37 @@ function assaultFromSiege(s, sg) {
   s.sieges = s.sieges.filter((x) => x !== sg);
   return { from: sg.from, to: sg.to, n: sg.n, gid: sg.gid, committed: true };
 }
+// 後詰め：となりの城から、囲んでいる陣に攻めかかる。勝てば囲みは破れる（自分の家が囲まれたとき、自分で送る）
+function reliefSiege(s, sg, from, n, gid) {
+  const c = siegeClan(sg), g = s.gens[gid], sgGen = s.gens[sg.gid];
+  n = Math.max(0, Math.min(n, s.castles[from].troops));
+  s.castles[from].troops -= n;
+  s.acted[gid] = true;
+  const r = fight(n, sg.n, 1, g ? atkMult(g) : 0.85, defMult(sgGen), {});
+  if (r.won) {
+    s.castles[from].troops += r.left;
+    s.sieges = s.sieges.filter((x) => x !== sg);
+    addNews(s, `${MAP.byId[sg.to].short}の囲み、破れる`, `${s.castles[from].owner === PLAYER ? pName() : ''}の後詰めが${CLANS[c].name}の陣を突く`, 65);
+    return { won: true, left: r.left };
+  }
+  sg.n = Math.max(10, Math.round(r.defLeft / 10) * 10);
+  return { won: false, siegeLeft: sg.n };
+}
 function siegeTick(s, log) {
   if (!s.sieges || !s.sieges.length) return;
   s.sieges.slice().forEach((sg) => {
+    const clan = siegeClan(sg);
     const c = s.castles[sg.to], g = s.gens[sg.gid];
-    // 城がもう自分の家のもの・出陣元を失った・大将がいない → 囲みはおしまい
-    if (c.owner === PLAYER || s.castles[sg.from].owner !== PLAYER || !g || g.clan !== PLAYER || atPeace(s, PLAYER, c.owner)) { liftSiege(s, sg); return; }
+    // 城がもう囲む家のもの・出陣元を失った・大将がいない・和睦した → 囲みはおしまい
+    if (c.owner === clan || s.castles[sg.from].owner !== clan || !g || g.clan !== clan || atPeace(s, clan, c.owner)) { liftSiege(s, sg); return; }
     sg.turns++;
     s.acted[sg.gid] = true; // 囲んでいる大将は動けない
     c.troops = Math.max(0, Math.round((c.troops * (1 - SIEGE.starve)) / 10) * 10);
     c.def = Math.max(1, Math.round((c.def - SIEGE.defLoss) * 10) / 10);
     const def = c.owner;
-    // 後詰め：囲まれた家が、となりの城から救援を送る
-    if (def !== 'none' && Math.random() < SIEGE.reliefChance) {
+    if (def === PLAYER && sg.turns === 1) log.push(`🏯 ${CLANS[clan].name}が${MAP.byId[sg.to].name}を囲んでいる！ 兵糧が尽きる前に後詰めを`);
+    // 後詰め：囲まれた他家が、となりの城から救援を送る（自分の家の城なら、自分で送る）
+    if (def !== 'none' && def !== PLAYER && Math.random() < SIEGE.reliefChance) {
       const helpers = MAP.adj[sg.to].filter((id) => s.castles[id].owner === def && s.castles[id].troops >= 400);
       if (helpers.length) {
         const hid = helpers.reduce((a, b) => (s.castles[a].troops >= s.castles[b].troops ? a : b));
@@ -2032,29 +2065,33 @@ function siegeTick(s, log) {
         const r = fight(sent, sg.n, 1, hg ? atkMult(hg) : 0.85, defMult(g), {});
         if (r.won) {
           s.castles[hid].troops += r.left;
-          log.push(`🛡️ ${CLANS[def].name}の後詰めが${MAP.byId[sg.to].name}の囲みを破った！ ${g.name}は引き上げた`);
-          addNews(s, `${MAP.byId[sg.to].short}の囲み、破れる`, `${CLANS[def].name}の後詰めが${pName()}の陣を突く`, 60);
+          if (clan === PLAYER || def === PLAYER) log.push(`🛡️ ${CLANS[def].name}の後詰めが${MAP.byId[sg.to].name}の囲みを破った！ ${g.name}は引き上げた`);
+          addNews(s, `${MAP.byId[sg.to].short}の囲み、破れる`, `${CLANS[def].name}の後詰めが${CLANS[clan].name}の陣を突く`, 60);
           sg.n = 0;
           liftSiege(s, sg);
           return;
         }
         sg.n = Math.max(10, Math.round(r.defLeft / 10) * 10);
-        log.push(`⚔️ ${CLANS[def].name}の後詰めを、${MAP.byId[sg.to].short}を囲む${g.name}が退けた`);
+        if (clan === PLAYER) log.push(`⚔️ ${CLANS[def].name}の後詰めを、${MAP.byId[sg.to].short}を囲む${g.name}が退けた`);
       }
     }
     // 兵糧が尽きて開城
     if (sg.turns >= SIEGE.surrenderAfter && c.troops < sg.n * siegeRatio(s, sg.to) && Math.random() < SIEGE.surrenderChance) {
-      const r = { won: true, from: sg.from, to: sg.to, attacker: PLAYER, defender: def, gid: sg.gid, dgid: null, rounds: [{ a: sg.n, d: c.troops }], support: [], captured: [] };
-      c.owner = PLAYER;
+      const r = { won: true, from: sg.from, to: sg.to, attacker: clan, defender: def, gid: sg.gid, dgid: null, rounds: [{ a: sg.n, d: c.troops }], support: [], captured: [] };
+      c.owner = clan;
       c.troops = sg.n;
       moveGeneral(s, sg.gid, sg.to);
-      r.captured = scatterGenerals(s, sg.to, def, PLAYER, log);
-      r.surrendered = capitalFallen(s, sg.to, def, PLAYER, log);
+      r.captured = scatterGenerals(s, sg.to, def, clan, log);
+      r.surrendered = capitalFallen(s, sg.to, def, clan, log);
       s.sieges = s.sieges.filter((x) => x !== sg);
       recordBattle(s, r);
-      log.push(`🍙 兵糧の尽きた${MAP.byId[sg.to].name}が開城した！（${sg.turns}季の包囲）`);
-      addNews(s, `${MAP.byId[sg.to].name}、兵糧尽きて開城`, `${sg.turns}季にわたる${pName()}の包囲`, 80);
-      meibaHit(s, 'hiboshi', { gid: sg.gid, to: sg.to, turns: sg.turns, foe: def });
+      if (clan === PLAYER) {
+        log.push(`🍙 兵糧の尽きた${MAP.byId[sg.to].name}が開城した！（${sg.turns}季の包囲）`);
+        meibaHit(s, 'hiboshi', { gid: sg.gid, to: sg.to, turns: sg.turns, foe: def });
+      } else if (def === PLAYER) {
+        log.push(`😱 兵糧の尽きた${MAP.byId[sg.to].name}が、${CLANS[clan].name}に開城した…`);
+      }
+      addNews(s, `${MAP.byId[sg.to].name}、兵糧尽きて開城`, `${sg.turns}季にわたる${CLANS[clan].name}の包囲`, def === PLAYER || clan === PLAYER ? 80 : 50);
     }
   });
 }
@@ -2078,3 +2115,10 @@ function applyChallenges(s, list) {
     aiClans().forEach((k) => { if (s.rel[k]) { s.rel[k].friend = 0; s.rel[k].truce = 0; s.rel[k].ally = 0; } s.gold[k] = Math.round(s.gold[k] * 1.5); });
   }
 }
+
+// ---------- 他家の知恵：取り返し・弱った家狙い・包囲 ----------
+// s.lastLost[家] = { id, turn }：その家が最後に失った城。3季のうちは取り返しを狙う
+const AI_SIEGE_CHANCE = 0.5;
+const retakeTarget = (s, clan, t) => !!(s.lastLost && s.lastLost[clan] && s.lastLost[clan].id === t && s.turn - s.lastLost[clan].turn <= 3);
+// 城が2つ以下の家（独立校はのぞく）は、ほかの家から狙われやすい
+const weakHouse = (s, owner) => owner !== 'none' && !!CLANS[owner] && castlesOf(s, owner).length <= 2;
