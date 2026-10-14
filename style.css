@@ -2059,3 +2059,20 @@ table.best tr.ed-row th { padding-top: 8px; text-align: left; font-family: var(-
 .zk-motto { margin: 0 0 8px; font-family: var(--mincho); font-weight: 800; font-size: 16px; }
 .zk-motto span, .zk-line span { display: inline-block; margin-right: 6px; padding: 0 6px; font-family: var(--brush); font-weight: 400; font-size: 13px; color: var(--paper); background: var(--ink); }
 .zk-line { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+
+/* ---------- 戦国の名場面 ---------- */
+.meiba { background: radial-gradient(circle at 50% 40%, rgba(200, 55, 45, 0.3), transparent 62%), var(--seigaiha) rgba(20, 16, 18, 0.95); }
+.mb-card { max-width: 380px; }
+.mb-kicker { display: table; margin: 0 auto 4px; padding: 1px 10px; font-family: var(--mincho); font-weight: 800; font-size: 12px; letter-spacing: 0.2em; color: var(--ink); background: #f3d27a; }
+.mb-frame { border: 5px solid var(--paper); box-shadow: 9px 9px 0 var(--red); animation: kime-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.mb-art { display: block; width: 100%; height: auto; }
+.mb-sub { margin: 12px 0 0; font-family: var(--brush); font-size: 20px; color: #f3d27a; animation: kime-bg 0.4s ease-out 0.8s both; }
+.mb-line { font-size: 14.5px; line-height: 1.6; }
+.mb-book { margin: 8px 0 0; font-size: 12px; opacity: 0.75; animation: kime-bg 0.4s ease-out 1.4s both; }
+.meiba .kime-tap { animation-delay: 1.7s; }
+.mb-book-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mb-slot { padding: 6px 8px; border: 2px dashed #b3a888; background: #f3eee2; }
+.mb-slot b { display: block; font-family: var(--brush); font-weight: 400; font-size: 15px; color: #b3a888; }
+.mb-slot small { font-size: 10.5px; color: var(--muted); }
+.mb-slot.got { border: 2px solid var(--ink); background: linear-gradient(160deg, #fbf3dc, #f3e1a6); box-shadow: 3px 3px 0 var(--red); }
+.mb-slot.got b { color: var(--red); }

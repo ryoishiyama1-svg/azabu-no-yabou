@@ -1574,17 +1574,96 @@ function showLetter(ev, then) {
 // render のあと少し待ち、ほかの画面（合戦の結果・場面・地図の再生）が開いていないときだけ出す
 let goalTimer = null;
 function scheduleGoalCheck() {
-  if (!S || S.goal === undefined || S.goal >= GOALS.length) return;
+  const goalsLeft = S && S.goal !== undefined && S.goal < GOALS.length;
+  const meiba = S && S.meibaQueue && S.meibaQueue.length;
+  if (!goalsLeft && !meiba) return;
   clearTimeout(goalTimer);
   goalTimer = setTimeout(() => {
     const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || document.querySelector('.world-cover') || mode;
     if (busy) return;
+    // 戦国の名場面が待っていれば、そちらを先に
+    if (S.meibaQueue && S.meibaQueue.length) {
+      const m = S.meibaQueue.shift();
+      if (!S.debugUsed) { const rec = loadRecords(); rec.meiba = rec.meiba || {}; if (!rec.meiba[m.id]) rec.meiba[m.id] = Date.now(); saveRecords(rec); }
+      save();
+      showMeiba(m);
+      return;
+    }
+    if (!goalsLeft) return;
     const done = goalCheck(S);
     if (!done) return;
     save();
     showGoalScene(done);
   }, 500);
 }
+// ---------- 戦国の名場面：一枚絵 ----------
+function meibaArt(id, p) {
+  const K = '#1c1a17';
+  const banners = (n, x0, y, col, dx, flip) => Array.from({ length: n }, (_, i) => {
+    const x = x0 + i * dx, h = 34 + (i % 3) * 6;
+    return `<path d="M${x},${y} V${y - h}" stroke="${K}" stroke-width="2"/><rect x="${flip ? x - 12 : x}" y="${y - h}" width="12" height="20" fill="${col}" stroke="${K}" stroke-width="1.4"/>`;
+  }).join('');
+  const me = CLANS[PLAYER].color, foe = p.foe && CLANS[p.foe] ? CLANS[p.foe].color : '#6f6a60';
+  let body = '';
+  if (id === 'okehazama') {
+    // 雨の夜、丘を駆け下りる少数の軍勢と、谷の大軍の陣幕
+    body = `<rect width="340" height="200" fill="#2d3346"/>
+      <path d="M0,120 Q90,60 170,110 L170,200 L0,200Z" fill="#3a3a32" stroke="${K}" stroke-width="3"/>
+      <path d="M150,170 Q250,150 340,165 L340,200 L150,200Z" fill="#4a4636" stroke="${K}" stroke-width="3"/>
+      ${banners(4, 60, 112, me, 22)}${banners(9, 190, 168, '#857b6c', 16)}
+      <g stroke="#cfd8e8" stroke-width="1.2" opacity=".7">${Array.from({ length: 36 }, (_, i) => `<line x1="${(i * 37) % 340}" y1="${(i * 23) % 200}" x2="${(i * 37) % 340 - 6}" y2="${(i * 23) % 200 + 16}"/>`).join('')}</g>`;
+  } else if (id === 'nagashino') {
+    // 馬防柵と鉄砲の煙、押し寄せる大軍
+    body = `<rect width="340" height="200" fill="#e8c27a"/><rect y="130" width="340" height="70" fill="#7a6a40"/>
+      ${banners(10, 190, 150, foe, 14)}
+      <g stroke="${K}" stroke-width="3">${Array.from({ length: 12 }, (_, i) => `<line x1="${40 + i * 10}" y1="120" x2="${46 + i * 10}" y2="160"/>`).join('')}<line x1="34" y1="132" x2="160" y2="132"/><line x1="34" y1="148" x2="160" y2="148"/></g>
+      ${banners(3, 30, 175, me, 30)}
+      <g fill="#f4efe2" stroke="${K}" stroke-width="1.5">${[[150, 112], [168, 118], [140, 124], [176, 104]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10"/>`).join('')}</g>`;
+  } else if (id === 'honnoji') {
+    // 夜の寺が燃える
+    body = `<rect width="340" height="200" fill="#1c1420"/>
+      <path d="M90,150 L250,150 L250,110 L90,110Z" fill="#3a2a22" stroke="${K}" stroke-width="3"/>
+      <path d="M70,112 L170,70 L270,112Z" fill="#2a2a32" stroke="${K}" stroke-width="3"/>
+      <g fill="#e8553f" stroke="#f3d27a" stroke-width="2">${[[112, 58], [170, 34], [228, 56]].map(([x, y]) => `<path transform="translate(${x},${y}) scale(0.8) translate(${-x},${-y})" d="M${x},${y + 40} q-18,-20 -4,-44 q4,14 12,10 q-2,-22 14,-34 q-4,22 10,32 q8,-6 6,-18 q18,26 -2,54Z"/>`).join('')}</g>
+      <rect y="150" width="340" height="50" fill="#2a1a14"/>`;
+  } else {
+    // 関ヶ原：霧の野で向き合う両軍と、二つの家紋
+    body = `<rect width="340" height="200" fill="#c9cfc6"/><rect y="140" width="340" height="60" fill="#6b7a4a"/>
+      ${banners(7, 20, 160, me, 14)}${banners(7, 320, 160, foe, -14, true)}
+      <g fill="rgba(255,255,255,.55)">${[60, 150, 250].map((x, i) => `<ellipse cx="${x}" cy="${130 + i * 6}" rx="90" ry="14"/>`).join('')}</g>
+      <g transform="translate(60,40)">${crestBadge(PLAYER, 64)}</g>
+      ${p.foe ? `<g transform="translate(216,40)">${crestBadge(p.foe, 64)}</g>` : ''}
+      <text x="170" y="86" text-anchor="middle" font-family="serif" font-size="30" fill="${K}">対</text>`;
+  }
+  return `<svg viewBox="0 0 340 200" class="mb-art" aria-hidden="true">${body}<rect x="2" y="2" width="336" height="196" fill="none" stroke="${K}" stroke-width="4"/></svg>`;
+}
+function showMeiba(m) {
+  const M = MEIBA[m.id], p = m.p || {};
+  const g = p.gid && S.gens[p.gid];
+  const foeLord = p.lord && S.gens[p.lord];
+  const where = p.to && MAP.byId[p.to] ? MAP.byId[p.to].name : '';
+  const line = m.id === 'okehazama' ? `${where}を、${fmt(p.a)}の兵で${fmt(p.d)}の大軍から奪い取った。${g ? `${g.name}の統率が3上がった` : ''}`
+    : m.id === 'nagashino' ? `${where}に押し寄せた${fmt(p.a)}の大軍を、${fmt(p.d)}の兵で退けた。${g ? `${g.name}の知略が3上がった` : ''}`
+    : m.id === 'honnoji' ? `${g ? g.name : '家臣'}が${where}ごと${pName()}に背いた。「敵は、身内にあり」`
+    : `${pName()}と${CLANS[p.foe] ? CLANS[p.foe].name : '最後の一家'}。${foeLord ? `${foeLord.name}「この一戦で、すべてが決まる」` : 'この戦いで、すべてが決まる'}`;
+  let box = $('meiba');
+  if (!box) { box = document.createElement('div'); box.id = 'meiba'; box.className = 'kime meiba'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="kime-card mb-card">
+      <div class="mb-kicker">戦国の名場面</div>
+      <div class="kime-title">${M.name}</div>
+      <div class="mb-frame">${meibaArt(m.id, p)}</div>
+      <p class="mb-sub">${M.sub}</p>
+      <p class="kime-line mb-line">${esc(line)}</p>
+      <p class="mb-book">名場面帖に収められた</p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(3); Sound.taiko(0.5, 1.2); if (m.id === 'honnoji') Sound.fire(); else Sound.horagai();
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; render(); }; }, 1200);
+}
+
 function showGoalScene(done) {
   const G = GOALS[done.i], next = GOALS[done.i + 1];
   const newcomer = done.gid && S.gens[done.gid];
@@ -3629,6 +3708,8 @@ function showRecords() {
     <h3>家ごとの勝利</h3>
     ${clans}
     <p class="hint">${rec.unlocked.length > 1 ? '🔓 すべての家で遊べます' : '🔒 一度天下統一すると、他の家でも遊べるようになります'}</p>
+    <h3>名場面帖</h3>
+    <div class="mb-book-grid">${Object.entries(MEIBA).map(([id, m]) => (rec.meiba || {})[id] ? `<div class="mb-slot got"><b>${m.name}</b><small>${m.sub}</small></div>` : `<div class="mb-slot"><b>？？？</b><small>${m.desc.split("。")[0]}…</small></div>`).join("")}</div>
     <h3>実績の印</h3>
     <div class="ach-meter"><i style="width:${Math.round((got / ACHIEVEMENTS.length) * 100)}%"></i><span>${got} / ${ACHIEVEMENTS.length}</span></div>
     <div class="seal-grid">${ACHIEVEMENTS.map((a) => achSeal(a, !!rec.ach[a.id])).join('')}</div>

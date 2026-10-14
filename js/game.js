@@ -1180,6 +1180,7 @@ function loyaltyTick(s, log) {
       g.clan = 'none';
       g.loyal = 100;
       log.push(`🔥 謀反！ ${g.name}が ${MAP.byId[id].name} ごと${pName()}から独立した！`);
+      meibaHit(s, 'honnoji', { gid: g.id, to: id });
     }
   });
 }
@@ -1298,6 +1299,7 @@ function endTurn(s) {
   aiClans().forEach((k) => { if (castlesOf(s, k).length) aiLordOf(s, k); });
   debtTick(s);
   finaleTick(s, log);
+  meibaTick(s); // 戦国の名場面（関ヶ原）
   s.grad = s.turn % 4 === 0 ? graduation(s) : null;
   checkWin(s);
   if (s.turn >= 4) s.stats.minCastles = Math.min(s.stats.minCastles, castlesOf(s, PLAYER).length);
@@ -1323,6 +1325,7 @@ function recOf(g) {
 }
 // 合戦の結果を、攻めた大将と守った大将の戦歴に記す（attack と endBattle の両方から呼ぶ）
 function recordBattle(s, r) {
+  meibaBattle(s, r); // 戦国の名場面（桶狭間・長篠）
   // 世界が動く地図：ターン終了のあいだの合戦を記録しておき、あとで地図の上で見せる（s.moves は endTurn のあいだだけある）
   if (s.moves) {
     s.moves.push({ from: r.from, to: r.to, att: r.attacker, def: r.defender, won: !!r.won });
@@ -1900,4 +1903,44 @@ function goalCheck(s) {
   s.goal++;
   addNews(s, `${pName()}、「${G.name}」を果たす`, s.goal >= GOALS.length ? '旗揚げの章、ここに完' : `次なる目標は「${GOALS[s.goal].name}」`, 55);
   return done;
+}
+
+// ---------- 戦国の名場面 ----------
+// 条件がそろうと一度だけ起きる特別な場面。s.meiba[id] = 起きた季（ゲームごとに一度）。場面は s.meibaQueue に積み、ui.js が手のあいたときに見せる
+const MEIBA = {
+  okehazama: { name: '桶狭間の再来', sub: '寡兵、大軍を破る', desc: '兵の少ない側が、奇襲で大軍を打ち破った。天下に名が轟く' },
+  nagashino: { name: '長篠の守り', sub: '柵の内に大軍を退ける', desc: '倍を超える大軍の攻めを、柵の内でしのぎ切った' },
+  honnoji: { name: '本能寺の変', sub: '敵は身内にあり', desc: '信じた家臣が、城ごと叛旗を翻した' },
+  sekigahara: { name: '関ヶ原', sub: '天下分け目の大決戦', desc: '残るは二家。勝った方が天下を取る' },
+};
+function meibaHit(s, id, p = {}) {
+  s.meiba = s.meiba || {};
+  if (s.meiba[id] !== undefined) return false;
+  s.meiba[id] = s.turn;
+  s.meibaQueue = s.meibaQueue || [];
+  s.meibaQueue.push({ id, p });
+  addNews(s, `${MEIBA[id].name}`, MEIBA[id].sub, 88);
+  return true;
+}
+// 合戦のあとで：寡兵の勝ち（桶狭間）と、倍の大軍を退けた守り（長篠）
+function meibaBattle(s, r) {
+  const first = r.rounds && r.rounds[0];
+  if (!first) return;
+  if (r.attacker === PLAYER && r.won && first.a <= first.d * 0.6) {
+    const g = s.gens[r.gid];
+    if (meibaHit(s, 'okehazama', { gid: r.gid, to: r.to, a: first.a, d: first.d }) && g) g.str = Math.min(99, g.str + 3);
+  }
+  if (r.defender === PLAYER && !r.won && first.a >= first.d * 2) {
+    const g = r.dgid && s.gens[r.dgid];
+    if (meibaHit(s, 'nagashino', { gid: r.dgid, to: r.to, a: first.a, d: first.d }) && g) g.int = Math.min(99, g.int + 3);
+  }
+}
+// 季節の終わりに：残る二家が拮抗していれば関ヶ原
+function meibaTick(s) {
+  const rivals = aiClans().filter((k) => castlesOf(s, k).length);
+  const quarter = MAP.nodes.length / 4;
+  if (rivals.length === 1 && castlesOf(s, rivals[0]).length >= quarter && castlesOf(s, PLAYER).length >= quarter) {
+    const lord = aiLordOf(s, rivals[0]);
+    meibaHit(s, 'sekigahara', { foe: rivals[0], lord: lord ? lord.id : null });
+  }
 }
