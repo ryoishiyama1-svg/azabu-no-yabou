@@ -13,6 +13,15 @@ const CLANS = {
   eiko: { name: '栄光家', color: '#d9622b', crest: 'uroko', stars: 3, note: '古都鎌倉に構える相模の雄。海と山に守られる' },
   urawa: { name: '浦和家', color: '#8a5a2b', crest: 'umebachi', stars: 3, note: '武蔵野の大地を束ねる。北から都を望む' },
   shibumaku: { name: '渋幕家', color: '#c2417a', crest: 'nami', stars: 4, note: '湾の向こうの新興勢力。房総から一気に攻め上がる' },
+  // 全国版・地方版の家
+  sapporominami: { name: '札南家', color: '#3f8f8a', crest: 'yuki', stars: 3, note: '北の大地の雄。海峡を越えるまでが長い' },
+  sendai2: { name: '仙台二家', color: '#6b4fa0', crest: 'yotsume', stars: 3, note: '杜の都から東北をまとめ上げる' },
+  izumigaoka: { name: '泉丘家', color: '#b5651d', crest: 'mokko', stars: 3, note: '加賀の雄。北陸から都をうかがう' },
+  tokai: { name: '東海家', color: '#d1a20f', crest: 'aoi', stars: 3, note: '尾張の大藩。東西どちらへも打って出られる' },
+  nada: { name: '灘家', color: '#1f6f43', crest: 'kikkou', stars: 2, note: '西の最強。上方の名門を従え、天下を狙う' },
+  hirogaku: { name: '広学家', color: '#9c2a5c', crest: 'sakura', stars: 3, note: '瀬戸内の雄。山陽道を東へ進む' },
+  aiko: { name: '愛光家', color: '#e8932e', crest: 'hoshi', stars: 4, note: '四国の盟主。海を渡らねば始まらない' },
+  lasalle: { name: 'ラ・サール家', color: '#3a3a3a', crest: 'jyuji', stars: 3, note: '薩摩から九州を北上する。背後は海' },
   none: { name: '独立校', color: '#857b6c', crest: 'maru' },
 };
 
@@ -127,7 +136,84 @@ const SCHOOL_ROWS = [
   ['sakura', '佐倉高校', '佐倉', '佐倉市', 35.7200, 140.2200, null, '千葉'],
   ['narita', '成田高校', '成田', '成田市', 35.7800, 140.3200, null, '千葉'],
   ['kisarazu', '木更津高校', '木更津', '木更津市', 35.3800, 139.9300, null, '千葉'],
+
+  // ---------- 全国版だけに出る学校（9列目＝版） ----------
+  // 北海道
+  ['sapporominami', '札幌南高校', '札幌南', '札幌市', 43.0450, 141.3500, 'sapporominami', '北海道', 'zenkoku'],
+  ['asahikawahigashi', '旭川東高校', '旭川東', '旭川市', 43.7700, 142.3700, null, '北海道', 'zenkoku'],
+  ['hakodatelasalle', '函館ラ・サール', '函館ラサ', '函館市', 41.7900, 140.7700, null, '北海道', 'zenkoku'],
+  ['obihiro', '帯広柏葉高校', '帯広柏葉', '帯広市', 42.9200, 143.2000, null, '北海道', 'zenkoku'],
+  ['kushiro', '釧路湖陵高校', '釧路湖陵', '釧路市', 42.9800, 144.3800, null, '北海道', 'zenkoku'],
+  ['otaru', '小樽潮陵高校', '小樽潮陵', '小樽市', 43.1900, 141.0000, null, '北海道', 'zenkoku'],
+  // 東北
+  ['sendai2', '仙台第二高校', '仙台二', '仙台市', 38.2700, 140.8600, 'sendai2', '宮城', 'zenkoku'],
+  ['morioka1', '盛岡第一高校', '盛岡一', '盛岡市', 39.7000, 141.1500, null, '岩手', 'zenkoku'],
+  ['akitako', '秋田高校', '秋田', '秋田市', 39.7100, 140.1200, null, '秋田', 'zenkoku'],
+  ['yamagatahigashi', '山形東高校', '山形東', '山形市', 38.2500, 140.3400, null, '山形', 'zenkoku'],
+  ['hirosaki', '弘前高校', '弘前', '弘前市', 40.6000, 140.4600, null, '青森', 'zenkoku'],
+  ['aomori', '青森高校', '青森', '青森市', 40.8200, 140.7400, null, '青森', 'zenkoku'],
+  ['fukushimako', '福島高校', '福島', '福島市', 37.7600, 140.4700, null, '福島', 'zenkoku'],
+  ['asaka', '安積高校', '安積', '郡山市', 37.4000, 140.3800, null, '福島', 'zenkoku'],
+  // 北関東
+  ['mito1', '水戸第一高校', '水戸一', '水戸市', 36.3800, 140.4700, null, '茨城', 'zenkoku'],
+  ['tsuchiura1', '土浦第一高校', '土浦一', '土浦市', 36.0800, 140.2000, null, '茨城', 'zenkoku'],
+  ['utsunomiya', '宇都宮高校', '宇都宮', '宇都宮市', 36.5600, 139.8800, null, '栃木', 'zenkoku'],
+  ['maebashi', '前橋高校', '前橋', '前橋市', 36.3900, 139.0600, null, '群馬', 'zenkoku'],
+  // 甲信越・北陸
+  ['izumigaoka', '金沢泉丘高校', '泉丘', '金沢市', 36.5500, 136.6500, 'izumigaoka', '石川', 'zenkoku'],
+  ['toyamachubu', '富山中部高校', '富山中部', '富山市', 36.7000, 137.2200, null, '富山', 'zenkoku'],
+  ['fujishima', '藤島高校', '藤島', '福井市', 36.0700, 136.2100, null, '福井', 'zenkoku'],
+  ['niigatako', '新潟高校', '新潟', '新潟市', 37.9100, 139.0400, null, '新潟', 'zenkoku'],
+  ['nagaoka', '長岡高校', '長岡', '長岡市', 37.4500, 138.8500, null, '新潟', 'zenkoku'],
+  ['naganoko', '長野高校', '長野', '長野市', 36.6600, 138.1900, null, '長野', 'zenkoku'],
+  ['fukashi', '松本深志高校', '深志', '松本市', 36.2400, 137.9700, null, '長野', 'zenkoku'],
+  ['kofu1', '甲府第一高校', '甲府一', '甲府市', 35.6700, 138.5700, null, '山梨', 'zenkoku'],
+  // 中国
+  ['hirogaku', '広島学院', '広島学院', '広島市', 34.4000, 132.4200, 'hirogaku', '広島', 'zenkoku'],
+  ['okayamaasahi', '岡山朝日高校', '岡山朝日', '岡山市', 34.6700, 133.9300, null, '岡山', 'zenkoku'],
+  ['fukuyama', '福山誠之館高校', '誠之館', '福山市', 34.4900, 133.3600, null, '広島', 'zenkoku'],
+  ['yonagohigashi', '米子東高校', '米子東', '米子市', 35.4300, 133.3300, null, '鳥取', 'zenkoku'],
+  ['matsuekita', '松江北高校', '松江北', '松江市', 35.4800, 133.0600, null, '島根', 'zenkoku'],
+  ['yamaguchiko', '山口高校', '山口', '山口市', 34.1800, 131.4700, null, '山口', 'zenkoku'],
+  ['tottorinishi', '鳥取西高校', '鳥取西', '鳥取市', 35.5000, 134.2300, null, '鳥取', 'zenkoku'],
+  // 四国
+  ['aiko', '愛光', '愛光', '松山市', 33.8100, 132.7200, 'aiko', '愛媛', 'zenkoku'],
+  ['takamatsuko', '高松高校', '高松', '高松市', 34.3300, 134.0500, null, '香川', 'zenkoku'],
+  ['tosa', '土佐高校', '土佐', '高知市', 33.5600, 133.5300, null, '高知', 'zenkoku'],
+  ['tokushimako', '城南高校', '城南', '徳島市', 34.0700, 134.5500, null, '徳島', 'zenkoku'],
+  ['imabari', '今治西高校', '今治西', '今治市', 34.0600, 133.0000, null, '愛媛', 'zenkoku'],
+
+  // ---------- 関西版の学校（全国版にも一部が出る） ----------
+  ['nada', '灘', '灘', '神戸市', 34.7200, 135.2700, 'nada', '兵庫', 'kansai'],
+  ['kitano', '北野高校', '北野', '大阪市', 34.7100, 135.4900, null, '大阪', 'kansai'],
+  ['rakunan', '洛南', '洛南', '京都市', 34.9700, 135.7500, null, '京都', 'kansai'],
+  ['todaiji', '東大寺学園', '東大寺', '奈良市', 34.6900, 135.8300, null, '奈良', 'kansai'],
+  ['zeze', '膳所高校', '膳所', '大津市', 34.9900, 135.8800, null, '滋賀', 'kansai'],
+  ['himejinishi', '姫路西高校', '姫路西', '姫路市', 34.8400, 134.6900, null, '兵庫', 'kansai'],
+  ['chiben', '智辯和歌山', '智辯', '和歌山市', 34.2000, 135.2100, null, '和歌山', 'kansai'],
+  // ---------- 東海版の学校（全国版にも一部が出る） ----------
+  ['tokai', '東海', '東海', '名古屋市', 35.1800, 136.9200, 'tokai', '愛知', 'tokai'],
+  ['gifuko', '岐阜高校', '岐阜', '岐阜市', 35.4300, 136.7800, null, '岐阜', 'tokai'],
+  ['okazaki', '岡崎高校', '岡崎', '岡崎市', 34.9500, 137.1700, null, '愛知', 'tokai'],
+  ['yokkaichi', '四日市高校', '四日市', '四日市市', 34.9700, 136.6200, null, '三重', 'tokai'],
+  ['shizuokako', '静岡高校', '静岡', '静岡市', 34.9800, 138.3900, null, '静岡', 'tokai'],
+  ['hamamatsukita', '浜松北高校', '浜松北', '浜松市', 34.7300, 137.7300, null, '静岡', 'tokai'],
+  // ---------- 九州版の学校（全国版にも一部が出る） ----------
+  ['lasalle', 'ラ・サール', 'ラサール', '鹿児島市', 31.5600, 130.5500, 'lasalle', '鹿児島', 'kyushu'],
+  ['fusetsu', '久留米大附設', '附設', '久留米市', 33.3100, 130.5200, null, '福岡', 'kyushu'],
+  ['shuyukan', '修猷館高校', '修猷館', '福岡市', 33.5800, 130.3600, null, '福岡', 'kyushu'],
+  ['kokura', '小倉高校', '小倉', '北九州市', 33.8700, 130.8800, null, '福岡', 'kyushu'],
+  ['kumamotoko', '熊本高校', '熊本', '熊本市', 32.8000, 130.7100, null, '熊本', 'kyushu'],
+  ['seiun', '青雲', '青雲', '長崎県時津町', 32.8500, 129.9700, null, '長崎', 'kyushu'],
+  ['saganishi', '佐賀西高校', '佐賀西', '佐賀市', 33.2500, 130.3000, null, '佐賀', 'kyushu'],
+  ['uenogaoka', '大分上野丘高校', '上野丘', '大分市', 33.2300, 131.6000, null, '大分', 'kyushu'],
+  ['miyazakinishi', '宮崎西高校', '宮崎西', '宮崎市', 31.9200, 131.4200, null, '宮崎', 'kyushu'],
 ];
+// 全国版：上の「全国版だけの学校」に加えて、東京版・首都圏・地方版から出る学校
+const ZENKOKU_SHARED = ['azabu', 'kaisei', 'hibiya', 'urawa', 'shibumaku',
+  'nada', 'kitano', 'rakunan', 'todaiji', 'zeze', 'himejinishi', 'chiben',
+  'tokai', 'gifuko', 'okazaki', 'yokkaichi', 'shizuokako', 'hamamatsukita',
+  'lasalle', 'fusetsu', 'shuyukan', 'kokura', 'kumamotoko', 'seiun', 'saganishi', 'uenogaoka', 'miyazakinishi'];
 
 const SEASONS = ['春', '夏', '秋', '冬'];
 
@@ -135,7 +221,8 @@ const SEASONS = ['春', '夏', '秋', '冬'];
 // 武将はすべて架空の人物。名前は下の一覧から組み合わせて作る
 const GIRLS_SCHOOLS = ['keijo', 'toyoeiwa', 'futaba', 'jg', 'oin', 'toshimaoka', 'ferris', 'urawaichijo'];
 const BOYS_SCHOOLS = ['azabu', 'kaisei', 'tsukukoma', 'shiba', 'gyosei', 'waseda', 'sugamo', 'rikkyo',
-  'johoku', 'musashi', 'setagaya', 'kogyokusha', 'toho', 'eiko', 'seiko', 'asano', 'kamagaku', 'urawa', 'niiza', 'keiohiyoshi'];
+  'johoku', 'musashi', 'setagaya', 'kogyokusha', 'toho', 'eiko', 'seiko', 'asano', 'kamagaku', 'urawa', 'niiza', 'keiohiyoshi',
+  'nada', 'tokai', 'lasalle', 'hirogaku', 'hakodatelasalle'];
 
 const SURNAMES = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '山本', '中村', '小林', '加藤', '吉田', '山田',
   '佐々木', '山口', '松本', '井上', '木村', '清水', '山崎', '池田', '橋本', '阿部', '石川', '前田', '藤田',
@@ -191,6 +278,45 @@ const SCENARIOS = {
 //   lin = [北端の緯度, 西端の経度, 1度あたりの画素] の地図 ／ min = 城どうしの最小の間隔 ／ scenery = 海・陸・川・地名（art.js）
 const EDITIONS = {
   tokyo: { name: '東京版', mark: '東', desc: '都内の名門がしのぎを削る、はじまりの地', lead: 'azabu' },
+  zenkoku: { name: '全国版', mark: '全', desc: '北は札幌から南は鹿児島まで。各地の名門が覇を競う', lead: 'azabu' },
+};
+
+// ---------- 地図の海岸線（緯度経度。錦絵の地図なので大まかでよい） ----------
+const JAPAN = {
+  hokkaido: [[41.68, 140.72], [41.72, 140.95], [41.8, 141.15], [42.3, 140.95], [42.6, 141.6], [42.3, 142.5], [41.95, 143.25], [42.6, 143.7], [42.88, 144.25], [42.92, 144.55], [43.2, 145.1],
+    [43.35, 145.6], [43.6, 145.25], [44.35, 145.3], [44.0, 144.25], [44.35, 143.35], [44.9, 142.4], [45.45, 141.7], [44.8, 141.75], [43.95, 141.65],
+    [43.2, 141.0], [43.35, 140.45], [42.85, 140.2], [42.6, 139.85], [42.0, 140.1], [41.4, 140.1]],
+  honshu: [[33.95, 130.95], [34.4, 131.4], [34.7, 131.85], [35.2, 132.6], [35.6, 133.05], [35.55, 134.2], [35.65, 135.3], [35.75, 136.0], [36.3, 136.15],
+    [36.6, 136.6], [37.1, 136.7], [37.5, 137.35], [36.8, 137.2], [37.1, 138.2], [37.98, 138.95], [38.9, 139.8], [39.7, 140.0], [40.6, 139.9],
+    [41.25, 140.35], [41.0, 140.75], [41.53, 140.9], [41.4, 141.45], [40.5, 141.55], [39.6, 142.07], [38.9, 141.65], [38.3, 141.1], [37.7, 140.98],
+    [36.8, 140.8], [35.75, 140.85], [35.15, 140.35], [34.9, 139.85], [35.3, 139.75], [35.06, 139.65], [35.12, 139.45], [35.18, 139.15], [34.6, 138.85], [35.05, 138.6], [34.6, 138.2],
+    [34.7, 137.4], [34.55, 136.95], [35.0, 136.85], [34.6, 136.55], [34.25, 136.9], [33.45, 135.75], [33.7, 135.3], [34.25, 135.15], [34.6, 135.4],
+    [34.62, 135.18], [34.72, 134.7], [34.6, 133.9], [34.35, 133.2], [34.35, 132.45], [34.0, 131.95], [34.0, 131.5]],
+  shikoku: [[34.07, 133.0], [34.35, 134.05], [34.2, 134.6], [34.05, 134.65], [33.25, 134.18], [33.5, 133.55], [32.72, 133.0], [33.2, 132.55],
+    [33.35, 132.0], [33.85, 132.7]],
+  kyushu: [[33.95, 130.9], [33.6, 130.35], [33.45, 129.95], [33.35, 129.55], [32.75, 129.85], [32.5, 130.15], [32.1, 130.2], [31.6, 130.25],
+    [31.2, 130.3], [31.0, 130.65], [31.5, 130.6], [31.0, 131.0], [31.4, 131.35], [31.9, 131.45], [32.6, 131.7], [32.95, 132.0], [33.25, 131.65],
+    [33.65, 131.7], [33.6, 131.2]],
+};
+const BIWA = [[35.45, 136.05], [35.3, 136.2], [35.1, 136.05], [35.0, 135.9], [35.2, 135.95], [35.35, 135.98]];
+
+SCENARIOS.zenkoku = {
+  ed: 'zenkoku', name: '全国統一', level: '大長編', desc: '北海道から九州まで65校。地方ごとの名門、九つの家が日本の覇を競う',
+  filter: (row) => row[8] === 'zenkoku' || ZENKOKU_SHARED.includes(row[0]),
+  clans: ['azabu', 'sapporominami', 'sendai2', 'izumigaoka', 'tokai', 'nada', 'hirogaku', 'aiko', 'lasalle'],
+  lin: [45.6, 129.3, 200, 36], min: 66, bounds: [[45.6, 129.3], [31.0, 145.8]],
+  grace: 3, aiIncome: 1,
+  scenery: {
+    lands: Object.values(JAPAN),
+    lakes: [BIWA],
+    labels: [
+      { t: '日 本 海', at: [39.0, 135.5], kind: 'sea' }, { t: '太 平 洋', at: [33.6, 140.0], kind: 'sea' },
+      { t: '瀬戸内海', at: [34.0, 133.2], kind: 'sea' }, { t: '東シナ海', at: [31.6, 129.6], kind: 'sea' },
+      { t: '北 海 道', at: [43.6, 142.9] }, { t: '東 北', at: [39.3, 140.8] }, { t: '関 東', at: [36.2, 139.5] },
+      { t: '中 部', at: [36.0, 137.6] }, { t: '近 畿', at: [34.4, 135.9] }, { t: '中 国', at: [35.1, 132.7] },
+      { t: '四 国', at: [33.4, 133.3] }, { t: '九 州', at: [32.4, 131.0] },
+    ],
+  },
 };
 const edOf = (scKey) => (SCENARIOS[scKey] && SCENARIOS[scKey].ed) || 'tokyo';
 const scenariosOf = (ed) => Object.keys(SCENARIOS).filter((k) => edOf(k) === ed);
@@ -299,6 +425,8 @@ const PERSONAS = {
 const CLAN_PERSONA = {
   kaisei: 'aggressive', tsukukoma: 'cunning', hibiya: 'diplomatic', waseda: 'expansive', nishi: 'cautious', azabu: 'balanced',
   eiko: 'aggressive', urawa: 'expansive', shibumaku: 'cunning',
+  sapporominami: 'cautious', sendai2: 'diplomatic', izumigaoka: 'expansive', tokai: 'aggressive', nada: 'cunning',
+  hirogaku: 'cautious', aiko: 'expansive', lasalle: 'aggressive',
 };
 
 // 難易度
@@ -369,6 +497,14 @@ const SCHOOL_LORE = {
   eiko: { motto: '古都に鍛えし、相模の魂', sight: '松林の丘の学び舎', cry: '鎌倉の意地、ここまでか……' },
   urawa: { motto: '武蔵野を駆けよ、尚文昌武', sight: '欅並木の大校庭', cry: '武蔵野の風は、また吹く……' },
   shibumaku: { motto: '海を越え、自ら調べ自ら考える', sight: '海辺の新都の学び舎', cry: '湾を越えた夢、ここで潰えるとは……' },
+  sapporominami: { motto: '北の大地に、自由の旗', sight: '雪の積もる大講堂', cry: '北の雪は、まだ溶けてはおらぬ……' },
+  sendai2: { motto: '杜の都に、質実の志', sight: '欅並木の学び舎', cry: '杜の都の灯、しばし預ける……' },
+  izumigaoka: { motto: '加賀百万石の誇り', sight: '兼六の庭を望む丘', cry: '百万石の意地、通じなんだか……' },
+  tokai: { motto: '尾張の地より、天下へ', sight: '名古屋城下の大校舎', cry: '尾張の大志、ここで絶えるとは……' },
+  nada: { motto: '精力善用、自他共栄', sight: '六甲を望む学び舎', cry: '上方の最強も、これまでか……見事' },
+  hirogaku: { motto: '瀬戸の凪に、志を磨く', sight: '瀬戸内を望む丘', cry: '瀬戸の凪も、いつかは荒れる……' },
+  aiko: { motto: '愛と光の学び舎', sight: '伊予の海辺の校庭', cry: '海を越えられなんだか……無念' },
+  lasalle: { motto: '薩摩の地に、一筋の光', sight: '桜島を望む寮', cry: '薩摩の意地、見せたつもりだが……' },
 };
 // それ以外の学校：特色ごとの校風（学校ごとに決まった一つを選ぶ）
 const TRAIT_MOTTOS = {

@@ -30,6 +30,22 @@ function crestInner(kind, fg) {
         const a = (k * 2 * Math.PI) / 5;
         return `<circle cx="${(Math.sin(a) * 12).toFixed(1)}" cy="${(-Math.cos(a) * 12).toFixed(1)}" r="6.5" fill="${fg}"/>`;
       }).join('') + `<circle r="4" fill="none" stroke="${fg}" stroke-width="2"/>`;
+    case 'yuki': // 雪輪（六つの枝）
+      return ring + rot(6, 60, 'M-2,0 L-2,-18 L2,-18 L2,0Z M0,-12 L-6,-18 L-4,-20 L0,-15 L4,-20 L6,-18Z') + `<circle r="4" fill="${fg}"/>`;
+    case 'yotsume': // 四つ目
+      return ring + [[-8, -8], [8, -8], [-8, 8], [8, 8]].map(([x, y]) => `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="none" stroke="${fg}" stroke-width="3.5" transform="rotate(45 ${x} ${y})"/>`).join('');
+    case 'mokko': // 木瓜
+      return ring + rot(4, 90, 'M0,-3 C8,-8 12,-18 0,-21 C-12,-18 -8,-8 0,-3Z') + `<circle r="4" fill="${fg}"/>`;
+    case 'aoi': // 三つ葉葵
+      return ring + rot(3, 120, 'M0,-2 C-10,-6 -12,-18 -4,-21 C-1,-22 0,-19 0,-17 C0,-19 1,-22 4,-21 C12,-18 10,-6 0,-2Z') + `<circle r="3" fill="${fg}"/>`;
+    case 'kikkou': // 亀甲に花
+      return ring + `<path d="M0,-20 L17,-10 L17,10 L0,20 L-17,10 L-17,-10Z" fill="none" stroke="${fg}" stroke-width="4"/>` + rot(4, 90, 'M0,0 C4,-4 4,-8 0,-10 C-4,-8 -4,-4 0,0Z');
+    case 'sakura': // 桜
+      return ring + rot(5, 72, 'M0,-3 C6,-8 8,-16 3,-21 L0,-18 L-3,-21 C-8,-16 -6,-8 0,-3Z') + `<circle r="2.5" fill="${fg}"/>`;
+    case 'hoshi': // 三つ星
+      return ring + [[0, -10], [-9, 6], [9, 6]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7" fill="${fg}"/>`).join('') + `<rect x="-20" y="16" width="40" height="4" fill="${fg}"/>`;
+    case 'jyuji': // 丸に十字
+      return ring + `<rect x="-3.5" y="-20" width="7" height="40" fill="${fg}"/><rect x="-20" y="-3.5" width="40" height="7" fill="${fg}"/>`;
     case 'nami': // 丸に波
       return ring + `<path d="M-21,6 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0 M-21,-6 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0 q5,-12 10.5,0" fill="none" stroke="${fg}" stroke-width="4" stroke-linecap="round"/>
         <path d="M-18,14 H18" stroke="${fg}" stroke-width="4" stroke-linecap="round"/>`;

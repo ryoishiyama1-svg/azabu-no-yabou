@@ -3467,7 +3467,7 @@ function endingNumbers() {
 const FINALE_LINES = ['皆の者、よくぞここまでついてきてくれた！', 'この天下、皆で掴んだものだ', '学び舎に、泰平の世を', '先代たちよ、見ておられますか'];
 function showFinale(then) {
   const lord = lordOf(S) || Object.values(S.gens).find((g) => g.lord && g.clan === PLAYER);
-  const clans = Object.keys(CLANS).filter((k) => k !== 'none' && MAP.byId[k]); // このシナリオに出た家だけ
+  const clans = Object.keys(CLANS).filter((k) => k !== 'none' && MAP.byId[k] && MAP.byId[k].clan === k); // このシナリオで家として出た家だけ
   const ring = clans.map((k, i) => {
     const a = (i / clans.length) * Math.PI * 2 - Math.PI / 2;
     const x = 50 + Math.cos(a) * 44, y = 50 + Math.sin(a) * 44;

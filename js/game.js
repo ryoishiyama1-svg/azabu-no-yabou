@@ -47,8 +47,9 @@ function projectWide(lat, lon) {
 }
 
 // 版ごとの地図：緯度経度をそのまま平らに広げる（北端・西端から測る）
-function linProj([latTop, lonLeft, k]) {
-  const cos = Math.cos((latTop * Math.PI) / 180);
+// 4つ目 = 東西の縮みを測る緯度（省略すると北端の緯度）
+function linProj([latTop, lonLeft, k, latMid = latTop]) {
+  const cos = Math.cos((latMid * Math.PI) / 180);
   return (lat, lon) => ({ x: (lon - lonLeft) * k * cos, y: (latTop - lat) * k });
 }
 const projOf = (sc) => (sc.lin ? linProj(sc.lin) : sc.wide ? projectWide : project);
@@ -80,10 +81,13 @@ function buildMap(sc = SCENARIOS.tokyo) {
   }
 
   const PAD = 70;
-  const minX = Math.min(...nodes.map((n) => n.x)), minY = Math.min(...nodes.map((n) => n.y));
+  // bounds（地図に入れたい範囲の北西と南東）があれば、城のない海岸まで地図に入れる
+  const corners = sc.bounds ? sc.bounds.map(([la, lo]) => proj(la, lo)) : [];
+  const xs = [...nodes.map((n) => n.x), ...corners.map((p) => p.x)], ys = [...nodes.map((n) => n.y), ...corners.map((p) => p.y)];
+  const minX = Math.min(...xs), minY = Math.min(...ys);
   nodes.forEach((n) => { n.x = Math.round(n.x - minX + PAD); n.y = Math.round(n.y - minY + PAD); });
-  const width = Math.max(...nodes.map((n) => n.x)) + PAD;
-  const height = Math.max(...nodes.map((n) => n.y)) + PAD;
+  const width = Math.round(Math.max(...xs) - minX + PAD * 2);
+  const height = Math.round(Math.max(...ys) - minY + PAD * 2);
   // 川や湾を描くための「緯度経度 → 地図座標」
   const geo = (lat, lon) => {
     const p = proj(lat, lon);
@@ -301,7 +305,7 @@ function migrate(s) {
 }
 
 function aiClans() {
-  return Object.keys(CLANS).filter((k) => k !== PLAYER && k !== 'none' && MAP.byId[k]);
+  return Object.keys(CLANS).filter((k) => k !== PLAYER && k !== 'none' && MAP.byId[k] && MAP.byId[k].clan === k); // その地図で家として動く家だけ
 }
 
 // ---------- 外交 ----------
