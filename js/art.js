@@ -474,7 +474,66 @@ const RIVERS_WIDE = [
 ];
 const bayPoints = () => (MAP_SCENARIO === 'shutoken' ? BAY_WIDE : BAY);
 
+// ---------- 版ごとの風景 ----------
+// sc.scenery = { lands: 陸の多角形（あれば海の上に陸を描く）, seas: 海, lakes: 湖, rivers: 川, labels: [{ t, at: [緯度, 経度], kind: 'sea' | 'region' }] }
+const sceneryOf = () => (SCENARIOS[MAP_SCENARIO] && SCENARIOS[MAP_SCENARIO].scenery) || null;
+const inPolygon = (pts, x, y) => {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+};
+// 地図の座標 (x, y) が水の上か（木や飾りを置かないため）
+function waterTest() {
+  const sc = sceneryOf();
+  const toPts = (poly) => poly.map(([la, lo]) => MAP.geo(la, lo));
+  if (!sc) { const bay = toPts(bayPoints()); return (x, y) => inPolygon(bay, x, y); }
+  const lands = (sc.lands || []).map(toPts), water = [...(sc.seas || []), ...(sc.lakes || [])].map(toPts);
+  return (x, y) => (lands.length && !lands.some((p) => inPolygon(p, x, y))) || water.some((p) => inPolygon(p, x, y));
+}
+function drawRivers(list) {
+  let s = '';
+  list.forEach((r) => {
+    const pts = r.pts.map(([la, lo]) => MAP.geo(la, lo));
+    const d = smoothPath(pts);
+    s += `<path class="river" d="${d}"/><path class="river-hi" d="${d}"/>`;
+    const p = pts[r.label], q = pts[r.label + 1];
+    if (!p || !q) return;
+    const ang = (Math.atan2(q.y - p.y, q.x - p.x) * 180) / Math.PI;
+    const a = ang > 90 || ang < -90 ? ang + 180 : ang;
+    s += `<text class="map-label river-name" transform="translate(${((p.x + q.x) / 2).toFixed(0)},${((p.y + q.y) / 2 - 8).toFixed(0)}) rotate(${a.toFixed(0)})">${r.name}</text>`;
+  });
+  return s;
+}
+function editionScenery(sc) {
+  const g = MAP.geo, W = MAP.width, H = MAP.height;
+  const poly = (pts) => pathFrom(pts.map(([la, lo]) => g(la, lo)), true);
+  let s = '';
+  if (sc.lands) {
+    s += `<rect class="bay" width="${W}" height="${H}"/><rect class="bay-waves" width="${W}" height="${H}"/>`;
+    sc.lands.forEach((l) => { s += `<path class="land" d="${poly(l)}"/>`; });
+  }
+  (sc.seas || []).forEach((p) => { s += `<path class="bay" d="${poly(p)}"/><path class="bay-waves" d="${poly(p)}"/>`; });
+  (sc.lakes || []).forEach((p) => { s += `<path class="bay lake" d="${poly(p)}"/>`; });
+  s += drawRivers(sc.rivers || []);
+  s += seasonTrees();
+  const clouds = [[W * 0.02, H * 0.82, 260], [W * 0.55, H * 0.03, 300], [W * 0.78, H * 0.22, 220], [W * 0.25, H * 0.06, 200]];
+  clouds.forEach(([x, y, w]) => {
+    s += `<g class="kasumi" transform="translate(${x.toFixed(0)},${y.toFixed(0)}) scale(${(w / 100).toFixed(2)})">
+      <path transform="translate(0,34)" d="M0,0 Q-6,-14 10,-16 Q14,-28 32,-24 Q44,-34 60,-24 Q80,-28 84,-14 Q100,-12 96,0 Z"/></g>`;
+  });
+  (sc.labels || []).forEach((l) => {
+    const p = g(l.at[0], l.at[1]);
+    s += `<text class="map-label ${l.kind || 'region'}" x="${p.x.toFixed(0)}" y="${p.y.toFixed(0)}">${l.t}</text>`;
+  });
+  return s;
+}
+
 function sceneryMarkup() {
+  const esc = sceneryOf();
+  if (esc) return editionScenery(esc);
   const g = MAP.geo;
   const W = MAP.width, H = MAP.height;
   const wide = MAP_SCENARIO === 'shutoken';
@@ -721,15 +780,7 @@ function seasonArt(kind) {
 // ---------- 地図の季節の木（春：桜、夏：青葉、秋：紅葉、冬：雪） ----------
 // 色はCSSで季節ごとに変える。城や湾に重ならない場所に、決まった配置で植える
 function seasonTrees() {
-  const bay = bayPoints().map(([la, lo]) => MAP.geo(la, lo));
-  const inBay = (x, y) => {
-    let inside = false;
-    for (let i = 0, j = bay.length - 1; i < bay.length; j = i++) {
-      const a = bay[i], b = bay[j];
-      if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-    }
-    return inside;
-  };
+  const inBay = waterTest();
   const r = seeded(MAP.nodes.length * 13 + 5);
   const trees = [];
   MAP.nodes.forEach((n) => {

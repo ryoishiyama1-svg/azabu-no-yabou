@@ -267,30 +267,51 @@ $('btn-records').onclick = () => { Sound.unlock(); Sound.tap(); showRecords(); }
 const TUT_KEY = 'azabu-tut-done';
 function tutDone() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch (e) { return false; } }
 
+// シナリオの顔ぶれ：学校の数と、家として動く家
+function scenarioClans(scKey) {
+  const sc = SCENARIOS[scKey];
+  return Object.keys(CLANS).filter((k) => k !== 'none' && (!sc.clans || sc.clans.includes(k)) && SCHOOL_ROWS.some((r) => r[0] === k && r[6] === k && sc.filter(r)));
+}
+const scenarioSize = (scKey) => SCHOOL_ROWS.filter(SCENARIOS[scKey].filter).length;
+
 function showSetup() {
   const rec = loadRecords();
-  const st = { diff: 'normal', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '' };
-  const pickList = (attr, obj, cur, label) => `<div class="diff-list">${Object.entries(obj).map(([k, d]) =>
-    `<button data-${attr}="${k}" class="${k === cur ? 'on' : ''}"><b>${d.name}</b>${label(d)}<small>${d.desc}</small></button>`).join('')}</div>`;
+  const st = { diff: 'normal', ed: 'tokyo', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '' };
+  const pickList = (attr, keys, obj, cur, label) => `<div class="diff-list">${keys.map((k) => { const d = obj[k];
+    return `<button data-${attr}="${k}" class="${k === cur ? 'on' : ''}"><b>${d.name}</b>${label(d, k)}<small>${d.desc}</small></button>`; }).join('')}</div>`;
+  // 版の札：大きな一文字と、学校・家の数
+  const edCards = () => `<div class="ed-pick">${Object.entries(EDITIONS).map(([k, e]) => {
+    const scs = scenariosOf(k);
+    const big = scs.reduce((a, s) => (scenarioSize(s) > scenarioSize(a) ? s : a), scs[0]);
+    const lead = CLANS[e.lead];
+    return `<button data-ed="${k}" class="${k === st.ed ? 'on' : ''}" style="--c:${lead.color}">
+      <span class="ed-mark">${e.mark}</span><b>${e.name}</b><small>${e.desc}</small>
+      <em>最大${scenarioSize(big)}校・${scenarioClans(big).length}家${scs.length > 1 ? `・${scs.length}つの戦い` : ''}</em></button>`;
+  }).join('')}</div>`;
+  const scList = () => pickList('sc', scenariosOf(st.ed), SCENARIOS, st.scenario, (d, k) => `<span class="lv">${d.level}</span><span class="sc-size">${scenarioSize(k)}校・${scenarioClans(k).length}家</span>`);
   const clanList = () => {
-    const ids = Object.keys(CLANS).filter((k) => k !== 'none' && SCHOOL_ROWS.some((r) => r[0] === k && SCENARIOS[st.scenario].filter(r)));
-    return `<div class="clan-pick">${ids.map((k) => {
-      const locked = !rec.unlocked.includes(k) && rec.unlocked.length <= 1; // 一度でも天下統一していれば、あとから増えた家も遊べる
+    const lead = EDITIONS[st.ed].lead;
+    return `<div class="clan-pick">${scenarioClans(st.scenario).map((k) => {
+      // 版の主役の家はいつでも。ほかの家は一度でも天下統一すると遊べる
+      const locked = k !== lead && !rec.unlocked.includes(k) && rec.unlocked.length <= 1;
       return `<button data-clan="${k}" class="${k === st.clan ? 'on' : ''}" ${locked ? 'disabled' : ''}>
         ${crestBadge(k, 36)}<b>${CLANS[k].name.replace('家', '')}</b>
         <small>${locked ? '🔒 天下統一で解放' : '★'.repeat(CLANS[k].stars) + '☆'.repeat(5 - CLANS[k].stars)}</small></button>`;
     }).join('')}</div><p class="hint" id="clan-note">${CLANS[st.clan].note}</p>`;
   };
-  const defaultName = () => `${CLANS[st.clan].name.replace('家', '')} 一郎`;
+  const defaultName = () => `${CLANS[st.clan].name.replace('家', '').replace('・', '')} 一郎`;
+  const step = (n, t) => `<h3 class="setup-h"><span>${n}</span>${t}</h3>`;
   openModal(`<h2>旗 揚 げ</h2>
-    <h3>シナリオ</h3>
-    ${pickList('sc', SCENARIOS, st.scenario, (d) => `<span class="lv">${d.level}</span>`)}
-    <h3>率いる家</h3>
+    ${step('一', '版を選ぶ')}
+    <div id="ed-box">${edCards()}</div>
+    ${step('二', '戦いを選ぶ')}
+    <div id="sc-box">${scList()}</div>
+    ${step('三', '率いる家')}
     <div id="clan-box">${clanList()}</div>
-    <h3 id="name-head">当主の名前</h3>
+    ${step('四', '当主の名前')}
     <input class="name-input" id="lord-name" maxlength="10" value="${defaultName()}" autocomplete="off">
-    <h3>難易度</h3>
-    ${pickList('diff', DIFFICULTY, st.diff, () => '')}
+    ${step('五', '難易度')}
+    ${pickList('diff', Object.keys(DIFFICULTY), DIFFICULTY, st.diff, () => '')}
     <label class="check-row"><input type="checkbox" id="tut" ${tutDone() ? '' : 'checked'}> 軍師の手ほどき（チュートリアル）を受ける</label>
     <button class="btn red" id="setup-go">出 陣</button>
     <button class="btn plain" data-close>やめる</button>`);
@@ -308,13 +329,28 @@ function showSetup() {
     if (wasDefault) input.value = defaultName();
     $('clan-note').textContent = CLANS[v].note;
   });
-  bindPick('sc', (v) => {
+  // シナリオを変えたら、その地図にいない家は選べないので、版の主役の家に戻す
+  const setScenarioPick = (v) => {
+    const input = $('lord-name');
+    const wasDefault = input.value === defaultName();
     st.scenario = v;
-    // シナリオにいない家は選べないので、麻布家に戻す
-    if (!SCHOOL_ROWS.some((r) => r[0] === st.clan && SCENARIOS[v].filter(r))) st.clan = 'azabu';
+    if (!scenarioClans(v).includes(st.clan)) st.clan = EDITIONS[st.ed].lead;
+    if (wasDefault) input.value = defaultName();
     $('clan-box').innerHTML = clanList();
     bindClans();
+  };
+  const bindScenarios = () => bindPick('sc', setScenarioPick);
+  bindPick('ed', (v) => {
+    st.ed = v;
+    const scs = scenariosOf(v);
+    // 版の中で、いちばん大きな戦いを最初に選んでおく（東京版は、はじめての人には「都心の陣」）
+    const first = v === 'tokyo' ? (tutDone() ? 'tokyo' : 'toshin') : scs[scs.length - 1];
+    st.scenario = first;
+    $('sc-box').innerHTML = scList();
+    bindScenarios();
+    setScenarioPick(first);
   });
+  bindScenarios();
   bindClans();
   bindPick('diff', (v) => { st.diff = v; });
   $('setup-go').onclick = () => {
@@ -539,6 +575,8 @@ function el(tag, attrs, parent) {
 let CELLS_SC = null;
 function drawMap() {
   if (CELLS_SC !== MAP_SCENARIO) { CELLS = buildCells(); CELLS_SC = MAP_SCENARIO; }
+  const scn = SCENARIOS[MAP_SCENARIO].scenery;
+  const lands = scn && scn.lands; // 島の地図：領地の色を陸だけに塗る
   svg.setAttribute('viewBox', `0 0 ${MAP.width} ${MAP.height}`);
   svg.innerHTML = `<defs>
       <linearGradient id="mtn" x1="0" y1="0" x2="0" y2="1">
@@ -553,9 +591,10 @@ function drawMap() {
       <pattern id="kinpaku" width="14" height="14" patternUnits="userSpaceOnUse">
         <rect width="14" height="14" fill="#e3b94e"/><rect width="7" height="7" fill="#ecc660"/><rect x="7" y="7" width="7" height="7" fill="#d9ad3f"/>
       </pattern>
+      ${lands ? `<clipPath id="landclip">${lands.map((l) => `<path d="${pathFrom(l.map(([la, lo]) => MAP.geo(la, lo)), true)}"/>`).join('')}</clipPath>` : ''}
     </defs>
     <g>${sceneryMarkup()}</g>
-    <g id="territory">${MAP.nodes.map((n) => `<path class="cell" data-id="${n.id}" d="${CELLS[n.id]}"/>`).join('')}</g>
+    <g id="territory" ${lands ? 'clip-path="url(#landclip)"' : ''}>${MAP.nodes.map((n) => `<path class="cell" data-id="${n.id}" d="${CELLS[n.id]}"/>`).join('')}</g>
     <g id="roads"></g>
     <g id="castles"></g>
     <g id="world-fx"></g>`;
@@ -3512,15 +3551,20 @@ function achievementToast(list) {
 function showRecords() {
   const rec = loadRecords();
   const got = ACHIEVEMENTS.filter((a) => rec.ach[a.id]).length;
-  const best = Object.entries(SCENARIOS).map(([sk, sc]) => {
-    const cells = Object.entries(DIFFICULTY).map(([dk, d]) => {
+  // 版ごとにまとめる：最短記録の表に版の見出し、家ごとの勝利も版ごとに
+  const best = Object.entries(EDITIONS).map(([ek, e]) => `<tr class="ed-row"><th colspan="${Object.keys(DIFFICULTY).length + 1}">${e.name}</th></tr>` + scenariosOf(ek).map((sk) => {
+    const cells = Object.entries(DIFFICULTY).map(([dk]) => {
       const t = rec.best[`${sk}/${dk}`];
       return `<td>${t ? `${t}季` : '―'}</td>`;
     }).join('');
-    return `<tr><th>${sc.name}</th>${cells}</tr>`;
+    return `<tr><th>${SCENARIOS[sk].name}</th>${cells}</tr>`;
+  }).join('')).join('');
+  const seen = new Set();
+  const clans = Object.entries(EDITIONS).map(([ek, e]) => {
+    const ks = [...new Set(scenariosOf(ek).flatMap(scenarioClans))].filter((k) => !seen.has(k));
+    ks.forEach((k) => seen.add(k));
+    return ks.length ? `<p class="cw-ed">${e.name}</p><div class="clan-wins">${ks.map((k) => `<div class="cw ${rec.clanWins[k] ? 'won' : ''}" style="--c:${CLANS[k].color}">${crestBadge(k, 34)}<b>${CLANS[k].name.replace('家', '')}</b><span>${rec.clanWins[k] || 0}勝</span></div>`).join('')}</div>` : '';
   }).join('');
-  const clans = Object.keys(CLANS).filter((k) => k !== 'none')
-    .map((k) => `<div class="cw ${rec.clanWins[k] ? 'won' : ''}" style="--c:${CLANS[k].color}">${crestBadge(k, 34)}<b>${CLANS[k].name.replace('家', '')}</b><span>${rec.clanWins[k] || 0}勝</span></div>`).join('');
   openModal(`<h2>戦績・実績</h2>
     <div class="stats"><div class="stat"><span class="n">${rec.wins}</span><span class="l">天下統一</span></div>
       <div class="stat"><span class="n">${rec.plays}</span><span class="l">遊んだ回数</span></div>
@@ -3528,7 +3572,7 @@ function showRecords() {
     <h3>最短の天下統一</h3>
     <table class="best"><tr><th></th>${Object.values(DIFFICULTY).map((d) => `<th>${d.name}</th>`).join('')}</tr>${best}</table>
     <h3>家ごとの勝利</h3>
-    <div class="clan-wins">${clans}</div>
+    ${clans}
     <p class="hint">${rec.unlocked.length > 1 ? '🔓 すべての家で遊べます' : '🔒 一度天下統一すると、他の家でも遊べるようになります'}</p>
     <h3>実績の印</h3>
     <div class="ach-meter"><i style="width:${Math.round((got / ACHIEVEMENTS.length) * 100)}%"></i><span>${got} / ${ACHIEVEMENTS.length}</span></div>

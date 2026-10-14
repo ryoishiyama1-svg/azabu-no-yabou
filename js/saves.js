@@ -34,7 +34,7 @@ function slotSummary(n) {
   const lord = Object.values(s.gens || {}).find((g) => g.lord && g.clan === clan);
   return {
     clan, total, owned, turn: s.turn, result: s.result,
-    scenario: (SCENARIOS[s.scenario] || SCENARIOS.tokyo).name,
+    scenario: `${EDITIONS[edOf(s.scenario)].name}・${(SCENARIOS[s.scenario] || SCENARIOS.tokyo).name}`,
     diff: (DIFFICULTY[s.diff] || DIFFICULTY.normal).name,
     lord: lord ? lord.name : '',
     generation: (s.lords || []).length || 1,

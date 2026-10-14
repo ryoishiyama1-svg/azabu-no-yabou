@@ -179,9 +179,21 @@ const SCENARIOS = {
   // wide = 東京の外を縮めて描く地図（game.js の projectWide）
   shutoken: {
     name: '首都圏大戦', level: '大長編', desc: '神奈川・埼玉・千葉を加えた104校。九つの家が関東の覇を競う',
-    filter: () => true, grace: 3, aiIncome: 1, wide: true,
+    filter: (row) => !row[8], grace: 3, aiIncome: 1, wide: true,
   },
 };
+// 東京版のシナリオは、学校の行の9列目（版）が空のものだけを使う
+['toshin', 'ku23', 'tokyo', 'shutoken'].forEach((k) => { SCENARIOS[k].ed = 'tokyo'; });
+
+// ---------- 版：地図・学校・家のまとまり ----------
+// lead = その版で最初から遊べる家（初めて遊ぶ人はこの家から）
+// シナリオの項目：ed（どの版か）・filter（どの学校を出すか）・clans（その地図で家として動く家。ほかの家の学校は独立校）
+//   lin = [北端の緯度, 西端の経度, 1度あたりの画素] の地図 ／ min = 城どうしの最小の間隔 ／ scenery = 海・陸・川・地名（art.js）
+const EDITIONS = {
+  tokyo: { name: '東京版', mark: '東', desc: '都内の名門がしのぎを削る、はじまりの地', lead: 'azabu' },
+};
+const edOf = (scKey) => (SCENARIOS[scKey] && SCENARIOS[scKey].ed) || 'tokyo';
+const scenariosOf = (ed) => Object.keys(SCENARIOS).filter((k) => edOf(k) === ed);
 
 // 家訓：当主のいちばん高い能力で決まり、その当主の代のあいだ効果がある
 const KAKUN = {

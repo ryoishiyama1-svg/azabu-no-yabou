@@ -1999,3 +1999,28 @@ i.down { color: #b8262f; }
 .gl-reward b { font-size: 13.5px; }
 .gl-next { margin: 10px 0 0; font-size: 12.5px; color: #f3d27a; animation: kime-bg 0.4s ease-out 1.4s both; }
 .goal .kime-tap { animation-delay: 1.7s; }
+
+/* ---------- 版ごとの地図：陸と湖 ---------- */
+#mapwrap { --land: #f2e5c8; }
+#mapwrap[data-season="0"] { --land: #f6e8dc; }
+#mapwrap[data-season="1"] { --land: #e8ecd2; }
+#mapwrap[data-season="2"] { --land: #f2deba; }
+#mapwrap[data-season="3"] { --land: #eceeec; }
+#map .land { fill: var(--land); stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; transition: fill 1.2s; }
+#map .lake { stroke: var(--ink); stroke-width: 2; }
+
+/* ---------- 旗揚げ：版を選ぶ ---------- */
+.setup-h { display: flex; align-items: center; gap: 8px; }
+.setup-h span { display: inline-grid; place-items: center; width: 24px; height: 24px; font-family: var(--brush); font-weight: 400; font-size: 15px; color: var(--paper); background: var(--ink); }
+.ed-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ed-pick button { --c: var(--red); display: grid; grid-template-columns: 40px 1fr; grid-template-rows: auto auto auto; column-gap: 8px; align-items: center; padding: 8px;
+  text-align: left; cursor: pointer; background: #fffaf0; border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font-family: var(--gothic); color: var(--ink); }
+.ed-pick button.on { box-shadow: 3px 3px 0 var(--c); outline: 3px solid var(--c); outline-offset: -1px; background: #fbf3dc; }
+.ed-pick .ed-mark { grid-row: span 3; display: grid; place-items: center; height: 100%; min-height: 48px; font-family: var(--brush); font-size: 26px; color: var(--paper); background: var(--c); }
+.ed-pick b { font-family: var(--mincho); font-size: 16px; }
+.ed-pick small { font-size: 10.5px; color: var(--muted); line-height: 1.35; }
+.ed-pick em { font-style: normal; font-size: 10.5px; font-weight: 800; color: var(--c); }
+.diff-list .sc-size { margin-left: 6px; font-size: 11px; font-weight: 800; color: var(--muted); }
+table.best tr.ed-row th { padding-top: 8px; text-align: left; font-family: var(--brush); font-weight: 400; font-size: 14px; color: var(--red); background: none; }
+.cw-ed { margin: 8px 0 4px; font-family: var(--brush); font-size: 14px; color: var(--red); }
+.diff-list button small { display: block; margin-top: 2px; }

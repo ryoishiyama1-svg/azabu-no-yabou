@@ -46,13 +46,23 @@ function projectWide(lat, lon) {
   return { x, y };
 }
 
-function buildMap(filter = SCENARIOS.tokyo.filter, proj = project) {
-  const nodes = SCHOOL_ROWS.filter(filter).map(([id, name, short, ward, lat, lon, clan, pref]) => ({
-    id, name, short, ward, pref: pref || null, clan: clan || 'none', ...proj(lat, lon),
+// 版ごとの地図：緯度経度をそのまま平らに広げる（北端・西端から測る）
+function linProj([latTop, lonLeft, k]) {
+  const cos = Math.cos((latTop * Math.PI) / 180);
+  return (lat, lon) => ({ x: (lon - lonLeft) * k * cos, y: (latTop - lat) * k });
+}
+const projOf = (sc) => (sc.lin ? linProj(sc.lin) : sc.wide ? projectWide : project);
+
+function buildMap(sc = SCENARIOS.tokyo) {
+  const proj = projOf(sc);
+  // その地図で動かない家の本拠は、独立校として出す
+  const active = (clan) => clan && (!sc.clans || sc.clans.includes(clan));
+  const nodes = SCHOOL_ROWS.filter(sc.filter).map(([id, name, short, ward, lat, lon, clan, pref]) => ({
+    id, name, short, ward, pref: pref || null, clan: active(clan) ? clan : 'none', ...proj(lat, lon),
   }));
 
   // 近すぎる城を押し広げる
-  const MIN = 76;
+  const MIN = sc.min || 76;
   for (let it = 0; it < 300; it++) {
     for (let i = 0; i < nodes.length; i++) {
       for (let j = i + 1; j < nodes.length; j++) {
@@ -109,7 +119,7 @@ let MAP_SCENARIO = 'tokyo';
 function setScenario(id) {
   const key = SCENARIOS[id] ? id : 'tokyo';
   if (key !== MAP_SCENARIO) {
-    MAP = buildMap(SCENARIOS[key].filter, SCENARIOS[key].wide ? projectWide : project);
+    MAP = buildMap(SCENARIOS[key]);
     MAP_SCENARIO = key;
   }
   return key;
@@ -190,7 +200,8 @@ function autoBuild(s, clan, id, reserve) {
 // ---------- ゲームの状態 ----------
 function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu' } = {}) {
   scenario = setScenario(scenario);
-  setPlayer(MAP.byId[clan] ? clan : 'azabu');
+  const lead = EDITIONS[edOf(scenario)].lead;
+  setPlayer(MAP.byId[clan] && MAP.byId[clan].clan === clan ? clan : lead);
   const D = DIFFICULTY[diff];
   const s = {
     turn: 0, diff, scenario, player: PLAYER, gold: {}, castles: {}, gens: {}, genSeq: 0, usedNames: {},
@@ -216,8 +227,8 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
       const lord = makeGeneral(s, n.id, PLAYER, { strong: true, title: '当主', grade: 2 });
       Object.assign(lord, { name: lordName, str: 72, pol: 68, cha: 84, int: 70, skill: 'jinbou', lord: true });
       // 家臣は1・2年生中心（最初の春にいきなり大勢卒業しないように）
-      // 麻布家以外は地図の真ん中で四方から攻められやすいので、家臣を1人多くする
-      const grades = PLAYER === 'azabu' ? [1, 2, 1, 2] : [1, 2, 1, 2, 1];
+      // 版の主役の家（東京版なら麻布家）以外は攻められやすい位置にあることが多いので、家臣を1人多くする
+      const grades = PLAYER === lead ? [1, 2, 1, 2] : [1, 2, 1, 2, 1];
       grades.forEach((grade, i) => {
         const g = makeGeneral(s, n.id, PLAYER, { strong: true, grade, title: i === 0 ? '生徒会長' : undefined });
         g.loyal = randInt(80, 92); // 旗揚げからの家臣は忠誠が厚い
@@ -234,7 +245,7 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
   Object.keys(CLANS).forEach((k) => {
     s.gold[k] = k === PLAYER ? D.gold : Math.round(RULES.aiStartGold * D.aiGold * (sc.aiGold || 1));
   });
-  if (PLAYER !== 'azabu') {
+  if (PLAYER !== lead) {
     s.gold[PLAYER] += 800;                 // 旗揚げの軍資金
     s.castles[PLAYER].troops += 800;
   }
