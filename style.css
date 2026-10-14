@@ -2267,3 +2267,30 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
   transform: rotate(-12deg) scale(2.4); opacity: 0; transition: transform 0.25s cubic-bezier(0.2, 1.8, 0.4, 1), opacity 0.15s; pointer-events: none; }
 .hy-card.adopted .hy-stamp { transform: rotate(-12deg) scale(1); opacity: 0.92; }
 .hy-close { margin-top: 10px; }
+
+/* ---------- 地図の空：天気・季節の光・墨のにじみ ---------- */
+.map-sky { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.map-sky i { position: absolute; inset: 0; }
+/* 季節の光：春は朝の金、夏は昼（なし）、秋は夕焼け、冬は青い宵 */
+.map-sky .sky-tint { mix-blend-mode: multiply; transition: background 1.5s; }
+.map-sky[data-season="0"] .sky-tint { background: linear-gradient(180deg, rgba(255, 214, 150, 0.22), transparent 55%); }
+.map-sky[data-season="2"] .sky-tint { background: linear-gradient(180deg, rgba(232, 120, 60, 0.28), rgba(200, 80, 40, 0.06) 60%, transparent); }
+.map-sky[data-season="3"] .sky-tint { background: linear-gradient(180deg, rgba(60, 80, 130, 0.28), rgba(60, 80, 130, 0.1)); }
+/* 墨のにじみ：四隅を墨で暈す */
+.map-sky .sky-ink { background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 62%, rgba(28, 26, 23, 0.22) 85%, rgba(28, 26, 23, 0.42) 100%); }
+/* 雨：斜めの細い線が降る */
+.map-sky[data-wx="rain"] .sky-wx { background: repeating-linear-gradient(105deg, transparent 0 18px, rgba(70, 90, 120, 0.28) 18px 19.5px); background-size: 200px 200px; animation: skyRain 0.45s linear infinite; }
+.map-sky[data-wx="rain"] .sky-wx2 { background: rgba(60, 70, 90, 0.12); }
+@keyframes skyRain { to { background-position: -40px 200px; } }
+/* 雪：白い粒が舞い落ちる（二枚重ねで奥行き） */
+.map-sky[data-wx="snow"] .sky-wx { background-image: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0 2.2px, transparent 3px); background-size: 46px 46px; animation: skySnow 6s linear infinite; }
+.map-sky[data-wx="snow"] .sky-wx2 { background-image: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0 1.4px, transparent 2px); background-size: 27px 31px; animation: skySnow 9s linear infinite reverse; opacity: 0.8; }
+@keyframes skySnow { from { background-position: 0 0; } to { background-position: 40px 300px; } }
+/* 霧：白い帯がゆっくり流れる */
+.map-sky[data-wx="fog"] .sky-wx { background: linear-gradient(180deg, transparent 10%, rgba(240, 240, 236, 0.55) 25%, transparent 40%, rgba(240, 240, 236, 0.45) 62%, transparent 78%); background-size: 100% 200%; animation: skyFog 14s ease-in-out infinite alternate; }
+.map-sky[data-wx="fog"] .sky-wx2 { background: rgba(236, 236, 230, 0.22); }
+@keyframes skyFog { from { background-position: 0 0; } to { background-position: 0 100%; } }
+/* 強風：風の筋が横に走る */
+.map-sky[data-wx="wind"] .sky-wx { background: repeating-linear-gradient(175deg, transparent 0 60px, rgba(255, 255, 255, 0.35) 60px 61.5px, transparent 61.5px 140px); background-size: 400px 140px; animation: skyWind 1.4s linear infinite; }
+@keyframes skyWind { to { background-position: -400px 20px; } }
+@media (prefers-reduced-motion: reduce) { .map-sky .sky-wx, .map-sky .sky-wx2 { animation: none !important; } }

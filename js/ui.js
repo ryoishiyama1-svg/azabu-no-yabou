@@ -1082,6 +1082,7 @@ function render() {
   $('btn-sound').textContent = Sound.on ? '♪' : '✕';
   petals($('map-petals'), S.turn % 4, 12);
   mapwrap.dataset.season = S.turn % 4; // 地図の季節の色と飾り
+  const sky = $('map-sky'); if (sky) { sky.dataset.season = S.turn % 4; sky.dataset.wx = S.weather || 'sun'; } // 地図の空：天気と季節の光
 
   document.querySelectorAll('#territory .cell').forEach((p) => {
     const owner = S.castles[p.dataset.id].owner;
