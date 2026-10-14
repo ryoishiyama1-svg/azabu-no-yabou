@@ -32,7 +32,26 @@ function portraitOptions(g) {
     clan,
     bg: PORTRAIT_BG[rr(3)],
     item: g.treasure && TREASURES[g.treasure] ? TREASURES[g.treasure].kind : null,
+    ...portraitExtras(g, female, rr),
   };
+}
+// あとから増えた姿（坊主・髷・ツインテール・姫カット・髪の色、戦歴の眼帯と傷、簪、季節の装い）
+// これまでの乱数のあとで引くので、今までの武将の髪型や装束は変わらない
+function portraitExtras(g, female, rr) {
+  const v = rr(10), tone = rr(5);
+  const o = {};
+  if (female) { if (v <= 1) o.hair = 'twin'; else if (v === 2) o.hair = 'hime'; }
+  else if (v === 0) o.hair = 'bozu'; else if (v === 1) o.hair = 'mage';
+  if (tone === 0) o.hairColor = '#3b2a22';
+  const r = g.rec || {};
+  if (!female && (r.dw || 0) >= 3) o.eyepatch = true;
+  if (!female && (r.w || 0) + (r.l || 0) >= 8) o.scar = true;
+  if (female && (g.cha || 0) >= 72) o.kanzashi = true;
+  // 季節の装い：夏は夏服、冬は家の色の襟巻（遊んでいる途中の季節で）
+  const season = typeof S !== 'undefined' && S && typeof S.turn === 'number' ? S.turn % 4 : 0;
+  if (season === 1) o.summer = true;
+  if (season === 3) o.scarf = true;
+  return o;
 }
 
 function portrait(g, size = 48, mood = null, dir = 'L') {

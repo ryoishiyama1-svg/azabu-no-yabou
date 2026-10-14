@@ -72,6 +72,13 @@ const UKIYO = (() => {
     long: `<path d="M104,118 Q80,200 96,272 L206,272 Q222,200 200,116Z" fill="${INK}"/>`,
     pony: `<path d="M196,118 Q244,106 264,152 Q272,204 250,244 Q244,192 222,162 Q210,148 196,140Z" fill="${INK}"/>`,
     bob: `<path d="M100,118 Q86,182 108,216 L196,216 Q214,182 200,116Z" fill="${INK}"/>`,
+    // ツインテール：左右に結った二房
+    twin: `<path d="M108,128 Q68,170 80,252 Q96,212 112,172Z" fill="${INK}"/><path d="M198,126 Q240,168 228,250 Q212,210 196,170Z" fill="${INK}"/>
+      <circle cx="106" cy="132" r="6" fill="${SHU}" stroke="${INK}" stroke-width="2"/><circle cx="200" cy="130" r="6" fill="${SHU}" stroke="${INK}" stroke-width="2"/>`,
+    // 姫カット：長い後ろ髪
+    hime: `<path d="M104,118 Q80,200 96,272 L206,272 Q222,200 200,116Z" fill="${INK}"/>`,
+    // 髷：頭の後ろに結った髷と、朱の元結
+    mage: `<ellipse cx="200" cy="96" rx="17" ry="11" fill="${INK}"/><path d="M186,102 L212,90" stroke="${SHU}" stroke-width="3.5"/>`,
   };
   const frontHair = {
     spiky: `<path d="M98,152 Q84,100 128,84 Q130,72 144,74 Q152,62 166,70 Q182,66 186,82 Q214,100 210,152 Q206,124 190,114 Q160,102 122,116 Q106,126 98,152Z" fill="${INK}"/>
@@ -80,14 +87,53 @@ const UKIYO = (() => {
       <path d="M128,118 L146,86" stroke="#4a4040" stroke-width="1.5"/><path d="M192,146 L200,180 L190,182Z" fill="${INK}"/>`,
     bangs: `<path d="M100,152 Q92,98 150,88 Q208,94 208,150 Q200,122 186,114 L180,132 L170,114 L160,132 L150,114 L140,132 L130,114 L122,130 Q106,132 100,152Z" fill="${INK}"/>
       <path d="M196,140 L204,198 L192,196Z" fill="${INK}"/>`,
+    // 坊主：短く刈った頭
+    bozu: `<path d="M102,146 Q96,100 150,94 Q204,100 204,146 Q196,118 150,112 Q114,116 102,146Z" fill="${INK}" opacity="0.82"/>
+      <path d="M192,146 L198,168 L190,170Z" fill="${INK}" opacity="0.82"/>`,
+    // 姫カット：まっすぐな前髪と、頬の横で切りそろえた髪
+    hime: `<path d="M100,152 Q92,98 150,88 Q208,94 208,150 L208,138 L100,140Z" fill="${INK}"/>
+      <path d="M104,140 L104,214 L118,214 L116,140Z M192,140 L200,212 L188,212 L184,140Z" fill="${INK}"/>`,
   };
+  frontHair.mage = frontHair.neat;
+  frontHair.twin = frontHair.bangs;
+
+  // ---------- 身につけるもの（戦歴・季節で変わる） ----------
+  // 眼帯：一騎打ちを重ねた猛者（奥の目を覆う）／傷：歴戦の頬の傷／簪：魅力の高い女子／襟巻：冬
+  function marks(o) {
+    let s = '';
+    if (o.scar) s += `<path d="M162,186 l16,11 M166,195 l6,-7 M172,198 l6,-7" stroke="#b5463a" stroke-width="2.6" stroke-linecap="round"/>`;
+    if (o.eyepatch) s += `<path d="M108,160 L100,148 M132,162 L198,138" stroke="${INK}" stroke-width="2.6"/><ellipse cx="121" cy="169" rx="12" ry="9.5" fill="${INK}"/>`;
+    if (o.kanzashi) {
+      s += `<g transform="translate(196,110)"><path d="M0,0 L-28,24" stroke="${GOLD}" stroke-width="3.2" stroke-linecap="round"/>
+        ${[0, 72, 144, 216, 288].map((a) => `<circle cx="${(Math.cos((a * Math.PI) / 180) * 6).toFixed(1)}" cy="${(Math.sin((a * Math.PI) / 180) * 6).toFixed(1)}" r="4.2" fill="${SHU}" stroke="${INK}" stroke-width="1.2"/>`).join('')}
+        <circle r="2.6" fill="${GOLD}"/><path d="M-2,4 L-4,20 M3,5 L4,18" stroke="${GOLD}" stroke-width="1.6"/></g>`;
+    }
+    return s;
+  }
+  function scarf(o) {
+    if (!o.scarf) return '';
+    return `<path d="M124,236 Q156,254 188,232 L192,254 Q156,274 120,256Z" fill="${o.color}" stroke="${INK}" stroke-width="3"/>
+      <path d="M170,258 L178,304 L160,306 L156,264Z" fill="${o.color}" stroke="${INK}" stroke-width="3"/>
+      <path d="M130,248 Q156,262 184,246 M162,286 L176,284" stroke="${KINARI}" stroke-width="2.4" fill="none" opacity="0.8"/>`;
+  }
 
   function body(o) {
     let s = '';
-    if (o.garment === 'sailor') {
+    if (o.garment === 'sailor' && o.summer) {
+      // 夏のセーラー服：白い身ごろに紺の襟
+      s += `<path d="M40,430 Q46,302 150,276 Q254,300 280,430Z" fill="#f4f1ea" stroke="${INK}" stroke-width="4"/>
+        <path d="M92,292 L150,340 L208,292 L196,282 L150,322 L104,282Z" fill="#26325c" stroke="${INK}" stroke-width="3"/>
+        <path d="M100,292 L150,332 L200,292" fill="none" stroke="${KINARI}" stroke-width="2"/>
+        <path d="M136,330 L164,330 L157,340 L165,362 L150,350 L135,362 L143,340Z" fill="${SHU}" stroke="${INK}" stroke-width="3"/>`;
+    } else if (o.garment === 'sailor') {
       s += `<path d="M40,430 Q46,302 150,276 Q254,300 280,430Z" fill="#26325c" stroke="${INK}" stroke-width="4"/>
         <path d="M92,292 L150,340 L208,292 L196,282 L150,322 L104,282Z" fill="${KINARI}" stroke="${INK}" stroke-width="3"/>
         <path d="M136,330 L164,330 L157,340 L165,362 L150,350 L135,362 L143,340Z" fill="${SHU}" stroke="${INK}" stroke-width="3"/>`;
+    } else if (o.summer) {
+      // 夏服：開襟の白いシャツ
+      s += `<path d="M40,430 Q46,300 150,272 Q256,296 280,430Z" fill="#f4f1ea" stroke="${INK}" stroke-width="4"/>
+        <path d="M122,264 L150,312 L180,264 L194,276 L150,326 L108,276Z" fill="#f4f1ea" stroke="${INK}" stroke-width="3"/>
+        <path d="M150,326 L150,430" stroke="${INK}" stroke-width="2"/><circle cx="150" cy="352" r="3" fill="${INK}"/><circle cx="150" cy="390" r="3" fill="${INK}"/>`;
     } else {
       s += `<path d="M40,430 Q46,300 150,272 Q256,296 280,430Z" fill="#23315a" stroke="${INK}" stroke-width="4"/>
         <path d="M126,262 L150,300 L176,262 L184,272 L150,316 L118,272Z" fill="${INK}"/>
@@ -278,24 +324,28 @@ const UKIYO = (() => {
   // o.small = true：地図や一覧用。顔に寄せ、柄や細かい線を省いて小さくても読めるようにする
   function bust(o) {
     o = Object.assign({ dir: 'L', hair: 'spiky', garment: 'gakuran', over: null, head: null, mood: 'normal', color: SHU, clan: 'azabu', bg: 'seigaiha', str: 60 }, o);
-    const isFemaleHair = ['long', 'pony', 'bob'].includes(o.hair);
+    const isFemaleHair = ['long', 'pony', 'bob', 'twin'].includes(o.hair);
     const frontKey = isFemaleHair ? 'bangs' : o.hair;
+    // 髪の色：墨のほか、こげ茶も（墨の塗りだけを置きかえる）
+    const tint = (svg) => (o.hairColor && svg ? svg.split(`fill="${INK}"`).join(`fill="${o.hairColor}"`) : svg || '');
     const art = `
-      ${backHair[o.hair] || ''}
+      ${tint(backHair[o.hair])}
       ${itemBack(o)}
       ${body(o)}
       ${itemFront(o)}
       ${o.small ? '' : folds}
       ${neck}${neckShadow}
+      ${scarf(o)}
       ${o.female ? faceF : face}
       ${shadows(o.female)}
-      ${frontHair[frontKey]}
-      ${o.small ? '' : hairShine[frontKey] + kegaki}
+      ${tint(frontHair[frontKey])}
+      ${o.small ? '' : (hairShine[frontKey] || '') + (o.hair === 'bozu' ? '' : kegaki)}
       ${headgear(o)}
       ${itemHead(o)}
       ${expression(o)}
       ${kumadori(o)}
-      ${glasses(o)}`;
+      ${glasses(o)}
+      ${marks(o)}`;
     const flip = o.dir === 'R' ? 'translate(200,0) scale(-1,1)' : '';
     const frame = o.small ? 'translate(-65,-48) scale(1.1)' : 'translate(-5,-32) scale(0.7)';
     let bg = '';
