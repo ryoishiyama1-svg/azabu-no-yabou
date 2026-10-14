@@ -195,6 +195,7 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
   const s = {
     turn: 0, diff, scenario, player: PLAYER, gold: {}, castles: {}, gens: {}, genSeq: 0, usedNames: {},
     acted: {}, delegate: {}, log: [], result: null, tut: tutorial ? 1 : 0,
+    goal: 0, // 序盤の目標（GOALS）
   };
   MAP.nodes.forEach((n) => {
     const r = seeded(hashStr(n.id));
@@ -1312,6 +1313,7 @@ function recordBattle(s, r) {
     s.moves.push({ from: r.from, to: r.to, att: r.attacker, def: r.defender, won: !!r.won });
     (r.surrendered || []).forEach((id) => s.moves.push({ from: r.to, to: id, att: r.attacker, def: r.defender, won: true, kind: 'fall' }));
   }
+  if (r.won && r.attacker === PLAYER && CLANS[r.defender] && r.defender !== 'none' && s.stats) s.stats.clanCaps = (s.stats.clanCaps || 0) + 1; // 他家から奪った城
   const ga = s.gens[r.gid], gd = r.dgid ? s.gens[r.dgid] : null;
   if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; shiHit(s, ga, 'cap', r.to); } else a.l++; }
   addClash(s, ga, gd, 1);
@@ -1841,4 +1843,44 @@ function obVisit(s, force) {
 function obTick(s) {
   if (Math.random() >= OB.chance) return null;
   return obVisit(s);
+}
+
+// ---------- 序盤の目標（旗揚げの章） ----------
+// s.goal = いま取り組んでいる目標の番号。新しく始めた家だけ（古いセーブは s.goal が無いので出さない）
+// 果たすと軍師が褒めて褒美。すべて果たすと「旗揚げの章」は完
+const GOALS = [
+  { name: '初陣', text: 'となりの学校をひとつ落とし、城を2つにする', done: (s) => castlesOf(s, PLAYER).length >= 2,
+    reward: '軍資金 金300', give: (s) => { s.gold[PLAYER] += 300; },
+    praise: 'お見事な初陣！ 城が二つになれば、兵も金も倍の働きをいたしますぞ' },
+  { name: '足場固め', text: '城を4つに増やし、家の足場を固める', done: (s) => castlesOf(s, PLAYER).length >= 4,
+    reward: '名のある浪人が仕官する', give: (s) => {
+      const home = castlesOf(s, PLAYER).includes(PLAYER) ? PLAYER : castlesOf(s, PLAYER)[0];
+      const g = makeGeneral(s, home, PLAYER, { strong: true, grade: 1, title: '浪人上がり' });
+      g.loyal = randInt(78, 88);
+      return g.id;
+    },
+    praise: '評判を聞きつけ、腕の立つ浪人が門を叩いてまいりました。大いに使ってやってくだされ' },
+  { name: '名門に挑む', text: '他家の城をひとつ奪う（独立校ではなく、家の城）', done: (s) => (s.stats.clanCaps || 0) >= 1,
+    reward: '金500・家臣の忠誠+5', give: (s) => { s.gold[PLAYER] += 500; gensOf(s, PLAYER).forEach((g) => { if (!g.lord) g.loyal = Math.min(100, g.loyal + 5); }); },
+    praise: 'ついに名門の一角を崩しましたな！ 家中の士気は天を衝く勢いでございます' },
+  { name: '一国一城', text: (s) => `城を${goalCastles(s)}つに増やし、一国の主となる`, done: (s) => castlesOf(s, PLAYER).length >= goalCastles(s),
+    reward: '金800・家宝ひとつ', give: (s) => {
+      s.gold[PLAYER] += 800;
+      const t = freeTreasures(s);
+      if (t.length) { s.vault = s.vault || []; s.vault.push(pick(t)); }
+    },
+    praise: 'これにて旗揚げの章は終わり。ここからは天下取りの本番でございます。殿、いざ天下へ！' },
+];
+const goalCastles = (s) => Math.max(8, Math.round(MAP.nodes.length * 0.12));
+const goalText = (s, G) => (typeof G.text === 'function' ? G.text(s) : G.text);
+// 目標を果たしていれば褒美を与えて次へ進め、場面に出すための情報を返す
+function goalCheck(s) {
+  if (s.goal === undefined || s.goal >= GOALS.length || s.result) return null;
+  const G = GOALS[s.goal];
+  if (!G.done(s)) return null;
+  const gid = G.give(s);
+  const done = { i: s.goal, gid: typeof gid === 'string' ? gid : null };
+  s.goal++;
+  addNews(s, `${pName()}、「${G.name}」を果たす`, s.goal >= GOALS.length ? '旗揚げの章、ここに完' : `次なる目標は「${GOALS[s.goal].name}」`, 55);
+  return done;
 }

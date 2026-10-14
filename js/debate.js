@@ -127,6 +127,7 @@ function endDebate(s, Dt) {
     grow(g, 'cha'); grow(g, 'int');
     recOf(g).cap++;
     shiHit(s, g, 'debate'); shiHit(s, g, 'cap', Dt.id);
+    if (loser !== 'none') s.stats.clanCaps = (s.stats.clanCaps || 0) + 1;
     s.stats.debateWins = (s.stats.debateWins || 0) + 1;
     addNews(s, `${g.name}、舌戦で${name}を無血開城`, '一兵も失わずに城を得る', 50);
     return `${name}は開城した！ 一兵も失わずに城を手に入れた`;

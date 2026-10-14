@@ -337,21 +337,60 @@ function startGame(isNew) {
   centerOn(PLAYER);
   $('zoom-home').textContent = pShort()[0];
   Sound.bgmStart('map');
-  if (isNew) {
-    Sound.horagai();
-    const lord = lordOf(S);
-    const rivals = aiClans().map((k) => CLANS[k].name.replace('家', '')).join('・');
-    const retainers = gensOf(S, PLAYER).length - 1;
-    openModal(`<h2>${SCENARIOS[S.scenario].name}</h2>
-      <p style="text-align:center">${portrait(lord, 84)}</p>
-      <p>時は${dateLabel(0)}。${pName()}当主 <b>${esc(lord.name)}</b>（${lord.grade}年）は、${MAP.byId[PLAYER].ward}の地に旗を揚げた。</p>
-      <p>この地には <b>${MAP.nodes.length}校</b> がひしめき、<b>${rivals}</b> の各家も勢力拡大をねらっている。</p>
-      <p>頼れる家臣は${retainers}人。城を落として武将を登用し、天下を統一せよ！</p>
-      <p class="hint">家訓「${KAKUN[S.kakun].name}」：${KAKUN[S.kakun].desc}<br>
-      難易度：${diffOf(S).name} ・ 最初の${graceTurns(S)}季は他家も様子見をしている<br>
-      ※当主も3年生の春には卒業します。後継者を育てておきましょう</p>
-      <button class="btn red" data-close>出陣じゃ！</button>`);
-  }
+  if (isNew) showPrologue();
+}
+
+// ---------- 序章：旗揚げの絵巻（三枚。タップで次へ） ----------
+const PROLOGUE_CRY = {
+  str: '力をもって道を切り拓く！ 皆の者、ついてまいれ！',
+  pol: '豊かな家こそ強い家。まずは足元を固め、それから天下だ',
+  cha: '一人ひとりが、この家の宝だ。皆で天下を取ろう！',
+  int: '戦は始まる前に決まる。策をもって天下を取る',
+};
+function showPrologue() {
+  const lord = lordOf(S);
+  const rivals = aiClans();
+  const retainers = gensOf(S, PLAYER).filter((g) => !g.lord);
+  const G = GOALS[0];
+  const ring = rivals.map((k, i) => {
+    const a = (i / rivals.length) * Math.PI * 2 - Math.PI / 2;
+    return `<span style="left:${(50 + Math.cos(a) * 40).toFixed(1)}%;top:${(50 + Math.sin(a) * 40).toFixed(1)}%;animation-delay:${(0.5 + i * 0.12).toFixed(2)}s">${crestBadge(k, 40)}<small>${CLANS[k].name.replace('家', '')}</small></span>`;
+  }).join('');
+  const panels = [
+    () => `<div class="pr-kicker">${esc(SCENARIOS[S.scenario].name)}</div>
+      <div class="kime-title">時は${dateLabel(0)}</div>
+      <div class="pr-ring">${ring}<div class="pr-me">${crestBadge(PLAYER, 92)}</div></div>
+      <p class="pr-text">この地には<b>${MAP.nodes.length}校</b>がひしめき、<b>${rivals.map((k) => CLANS[k].name.replace('家', '')).join('・')}</b>の各家が覇をねらう。</p>`,
+    () => `<div class="pr-kicker">旗 揚 げ</div>
+      <div class="kime-frame">${portrait(lord, 300, 'angry')}
+        <div class="kime-name"><span>${esc(lord.name)}</span><small>${pName()}当主</small></div>
+        <div class="kime-seal">${esc(pShort())}<br>之印</div></div>
+      <p class="kime-line">「${esc(PROLOGUE_CRY[S.kakun] || PROLOGUE_CRY.cha)}」</p>
+      <p class="pr-text">${esc(MAP.byId[PLAYER].ward)}の地に、${pName()}が旗を揚げる。家訓は「${KAKUN[S.kakun].name}」──${KAKUN[S.kakun].desc}</p>`,
+    () => `<div class="pr-kicker">家 臣 団</div>
+      <div class="pr-band">${retainers.map((g, i) => `<div style="animation-delay:${(0.2 + i * 0.15).toFixed(2)}s">${portrait(g, 64, 'smile')}<b>${esc(g.name.split(' ')[1] || g.name)}</b><small>${esc(g.title)}</small></div>`).join('')}</div>
+      <p class="pr-text">頼れる家臣は${retainers.length}人。城を落として武将を登用し、天下を統一せよ。</p>
+      <div class="goal-card pr-goal"><span class="gk">目標</span><div><small>旗揚げの章 一／四</small><b>${esc(G.name)}</b><p>${esc(goalText(S, G))}</p><em>褒美：${esc(G.reward)}</em></div></div>
+      <p class="pr-hint">難易度：${diffOf(S).name}・最初の${graceTurns(S)}季は他家も様子見<br>当主も3年生の春には卒業する。後継者を育てておこう</p>
+      <button class="btn red pr-go" id="pr-go">出陣じゃ！</button>`,
+  ];
+  let box = $('prologue');
+  if (!box) { box = document.createElement('div'); box.id = 'prologue'; box.className = 'kime prologue'; document.body.appendChild(box); }
+  let i = 0, ready = false;
+  const finish = () => { Sound.tap(); box.hidden = true; render(); };
+  const draw = () => {
+    box.innerHTML = `<div class="kime-card pr-card">${panels[i]()}
+      <div class="pr-dots">${panels.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('')}</div>
+      ${i < panels.length - 1 ? '<p class="kime-tap">画面をタップ</p>' : ''}</div>`;
+    ready = false;
+    setTimeout(() => { ready = true; }, 600);
+    if (i === 0) { Sound.horagai(); } else { Sound.hyoshigi(i === 1 ? 2 : 1); if (i === 1) Sound.taiko(0.4, 1); }
+    const go = $('pr-go');
+    if (go) go.onclick = (e) => { e.stopPropagation(); finish(); };
+  };
+  box.onclick = () => { if (!ready || i >= panels.length - 1) return; Sound.tap(); i++; draw(); };
+  box.hidden = false;
+  draw();
 }
 
 // 遊び方：章ごとの絵巻。上の札で章を選ぶ
@@ -691,6 +730,7 @@ function render() {
   }
   renderPanel();
   renderCoach();
+  scheduleGoalCheck();
 }
 
 function modeTargets() {
@@ -865,6 +905,11 @@ function renderCouncil() {
       <span class="cn-bar">${counts.map(([k, n]) => `<i style="flex:${n};--c:${k === 'none' ? '#b9b09c' : CLANS[k].color}" class="${k === PLAYER ? 'me' : ''}"></i>`).join('')}</span>
       <span class="cn-legend">${counts.filter(([k]) => k !== 'none').map(([k, n]) => `<span>${crestBadge(k, 16)}${n}${relIcon(k)}</span>`).join('')}${counts.some(([k]) => k === 'none') ? `<span class="nn">独立 ${castlesOf(S, 'none').length}</span>` : ''}</span>
     </button>
+    ${S.goal !== undefined && S.goal < GOALS.length ? (() => {
+      const G = GOALS[S.goal];
+      return `<div class="goal-card"><span class="gk">目標</span><div><small>旗揚げの章 ${['一', '二', '三', '四'][S.goal]}／四</small><b>${esc(G.name)}</b><p>${esc(goalText(S, G))}</p><em>褒美：${esc(G.reward)}</em></div>
+        <span class="gdots">${GOALS.map((_, i) => `<i class="${i < S.goal ? 'on' : i === S.goal ? 'now' : ''}"></i>`).join('')}</span></div>`;
+    })() : ''}
     <h3 class="cn-h">今季の献策</h3>
     <div class="cn-agenda">
       ${agenda.length ? agenda.map((a) => `<button class="ks ks-${a.kind}" id="${a.id}" ${a.ids ? `data-ids="${a.ids.join(',')}"` : ''}><span class="ks-k">${a.k}</span><span class="ks-t"><b>${esc(a.title)}</b><small>${esc(a.sub)}</small></span><span class="ks-a">›</span></button>`).join('')
@@ -1429,6 +1474,41 @@ function showLetter(ev, then) {
   box.onclick = null;
   let closed = false;
   setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 800);
+}
+
+// ---------- 序盤の目標：果たしたら軍師が褒めて褒美 ----------
+// render のあと少し待ち、ほかの画面（合戦の結果・場面・地図の再生）が開いていないときだけ出す
+let goalTimer = null;
+function scheduleGoalCheck() {
+  if (!S || S.goal === undefined || S.goal >= GOALS.length) return;
+  clearTimeout(goalTimer);
+  goalTimer = setTimeout(() => {
+    const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || document.querySelector('.world-cover') || mode;
+    if (busy) return;
+    const done = goalCheck(S);
+    if (!done) return;
+    save();
+    showGoalScene(done);
+  }, 500);
+}
+function showGoalScene(done) {
+  const G = GOALS[done.i], next = GOALS[done.i + 1];
+  const newcomer = done.gid && S.gens[done.gid];
+  let box = $('goal');
+  if (!box) { box = document.createElement('div'); box.id = 'goal'; box.className = 'kime goal'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="kime-card">
+      <div class="gl-step">旗揚げの章 ${['一', '二', '三', '四'][done.i]}／四</div>
+      <div class="kime-title">${esc(G.name)}、成る</div>
+      <div class="gl-sensei">${portrait(SENSEI, 120, 'laugh')}<p><b>軍師</b>「${esc(G.praise)}」</p></div>
+      <div class="gl-reward"><span>褒美</span>${newcomer ? portrait(newcomer, 40, 'happy') : ''}<b>${esc(newcomer ? `${newcomer.name}（統${newcomer.str} 知${newcomer.int}）が仕官した` : G.reward)}</b></div>
+      ${next ? `<p class="gl-next">次なる目標「${esc(next.name)}」：${esc(goalText(S, next))}</p>` : '<p class="gl-next">旗揚げの章、完。ここからは天下取りの本番</p>'}
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(2); Sound.win(); Sound.kira();
+  box.onclick = null;
+  let closed = false;
+  setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; render(); }; }, 900);
 }
 
 // ---------- 卒業生（OB・OG）の来訪 ----------
