@@ -852,3 +852,48 @@ const LORD_CAPTURED = {
   cautious: '慎重に構えたつもりが……不覚',
   balanced: '……好きにするがいい',
 };
+
+// ---------- 名前の編集（学校・家）----------
+// 遊ぶ人が学校や家の名前を変えられる。端末に保存し、起動時（ここ）で当てる。
+// fictional = すべての学校と家を架空の名前にする（手で変えた名前のほうが優先）
+const NAMES_KEY = 'azabu-names';
+const BASE_NAMES = { schools: {}, houses: {} }; // 元の名前（元に戻すため）
+SCHOOL_ROWS.forEach((r) => { BASE_NAMES.schools[r[0]] = [r[1], r[2]]; });
+Object.keys(CLANS).forEach((k) => { BASE_NAMES.houses[k] = CLANS[k].name; });
+
+// 架空の名前：二文字の雅な名（地図の名）＋「高校・学院・学園・館・義塾」。学校ごとに決まった名になる
+const FICT_A = '桜若白青明光翠紫朝東清鳳松緑蒼瑞千高葵紅藤柊楓桐銀椿萩笹黎天雲碧潮夕春秋冬夏月星花風雪森'.split('');
+const FICT_B = '陵丘嶺苑陽雲流園風台原山水浜野林'.split('');
+const FICT_C = ['高校', '学院', '学園', '館', '義塾'];
+const FICT_NAMES = (() => {
+  const h = (s) => { let x = 2166136261; for (const c of s) { x ^= c.charCodeAt(0); x = Math.imul(x, 16777619); } return x >>> 0; };
+  // 実在の学校の名（地図の名・正式名のはじめ二文字）とは重ならないように
+  const used = new Set(SCHOOL_ROWS.flatMap((r) => [r[2], r[1].slice(0, 2)])), out = {};
+  SCHOOL_ROWS.forEach((r) => {
+    let x = h(r[0]), short;
+    do { short = FICT_A[x % FICT_A.length] + FICT_B[Math.floor(x / FICT_A.length) % FICT_B.length]; x = Math.imul(x ^ 0x9e3779b9, 2654435761) >>> 0; } while (used.has(short) || short[0] === short[1]);
+    used.add(short);
+    out[r[0]] = [short + FICT_C[h(`${r[0]}-c`) % FICT_C.length], short];
+  });
+  return out;
+})();
+
+function loadNameEdits() {
+  try { return JSON.parse(localStorage.getItem(NAMES_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveNameEdits(ed) {
+  try { localStorage.setItem(NAMES_KEY, JSON.stringify(ed)); } catch (e) {}
+}
+function applyNameEdits(ed = loadNameEdits()) {
+  SCHOOL_ROWS.forEach((r) => {
+    const own = (ed.schools || {})[r[0]];
+    const n = own || (ed.fictional ? FICT_NAMES[r[0]] : BASE_NAMES.schools[r[0]]);
+    r[1] = n[0]; r[2] = n[1];
+  });
+  Object.keys(CLANS).forEach((k) => {
+    if (k === 'none') return;
+    const own = (ed.houses || {})[k];
+    CLANS[k].name = own || (ed.fictional && FICT_NAMES[k] ? `${FICT_NAMES[k][1]}家` : BASE_NAMES.houses[k]);
+  });
+}
+applyNameEdits();

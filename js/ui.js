@@ -267,6 +267,69 @@ function showImport(n, back) {
 }
 $('btn-help').onclick = () => { Sound.unlock(); Sound.tap(); showHelp(); };
 $('btn-zukan').onclick = () => { Sound.unlock(); Sound.tap(); showZukan(); };
+$('btn-names').onclick = () => { Sound.unlock(); Sound.tap(); showNameEditor(); };
+
+// ---------- 名前の編集（学校・家） ----------
+// 版ごとに、家の名と学校の名（正式名・地図の名）を書き換える。架空の名前にする切り替えも。保存すると読み込み直して当てる
+let NAME_ED = 'tokyo';
+function showNameEditor(ed = NAME_ED, draft = null) {
+  NAME_ED = ed;
+  const edits = draft || loadNameEdits();
+  edits.schools = edits.schools || {}; edits.houses = edits.houses || {};
+  // 入力欄は、この画面を描いたときの切り替え（架空か実名か）の名前で埋まっている。手で変えたかどうかは、その名前と比べる
+  const drawnFict = !!edits.fictional;
+  const base = (id) => (drawnFict ? FICT_NAMES[id] : BASE_NAMES.schools[id]);
+  const ids = zukanIds(ed);
+  const houses = [...new Set(scenariosOf(ed).flatMap(scenarioClans))];
+  const tabs = Object.entries(EDITIONS).map(([k, e]) => `<button data-ned="${k}" class="${k === ed ? 'on' : ''}" style="--c:${e.color || CLANS[e.lead].color}"><b>${e.mark}</b><span>${e.name}</span></button>`).join('');
+  openModal(`<h2>名前の編集</h2>
+    <label class="check-row ne-fict"><input type="checkbox" id="ne-fict" ${edits.fictional ? 'checked' : ''}> 学校と家をすべて架空の名前にする<small>（手で変えた名前はそのまま）</small></label>
+    <div class="zk-tabs ne-tabs">${tabs}</div>
+    <input class="name-input ne-search" id="ne-search" placeholder="学校名や地名でさがす" autocomplete="off">
+    <h3>家</h3>
+    <div class="ne-list">${houses.map((k) => `<div class="ne-row house">${crestBadge(k, 26)}<input data-house="${k}" maxlength="8" value="${esc(edits.houses[k] || (edits.fictional && FICT_NAMES[k] ? `${FICT_NAMES[k][1]}家` : BASE_NAMES.houses[k]))}"></div>`).join('')}</div>
+    <h3>学校（正式名・地図の名）</h3>
+    <div class="ne-list" id="ne-schools">${ids.map((id) => {
+      const r = SCHOOL_ROWS.find((x) => x[0] === id), cur = edits.schools[id] || base(id);
+      return `<div class="ne-row" data-key="${esc(`${BASE_NAMES.schools[id][0]} ${r[3]} ${r[7] || '東京'} ${cur[0]}`)}"><small>${esc(r[7] || '東京')}・${esc(r[3])}</small>
+        <input data-sname="${id}" maxlength="12" value="${esc(cur[0])}"><input class="short" data-sshort="${id}" maxlength="5" value="${esc(cur[1])}"></div>`;
+    }).join('')}</div>
+    <button class="btn red" id="ne-save">保存して反映する</button>
+    <button class="btn plain" id="ne-reset">すべて元の名前に戻す</button>
+    <button class="btn plain" data-close>やめる</button>
+    <p class="hint">保存すると画面を読み込み直します（遊んでいる途中のゲームは保存されます）</p>`);
+  // 入力を下書きに集める（版を切り替えても消えないように）
+  const collect = () => {
+    modalBody.querySelectorAll('[data-house]').forEach((i) => {
+      const k = i.dataset.house, v = i.value.trim();
+      const def = drawnFict && FICT_NAMES[k] ? `${FICT_NAMES[k][1]}家` : BASE_NAMES.houses[k];
+      if (v && v !== def) edits.houses[k] = v; else delete edits.houses[k];
+    });
+    modalBody.querySelectorAll('[data-sname]').forEach((i) => {
+      const id = i.dataset.sname, n = i.value.trim(), s = modalBody.querySelector(`[data-sshort="${id}"]`).value.trim();
+      const def = base(id);
+      if (n && s && (n !== def[0] || s !== def[1])) edits.schools[id] = [n, s]; else delete edits.schools[id];
+    });
+    edits.fictional = $('ne-fict').checked; // 比べ終えてから切り替える
+    return edits;
+  };
+  modalBody.querySelectorAll('[data-ned]').forEach((b) => { b.onclick = () => { Sound.tap(); showNameEditor(b.dataset.ned, collect()); }; });
+  $('ne-fict').onchange = () => { Sound.tap(); const e = collect(); showNameEditor(NAME_ED, e); };
+  $('ne-search').oninput = (ev) => {
+    const q = ev.target.value.trim();
+    modalBody.querySelectorAll('#ne-schools .ne-row').forEach((row) => { row.hidden = !!q && !row.dataset.key.includes(q); });
+  };
+  const reloadWith = (e) => {
+    saveNameEdits(e);
+    if (S && !$('game').hidden) save();
+    location.reload();
+  };
+  $('ne-save').onclick = () => { Sound.tap(); reloadWith(collect()); };
+  $('ne-reset').onclick = async () => {
+    Sound.tap();
+    if (await askConfirm('学校と家の名前を、すべて元に戻しますか？', { ok: '元に戻す' })) reloadWith({});
+  };
+}
 
 // ---------- 当主の年表（巻物） ----------
 // an = chronicleOf(S) か、戦績に残った年表。当主の代ごとに帯を引き、その代の出来事を季の順に並べる
@@ -2286,7 +2349,28 @@ function showGeneral(gid) {
       ${chronicleTable(g)}
     </div>
     ${canReward(S, g) ? `<button class="btn red" id="gd-reward">褒美を与える（金${LOYAL.rewardCost}）</button>` : ''}
+    ${g.clan === PLAYER ? '<button class="btn plain" id="gd-rename">名を改める</button>' : ''}
     <button class="btn plain" data-close>閉じる</button>`);
+  if ($('gd-rename')) $('gd-rename').onclick = () => {
+    Sound.tap();
+    openModal(`<h2>名を改める</h2>
+      <p style="text-align:center">${portrait(g, 72)}</p>
+      <input class="name-input" id="rn-name" maxlength="10" value="${esc(g.name)}" autocomplete="off">
+      <p class="hint">姓と名のあいだは空白（例：麻布 一郎）</p>
+      <button class="btn red" id="rn-ok">改める</button>
+      <button class="btn plain" id="rn-back">やめる</button>`);
+    $('rn-back').onclick = () => { Sound.tap(); showGeneral(gid); };
+    $('rn-ok').onclick = () => {
+      const v = $('rn-name').value.trim();
+      if (v) {
+        if (g.lord && S.lords && S.lords.length && S.lords[S.lords.length - 1].name === g.name) S.lords[S.lords.length - 1].name = v; // 歴代当主の記録も
+        g.name = v;
+        save(); render();
+      }
+      Sound.tap();
+      showGeneral(gid);
+    };
+  };
   modalBody.querySelectorAll('[data-equip]').forEach((b) => {
     b.onclick = () => {
       Sound.kira();
@@ -3837,6 +3921,7 @@ $('btn-menu').onclick = () => {
     <button class="btn plain" id="m-annals">年表（この天下取りのあゆみ）</button>
     <button class="btn plain" id="m-card">いまの勢力を絵にする（共有・保存）</button>
     <button class="btn plain" id="m-zukan">学校図鑑</button>
+    <button class="btn plain" id="m-names">名前の編集（学校・家）</button>
     <button class="btn plain" id="m-export">セーブの書き出し（枠${currentSlot}）</button>
     <button class="btn plain" id="m-help">遊び方</button>
     ${debugOn() ? '<button class="btn plain" id="m-debug">🛠 デバッグ</button>' : ''}
@@ -3847,6 +3932,7 @@ $('btn-menu').onclick = () => {
   $('m-records').onclick = () => { Sound.tap(); showRecords(); };
   $('m-zukan').onclick = () => { Sound.tap(); save(); showZukan(edOf(S.scenario)); };
   $('m-annals').onclick = () => { Sound.tap(); showChronicle(chronicleOf(S)); };
+  $('m-names').onclick = () => { Sound.tap(); showNameEditor(edOf(S.scenario)); };
   $('m-card').onclick = () => { Sound.tap(); showShareCard(); };
   $('m-settings').onclick = () => { Sound.tap(); showSettings(); };
   $('m-export').onclick = () => { Sound.tap(); save(); showExport(currentSlot, closeModal); };
