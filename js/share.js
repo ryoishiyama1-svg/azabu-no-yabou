@@ -51,7 +51,7 @@ async function cardText(ctx, d) {
   ctx.textBaseline = 'alphabetic';
   // 題
   ctx.fillStyle = K; ctx.font = `128px ${brush}`; ctx.textAlign = 'left';
-  ctx.fillText('麻布の野望', 70, 180);
+  ctx.fillText(gameTitle(), 70, 180);
   ctx.font = `800 34px ${mincho}`; ctx.fillText(d.place, 76, 240);
   // 大見出し（右の朱の日輪の上）
   // 日輪の幅に収まるように（4文字でもはみ出さない）
@@ -125,7 +125,7 @@ async function showShareCard(back) {
     ${back ? '<button class="btn plain" id="sh-back">戻る</button>' : '<button class="btn plain" data-close>閉じる</button>'}`);
   if ($('sh-share')) $('sh-share').onclick = async () => {
     Sound.tap();
-    try { await navigator.share({ files: [file], title: '麻布の野望', text: `${CLANS[PLAYER].name}の天下取り` }); } catch (e) {}
+    try { await navigator.share({ files: [file], title: gameTitle(), text: `${CLANS[PLAYER].name}の天下取り` }); } catch (e) {}
   };
   if ($('sh-back')) $('sh-back').onclick = () => { Sound.tap(); URL.revokeObjectURL(url); back(); };
 }

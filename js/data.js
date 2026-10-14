@@ -389,9 +389,9 @@ const SCENARIOS = {
 const EDITIONS = {
   tokyo: { name: '東京版', mark: '東', desc: '都内の名門がしのぎを削る、はじまりの地', lead: 'azabu' },
   zenkoku: { name: '全国版', mark: '全', desc: '北は札幌から南は鹿児島まで。各地の名門が覇を競う', lead: 'azabu', color: '#22406b' },
-  kansai: { name: '関西版', mark: '関', desc: '灘を筆頭に、上方の名門が都をめぐって争う', lead: 'nada' },
+  kansai: { name: '関西版', mark: '関', desc: '六甲から琵琶湖まで、上方の名門が都をめぐって争う', lead: 'nada' },
   tokai: { name: '東海版', mark: '海', desc: '尾張・三河・美濃・伊勢・駿河・遠江。東海道の覇者は誰か', lead: 'tokai' },
-  kyushu: { name: '九州版', mark: '九', desc: '薩摩のラ・サールから博多の修猷館まで。九州の覇を競う', lead: 'lasalle' },
+  kyushu: { name: '九州版', mark: '九', desc: '薩摩から博多まで、九州の名門が覇を競う', lead: 'lasalle' },
 };
 
 // ---------- 地図の海岸線（緯度経度。錦絵の地図なので大まかでよい） ----------
@@ -688,12 +688,12 @@ const SCHOOL_LORE = {
   nishi: { motto: '西に開く、自主の門', sight: '西の丘の並木道', cry: '西の門は、まだ閉じてはおらぬ……' },
   eiko: { motto: '古都に鍛えし、相模の魂', sight: '松林の丘の学び舎', cry: '鎌倉の意地、ここまでか……' },
   urawa: { motto: '武蔵野を駆けよ、尚文昌武', sight: '欅並木の大校庭', cry: '武蔵野の風は、また吹く……' },
-  shibumaku: { motto: '海を越え、自ら調べ自ら考える', sight: '海辺の新都の学び舎', cry: '湾を越えた夢、ここで潰えるとは……' },
+  shibumaku: { motto: '海を越え、新しき道を拓く', sight: '海辺の新都の学び舎', cry: '湾を越えた夢、ここで潰えるとは……' },
   sapporominami: { motto: '北の大地に、自由の旗', sight: '雪の積もる大講堂', cry: '北の雪は、まだ溶けてはおらぬ……' },
   sendai2: { motto: '杜の都に、質実の志', sight: '欅並木の学び舎', cry: '杜の都の灯、しばし預ける……' },
   izumigaoka: { motto: '加賀百万石の誇り', sight: '兼六の庭を望む丘', cry: '百万石の意地、通じなんだか……' },
   tokai: { motto: '尾張の地より、天下へ', sight: '名古屋城下の大校舎', cry: '尾張の大志、ここで絶えるとは……' },
-  nada: { motto: '精力善用、自他共栄', sight: '六甲を望む学び舎', cry: '上方の最強も、これまでか……見事' },
+  nada: { motto: '六甲の風に、心と体を磨く', sight: '六甲を望む学び舎', cry: '上方の最強も、これまでか……見事' },
   hirogaku: { motto: '瀬戸の凪に、志を磨く', sight: '瀬戸内を望む丘', cry: '瀬戸の凪も、いつかは荒れる……' },
   aiko: { motto: '愛と光の学び舎', sight: '伊予の海辺の校庭', cry: '海を越えられなんだか……無念' },
   lasalle: { motto: '薩摩の地に、一筋の光', sight: '桜島を望む寮', cry: '薩摩の意地、見せたつもりだが……' },
@@ -707,7 +707,7 @@ const SCHOOL_LORE = {
   yokkaichi: { motto: '伊勢の海に、勇を磨く', sight: '伊勢湾を望む校庭', cry: '伊勢の風も、今日は向かい風か……' },
   shizuokako: { motto: '富士を仰ぎ、気高くあれ', sight: '富士山を望む大校舎', cry: '富士は動かぬ……我らも、まだ……' },
   hamamatsukita: { motto: '遠州のからっ風に、己を鍛える', sight: '浜名湖を望む丘', cry: 'からっ風も、止む時が来たか……' },
-  shuyukan: { motto: '修身と猷道、博多の誇り', sight: '玄界灘を望む学び舎', cry: '博多の意地、ここまでか……' },
+  shuyukan: { motto: '博多の地に、文武の誉れ', sight: '玄界灘を望む学び舎', cry: '博多の意地、ここまでか……' },
   fusetsu: { motto: '筑後の野に、英才を集む', sight: '筑後川のほとり', cry: '読みが甘かったか……次は負けぬ' },
   kumamotoko: { motto: '肥後もっこす、曲げぬ志', sight: '熊本城を望む学び舎', cry: '肥後の守り、破られたか……' },
   seiun: { motto: '青雲の志、海を越えて', sight: '大村湾を望む丘', cry: '海に囲まれ、退く道もなし……' },
@@ -898,3 +898,6 @@ function applyNameEdits(ed = loadNameEdits()) {
   });
 }
 applyNameEdits();
+// 題：架空の名前のときは、特定の学校の名を出さない題にする（売るときの題は別に決める）
+const gameTitle = () => (loadNameEdits().fictional ? '学園の野望' : '麻布の野望');
+const gameSeal = () => (loadNameEdits().fictional ? '学園' : '麻布');

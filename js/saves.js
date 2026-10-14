@@ -77,10 +77,10 @@ async function decodeBundle(code) {
   } else if (text.startsWith(CODE_HEAD.plain)) {
     bytes = b64ToBytes(text.slice(CODE_HEAD.plain.length));
   } else {
-    throw new Error('「麻布の野望」のセーブコードではありません');
+    throw new Error(`「${gameTitle()}」のセーブコードではありません`);
   }
   const obj = JSON.parse(new TextDecoder().decode(bytes));
-  if (!obj || obj.app !== 'azabu-no-yabou') throw new Error('「麻布の野望」のセーブコードではありません');
+  if (!obj || obj.app !== 'azabu-no-yabou') throw new Error(`「${gameTitle()}」のセーブコードではありません`);
   return obj;
 }
 

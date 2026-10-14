@@ -202,7 +202,7 @@ function autoBuild(s, clan, id, reserve) {
 }
 
 // ---------- ゲームの状態 ----------
-function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu', challenges = [] } = {}) {
+function newGame({ lordName = null, diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu', challenges = [] } = {}) {
   scenario = setScenario(scenario);
   const lead = EDITIONS[edOf(scenario)].lead;
   setPlayer(MAP.byId[clan] && MAP.byId[clan].clan === clan ? clan : lead);
@@ -229,7 +229,7 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
     };
     if (n.clan === PLAYER) {
       const lord = makeGeneral(s, n.id, PLAYER, { strong: true, title: '当主', grade: 2 });
-      Object.assign(lord, { name: lordName, str: 72, pol: 68, cha: 84, int: 70, skill: 'jinbou', lord: true });
+      Object.assign(lord, { name: lordName || `${CLANS[PLAYER].name.replace('家', '').replace('・', '')} 一郎`, str: 72, pol: 68, cha: 84, int: 70, skill: 'jinbou', lord: true });
       // 家臣は1・2年生中心（最初の春にいきなり大勢卒業しないように）
       // 版の主役の家（東京版なら麻布家）以外は攻められやすい位置にあることが多いので、家臣を1人多くする
       const grades = PLAYER === lead ? [1, 2, 1, 2] : [1, 2, 1, 2, 1];

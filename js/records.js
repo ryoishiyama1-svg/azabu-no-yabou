@@ -10,7 +10,7 @@ const ACHIEVEMENTS = [
   { id: 'win_hard', icon: '鬼', name: '鬼の上級', desc: '上級で天下統一', end: (s) => s.result === 'win' && s.diff === 'hard' },
   { id: 'fast', icon: '速', name: '電光石火', desc: '5年（20季）以内に天下統一', end: (s) => s.result === 'win' && s.turn <= 20 },
   { id: 'no_diplo', icon: '独', name: '外交いらず', desc: '外交を一度も使わずに天下統一', end: (s) => s.result === 'win' && !s.stats.diplo },
-  { id: 'other_clan', icon: '新', name: '新たな野望', desc: '版の主役（東京版なら麻布家）以外の家で天下統一', end: (s) => s.result === 'win' && s.player !== EDITIONS[edOf(s.scenario)].lead },
+  { id: 'other_clan', icon: '新', name: '新たな野望', desc: '版の主役の家（はじめから選べる家）以外で天下統一', end: (s) => s.result === 'win' && s.player !== EDITIONS[edOf(s.scenario)].lead },
   { id: 'all_clans', icon: '全', name: '全家制覇', desc: 'すべての家で天下統一', end: (s, rec) => Object.keys(CLANS).filter((k) => k !== 'none').every((k) => rec.clanWins[k]) },
   { id: 'encircle_win', icon: '破', name: '包囲網突破', desc: '包囲網を受けながら天下統一', end: (s) => s.result === 'win' && s.encircle },
   { id: 'comeback', icon: '起', name: '起死回生', desc: '城が1つまで減ってから天下統一', end: (s) => s.result === 'win' && s.stats.minCastles <= 1 },

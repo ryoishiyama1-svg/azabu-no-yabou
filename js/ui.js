@@ -227,7 +227,7 @@ async function showExport(n, back) {
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   };
-  if ($('ex-share')) $('ex-share').onclick = () => navigator.share({ title: '麻布の野望 セーブ', text: code }).catch(() => {});
+  if ($('ex-share')) $('ex-share').onclick = () => navigator.share({ title: `${gameTitle()} セーブ`, text: code }).catch(() => {});
   $('ex-back').onclick = () => { Sound.tap(); back(); };
 }
 
@@ -2473,7 +2473,7 @@ function showGeneral(gid) {
     openModal(`<h2>名を改める</h2>
       <p style="text-align:center">${portrait(g, 72)}</p>
       <input class="name-input" id="rn-name" maxlength="10" value="${esc(g.name)}" autocomplete="off">
-      <p class="hint">姓と名のあいだは空白（例：麻布 一郎）</p>
+      <p class="hint">姓と名のあいだは空白（例：山田 太郎）</p>
       <button class="btn red" id="rn-ok">改める</button>
       <button class="btn plain" id="rn-back">やめる</button>`);
     $('rn-back').onclick = () => { Sound.tap(); showGeneral(gid); };
@@ -4104,3 +4104,14 @@ function fusuma() {
   document.body.appendChild(f);
   setTimeout(() => f.remove(), 1100);
 }
+
+// ---------- 題と落款：架空の名前のときは「学園の野望」に ----------
+(() => {
+  const t = gameTitle(), sl = gameSeal();
+  document.title = t;
+  const h = document.querySelector('.title-tanzaku');
+  if (h) h.textContent = t;
+  document.querySelectorAll('#title .seal, .ld-seal').forEach((e) => { e.innerHTML = `${sl}<br>之印`; });
+  const dis = document.querySelector('.disclaimer');
+  if (dis && loadNameEdits().fictional) dis.textContent = '※登場する学校・家・人物はすべて架空のものです。';
+})();
