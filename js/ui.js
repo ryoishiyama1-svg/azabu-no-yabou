@@ -513,6 +513,7 @@ function startGame(isNew) {
   selected = null;
   mode = null;
   if (!S.mark) S.mark = seasonMark(); // 季節の瓦版で増減を測る起点
+  fusuma();
   drawMap();
   render();
   centerOn(PLAYER);
@@ -3975,3 +3976,27 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 }
 
 showTitle();
+
+// ---------- 読み込み画面：筆文字が揃ったら（長くても2.5秒で）幕を上げる ----------
+(() => {
+  const ld = $('loader');
+  if (!ld) return;
+  const t0 = Date.now();
+  let done = false;
+  const lift = () => {
+    if (done) return;
+    done = true;
+    setTimeout(() => { ld.classList.add('out'); setTimeout(() => { ld.hidden = true; }, 600); }, Math.max(0, 600 - (Date.now() - t0)));
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(lift, lift);
+  setTimeout(lift, 2500);
+})();
+
+// ---------- 襖の場面転換：左右の襖が開いて、地図があらわれる ----------
+function fusuma() {
+  const f = document.createElement('div');
+  f.className = 'fusuma';
+  f.innerHTML = '<i class="fs-l"></i><i class="fs-r"></i>';
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 1100);
+}
