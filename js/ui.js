@@ -545,6 +545,7 @@ function drawMap() {
         <g class="deleg" transform="translate(${-w / 2 - 7},27)"><circle r="7.5"/><text>委</text></g>
         <g class="gbadge" transform="translate(17,-19)"><circle r="8"/><text></text></g>
         <g class="danger" transform="translate(-19,-16) rotate(-8)"><rect x="-9" y="-9" width="18" height="18"/><text>危</text></g>
+        <g class="chance" transform="translate(-19,-16) rotate(-8)" style="display:none"><rect x="-9" y="-9" width="18" height="18"/><text>攻</text></g>
         <text class="facmark" x="-14" y="-22"></text>
         <text class="troops" y="48"></text>`;
       g.addEventListener('click', () => onCastleTap(n.id));
@@ -621,6 +622,7 @@ function render() {
   });
 
   const targets = modeTargets();
+  const chances = mode ? [] : attackChances(S).map((pl) => pl.to); // 攻め口（命令を選んでいる間は出さない）
   document.querySelectorAll('#map .castle').forEach((g) => {
     const id = g.dataset.id;
     const c = S.castles[id];
@@ -644,6 +646,7 @@ function render() {
     dz.style.display = lvl ? '' : 'none';
     dz.setAttribute('class', `danger ${lvl}`);
     dz.querySelector('text').textContent = lvl === 'hi' ? '危' : '注';
+    g.querySelector('.chance').style.display = chances.includes(id) ? '' : 'none';
     g.classList.toggle('front', !!th);
     const ring = g.querySelector('.ring');
     const kind = mode && (mode.kind === 'attack' || mode.kind === 'scheme' ? 'target' : 'friend');
@@ -750,7 +753,17 @@ function renderPanel() {
     const peace = atPeace(S, PLAYER, c.owner);
     const why = peace ? `${CLANS[c.owner].name}とは${relLabel(S, c.owner)}のため攻められません`
       : srcs.length ? 'となりの城から出陣できます' : `となりに命令できる${pName()}の城と武将がいません`;
+    const plan = attackPlan(S, selected);
+    const planHtml = !plan ? '' : (() => {
+      const g = S.gens[plan.gid];
+      const sup = plan.support.length ? `、${plan.support.map((p) => MAP.byId[p.from].short).join('・')}の援軍と合わせて` : 'が';
+      const lvl = plan.p >= GOOD_ODDS ? 'ok' : plan.p >= 0.5 ? 'mid' : 'hi';
+      const back = plan.leftKeep < 0.5 ? `。ただし出陣すると${MAP.byId[plan.weak].short}の守りが約${pctOf(plan.leftKeep)}%に` : '';
+      return `<p class="threat ${lvl}">攻め：${MAP.byId[plan.from].short}から${esc(g.name)}${sup}${fmt(plan.total)}兵で攻めれば、勝つ見込み 約${pctOf(plan.p)}%${plan.p < 0.5 ? '。今は分が悪い。兵を集めてから' : ''}${back}</p>
+        <button class="reinforce strike" id="c-plan"><b>出陣</b>この案で攻める<small>${oddsLabel(plan.p)[0]}・総勢 ${fmt(plan.total)} 兵${isCapital(selected, c.owner) ? '・本拠を落とせば残る城が降ることも' : ''}</small></button>`;
+    })();
     body = `${S.rel[c.owner] ? `<p class="hint">${clanChip(c.owner)} ${relLabel(S, c.owner)}・友好度 ${S.rel[c.owner].friend}・性格「${personaOf(c.owner).name}」</p>` : ''}
+      ${planHtml}
       <div class="cmds">
         <button class="btn red wide" id="c-strike" ${srcs.length ? '' : 'disabled'}><span class="k">攻</span>この城を攻める<small>${why}</small></button>
         ${(() => {
@@ -770,6 +783,7 @@ function renderPanel() {
 }
 
 let dangerIdx = -1; // 「危うい城」ボタンで、次に見せる城
+let attackIdx = -1; // 「攻め口」ボタンで、次に見せる城
 function renderCouncil() {
   const counts = Object.keys(CLANS)
     .map((k) => [k, castlesOf(S, k).length])
@@ -791,6 +805,11 @@ function renderCouncil() {
         .sort((a, b) => a[1].keep - b[1].keep).map(([id]) => id);
       return risky.length ? `<button class="warn danger-warn" id="danger-warn" data-ids="${risky.join(',')}">危 守りの危うい城が ${risky.length}つ：${risky.slice(0, 3).map((id) => MAP.byId[id].short).join('・')}${risky.length > 3 ? ' ほか' : ''}（タップで移動）</button>${castlesOf(S, PLAYER).some((id) => reinforcePlan(S, id)) ? '<button class="reinforce" onclick="bulkReinforce()"><b>援兵</b>危うい城へ、となりから送れるだけ兵を送る<small>送る側が危うくならない分だけ。輸送役の武将が1人ずつ動く</small></button>' : ''}` : '';
     })()}
+    ${(() => {
+      // 攻め口：勝算があって、送り出しても自分の城が危うくならない敵城。タップで順に見ていく
+      const ch = attackChances(S);
+      return ch.length ? `<button class="warn attack-warn" id="attack-warn" data-ids="${ch.map((pl) => pl.to).join(',')}"><b>攻</b>勝算のある攻め口が ${ch.length}つ：${ch.slice(0, 3).map((pl) => MAP.byId[pl.to].short).join('・')}${ch.length > 3 ? ' ほか' : ''}（タップで移動）</button>` : '';
+    })()}
     ${S.encircle ? `<p class="warn">🔥 ${pShort()}包囲網：諸家が手を結んで${pName()}を狙っている</p>` : ''}
     <div class="clan-list">${counts.map(([k, n]) => `<span class="chip" style="--c:${CLANS[k].color}">${crestBadge(k, 18)}${CLANS[k].name} ${n}${relIcon(k)}</span>`).join('')}</div>
     <div class="bulk">
@@ -808,6 +827,14 @@ function renderCouncil() {
     const ids = $('danger-warn').dataset.ids.split(',');
     dangerIdx = (dangerIdx + 1) % ids.length;
     selected = ids[dangerIdx];
+    render();
+    centerOn(selected);
+  };
+  if ($('attack-warn')) $('attack-warn').onclick = () => {
+    Sound.tap();
+    const ids = $('attack-warn').dataset.ids.split(',');
+    attackIdx = (attackIdx + 1) % ids.length;
+    selected = ids[attackIdx];
     render();
     centerOn(selected);
   };
@@ -1594,6 +1621,7 @@ function bindPanel() {
   on('c-scheme', () => { Sound.tap(); showSchemeMenu(selected); });
   on('c-build', () => { Sound.tap(); showBuild(selected); });
   on('c-strike', () => { Sound.tap(); openAttack(null, selected); });
+  on('c-plan', () => { Sound.tap(); const pl = attackPlan(S, selected); if (pl) openAttack(null, selected, pl); });
   on('c-debate', () => { Sound.tap(); openDebate(selected); });
   const d = $('c-deleg');
   if (d) d.onchange = () => {
@@ -1916,6 +1944,53 @@ function reinforcePlan(s, id) {
   return { from: best.from, to: id, amount, before: th.keep, after, enough: amount >= need };
 }
 const pctOf = (p) => Math.min(99, Math.max(1, Math.round(p * 20) * 5));
+
+// ---------- 攻めの提案 ----------
+// 敵の城を、となりの自分の城から攻める案。兵と大将は出陣画面の初めの値と同じ（兵の8割・統率の一番高い武将）
+// 勝算あり（8割）に届かなければ、となりの城から援軍を足していく。送り出したあとの自分の城の守りも測る
+const GOOD_ODDS = 0.8;
+function attackPlan(s, to) {
+  const c = s.castles[to];
+  if (c.owner === PLAYER) return null;
+  const srcs = attackSources(to);
+  if (!srcs.length) return null;
+  const power = Math.max(1, defensePower(s, to));
+  const sendOf = (id) => { const max = readyTroops(s, id); return Math.min(max, Math.round((max * 0.8) / 10) * 10 || max); };
+  const plans = srcs.map((from) => {
+    const g = bestBy(idleGensAt(s, from), 'str');
+    const n = sendOf(from);
+    const mult = atkMult(g) * atkKakun(s, PLAYER);
+    const support = [];
+    let total = n;
+    const sups = supportCastles(s, PLAYER, to, from).filter((id) => !s.delegate[id])
+      .map((id) => ({ from: id, n: Math.floor(readyTroops(s, id) * 0.8), gid: bestBy(idleGensAt(s, id), 'str').id }))
+      .sort((a, b) => b.n - a.n);
+    for (const sp of sups) {
+      if (winChance((total * mult) / power) >= GOOD_ODDS) break;
+      support.push(sp);
+      total += sp.n;
+    }
+    const p = winChance((total * mult) / power);
+    // 出陣したあと、送り出した城がどれだけ危うくなるか（いちばん危うい城）
+    let leftKeep = 1, weak = null;
+    [{ from, n }, ...support].forEach((part) => {
+      const pc = s.castles[part.from];
+      pc.troops -= part.n;
+      const th = dangerOf(s, part.from, winChance);
+      pc.troops += part.n;
+      if (th && th.keep < leftKeep) { leftKeep = th.keep; weak = part.from; }
+    });
+    return { to, from, gid: g.id, n, support, total, p, leftKeep, weak };
+  });
+  // 勝てる見込みの高い案。並ぶなら、援軍の少ない・後ろが危うくならない案
+  return plans.reduce((a, b) => (b.p > a.p + 0.01 || (Math.abs(b.p - a.p) <= 0.01 && (b.support.length < a.support.length || (b.support.length === a.support.length && b.leftKeep > a.leftKeep))) ? b : a));
+}
+// 勝算があり、送り出しても自分の城が危うくならない攻め口（本拠・勝算・経済の順）
+const goodAttack = (pl) => pl && pl.p >= GOOD_ODDS && pl.leftKeep >= 0.5;
+function attackChances(s) {
+  return Object.keys(s.castles).filter((id) => s.castles[id].owner !== PLAYER).map((id) => attackPlan(s, id)).filter(goodAttack)
+    .sort((a, b) => (isCapital(b.to, s.castles[b.to].owner) - isCapital(a.to, s.castles[a.to].owner)) || (b.p - a.p) || (s.castles[b.to].eco - s.castles[a.to].eco));
+}
 // 危うい城すべてに、送れるだけ援兵を送る（危うい順）
 function bulkReinforce() {
   Sound.tap();
@@ -1950,13 +2025,15 @@ function doReinforce(id) {
   toast(`${esc(g.name)}が${MAP.byId[plan.from].short}から${fmt(plan.amount)}兵を送った<br><b>守り切る見込み 約${pctOf(plan.before)}% → 約${pctOf(plan.after)}%</b>`);
 }
 
-function openAttack(from, to) {
+// plan：攻めの提案（attackPlan）から来たときは、その出陣元・大将・援軍を選んだ状態で開く
+function openAttack(from, to, plan = null) {
   tutAdvance(4);
   const srcs = from ? [from] : attackSources(to);
-  let src = srcs.reduce((a, b) => (readyTroops(S, a) >= readyTroops(S, b) ? a : b));
-  let gid = null;
+  let src = plan ? plan.from : srcs.reduce((a, b) => (readyTroops(S, a) >= readyTroops(S, b) ? a : b));
+  let gid = plan ? plan.gid : null;
   let amount = 0;
   let support = {}; // 援軍 { castleId: true }
+  if (plan) plan.support.forEach((p) => { support[p.from] = true; });
   let tactic = 'auto';
   const t = S.castles[to];
   const power = defensePower(S, to);

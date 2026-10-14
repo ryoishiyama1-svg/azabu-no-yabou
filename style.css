@@ -1607,6 +1607,15 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 .reinforce small { color: var(--muted); font-size: 11.5px; font-weight: 500; }
 .reinforce:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ai); }
 
+/* 攻めの提案：勝算のある敵城の札、軍議の攻め口、パネルの出陣案 */
+#map .castle .chance rect { fill: var(--wakatake); stroke: var(--ink); stroke-width: 1.5; }
+#map .castle .chance text { fill: #fff; font-family: var(--brush); font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+.attack-warn { display: block; width: 100%; text-align: left; border: none; margin: 0 0 6px; cursor: pointer; background: var(--wakatake); color: #fff; }
+.attack-warn b { font-family: var(--brush); font-weight: 400; font-size: 15px; margin-right: 6px; padding: 0 5px; background: #fff; color: var(--wakatake); }
+.reinforce.strike { box-shadow: 3px 3px 0 var(--red); }
+.reinforce.strike b { background: var(--red); }
+.reinforce.strike:active { box-shadow: 1px 1px 0 var(--red); }
+
 /* ---------- 絆の場面：二枚続きの錦絵 ---------- */
 .bond-card { width: 100%; max-width: 380px; text-align: center; color: var(--paper); }
 .bd-title { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 10px; animation: fude 1s cubic-bezier(0.6, 0.1, 0.3, 1) 0.1s both; }
