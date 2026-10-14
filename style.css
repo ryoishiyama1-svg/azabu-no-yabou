@@ -2024,3 +2024,4 @@ i.down { color: #b8262f; }
 table.best tr.ed-row th { padding-top: 8px; text-align: left; font-family: var(--brush); font-weight: 400; font-size: 14px; color: var(--red); background: none; }
 .cw-ed { margin: 8px 0 4px; font-family: var(--brush); font-size: 14px; color: var(--red); }
 .diff-list button small { display: block; margin-top: 2px; }
+.ev-art-title.long { font-size: 15px; letter-spacing: 0; white-space: nowrap; } /* 博多祇園山笠のような長い名前も一列に */

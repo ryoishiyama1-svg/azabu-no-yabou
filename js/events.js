@@ -207,6 +207,30 @@ const EVENTS = {
       return `「${TREASURES[p.tid].name}」を蔵に納めた。武将に持たせると力を発揮する。`;
     },
   },
+  // 地方の祭り（FESTIVALS）。版と季節で決まる。rollEvents が季節の行事のあとに出す
+  matsuri: {
+    icon: '祭', title: '祭り',
+    art: (s) => ['spring', 'summer', 'autumn', 'winter'][s.turn % 4],
+    text: (s, p) => `${p.name}の季節がやってきた。${p.scene}。\n家臣たちはそわそわと落ち着かない。屋台からは${p.food}の匂いが漂ってくる。`,
+    choices: (s, p) => [
+      { label: '家臣と見物する（金150）', sub: '家臣の忠誠+5・魅力が伸びる', disabled: s.gold[PLAYER] < 150 },
+      { label: `${p.food}の屋台を出す`, sub: `売り上げで金が入る（収入の6〜9割）` },
+      { label: '見送る' },
+    ],
+    apply(s, p, ci) {
+      if (ci === 0) {
+        s.gold[PLAYER] -= 150;
+        gensOf(s, PLAYER).forEach((g) => changeLoyal(g, 5));
+        return `家臣そろって${p.name}を見物した。${p.food}をほおばり、皆で笑い合った。\n${growAll(s, 'cha')}`;
+      }
+      if (ci === 1) {
+        const g = Math.round((income(s, PLAYER) * (0.6 + Math.random() * 0.3)) / 10) * 10;
+        s.gold[PLAYER] += g;
+        return `${pName()}の${p.food}の屋台は行列ができるほどの大繁盛。金 +${g}`;
+      }
+      return `${p.name}は遠くの音を聞くだけにした。`;
+    },
+  },
   donation: {
     icon: '寄', title: 'OB会からの寄付', weight: 3,
     init: () => ({ amount: randInt(4, 10) * 50 }),
@@ -477,6 +501,9 @@ function rollEvents(s) {
   }
   const season = ['spring', 'summer', 'autumn', 'winter'][s.turn % 4];
   list.push({ id: season, p: {} });
+  // 地方の祭り：その版のその季節に祭りがあれば（毎年ではなく、7割ほど）
+  const fest = (FESTIVALS[edOf(s.scenario)] || {})[s.turn % 4];
+  if (fest && Math.random() < 0.7) list.push({ id: 'matsuri', p: { ...fest } });
 
   // ランダムな出来事（55%）
   if (Math.random() < 0.55) {
@@ -499,8 +526,8 @@ function rollEvents(s) {
 function eventView(s, ev) {
   const e = EVENTS[ev.id];
   return {
-    icon: e.icon, title: ev.id === 'envoy' ? ENVOY_KINDS[ev.p.kind].title : e.title,
-    art: e.art || null,
+    icon: e.icon, title: ev.id === 'envoy' ? ENVOY_KINDS[ev.p.kind].title : ev.id === 'matsuri' ? ev.p.name : e.title,
+    art: typeof e.art === 'function' ? e.art(s, ev.p) : e.art || null,
     scene: !!e.scene,
     text: e.text(s, ev.p),
     choices: e.choices(s, ev.p),

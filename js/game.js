@@ -1604,7 +1604,9 @@ function aiLordOf(s, clan) {
   if (!first && castlesOf(s, clan).length) addNews(s, `${CLANS[clan].name}に新当主・${heir.name}`, lordVoice(clan).catch ? `「${lordVoice(clan).catch}」` : '', 36);
   return heir;
 }
-const lordVoice = (clan) => LORD_VOICE[CLAN_PERSONA[clan]] || LORD_VOICE.balanced;
+// 家の性格ごとの口ぶりに、土地の言葉（REGION_VOICE）を重ねる
+const lordVoice = (clan) => Object.assign({}, LORD_VOICE[CLAN_PERSONA[clan]] || LORD_VOICE.balanced, REGION_VOICE[HOUSE_REGION[clan]] || {});
+const lordCaptured = (clan) => (REGION_VOICE[HOUSE_REGION[clan]] || {}).captured || LORD_CAPTURED[CLAN_PERSONA[clan]] || LORD_CAPTURED.balanced;
 // 自分の家との合戦を数え、節目で当主から書状を送らせる
 function countClanClash(s, r) {
   const foe = r.attacker === PLAYER ? r.defender : r.defender === PLAYER ? r.attacker : null;

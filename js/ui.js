@@ -401,7 +401,7 @@ function showPrologue() {
       <div class="kime-frame">${portrait(lord, 300, 'angry')}
         <div class="kime-name"><span>${esc(lord.name)}</span><small>${pName()}当主</small></div>
         <div class="kime-seal">${esc(pShort())}<br>之印</div></div>
-      <p class="kime-line">「${esc(PROLOGUE_CRY[S.kakun] || PROLOGUE_CRY.cha)}」</p>
+      <p class="kime-line">「${esc((REGION_VOICE[HOUSE_REGION[PLAYER]] || {}).catch || PROLOGUE_CRY[S.kakun] || PROLOGUE_CRY.cha)}」</p>
       <p class="pr-text">${esc(MAP.byId[PLAYER].ward)}の地に、${pName()}が旗を揚げる。家訓は「${KAKUN[S.kakun].name}」──${KAKUN[S.kakun].desc}</p>`,
     () => `<div class="pr-kicker">家 臣 団</div>
       <div class="pr-band">${retainers.map((g, i) => `<div style="animation-delay:${(0.2 + i * 0.15).toFixed(2)}s">${portrait(g, 64, 'smile')}<b>${esc(g.name.split(' ')[1] || g.name)}</b><small>${esc(g.title)}</small></div>`).join('')}</div>
@@ -1696,7 +1696,7 @@ function runEvents(done) {
     openModal(`${envoyScene(ev, v.title, ev.p.kind === 'tribute' ? 'angry' : ev.p.kind === 'plea' ? 'think' : null, v.text)}${choiceHtml}`);
   } else {
     openModal(`<div class="event" data-lock>
-      ${v.art ? `<div class="ev-art">${seasonArt(v.art)}<span class="ev-art-title">${v.title}</span></div>` : `<div class="ev-icon">${v.icon}</div>`}
+      ${v.art ? `<div class="ev-art">${seasonArt(v.art)}<span class="ev-art-title ${v.title.length > 5 ? 'long' : ''}">${v.title}</span></div>` : `<div class="ev-icon">${v.icon}</div>`}
       ${v.art ? "" : `<h2>${v.title}</h2>`}
       ${v.gid ? `<div class="glist pick">${genCard(S.gens[v.gid])}</div>` : ''}
       <p class="ev-text">${esc(v.text)}</p>
@@ -3035,7 +3035,7 @@ function handleLordCaptive(g, k, rest, done) {
       <p class="news">敵将捕縛</p>
       <div class="lc-pic" style="--c:${CLANS[k].color}">${portrait(g, 150, 'frustrated')}<span class="lc-crest">${crestBadge(k, 40)}</span></div>
       <h2>${CLANS[k].name}当主　${esc(g.name)}</h2>
-      <p class="lc-line">「${esc(LORD_CAPTURED[CLAN_PERSONA[k]] || LORD_CAPTURED.balanced)}」</p>
+      <p class="lc-line">「${esc(lordCaptured(k))}」</p>
       <p class="hint">敵の当主を捕らえた。扱いひとつで、${CLANS[k].name}との先行きが変わる。</p>
     </div>
     <button class="btn red" id="lc-recruit">家臣にする<small class="sub">成功率 ${p}%・失敗すると去っていく</small></button>
