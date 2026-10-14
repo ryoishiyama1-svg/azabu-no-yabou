@@ -1257,6 +1257,7 @@ function succeed(s, gid) {
 // ---------- ターン終了 ----------
 function endTurn(s) {
   const log = [];
+  s.moves = [];
   s.pendingDefense = [];
   s.underAttack = {};
   runDelegated(s, log);
@@ -1304,6 +1305,11 @@ function recOf(g) {
 }
 // 合戦の結果を、攻めた大将と守った大将の戦歴に記す（attack と endBattle の両方から呼ぶ）
 function recordBattle(s, r) {
+  // 世界が動く地図：ターン終了のあいだの合戦を記録しておき、あとで地図の上で見せる（s.moves は endTurn のあいだだけある）
+  if (s.moves) {
+    s.moves.push({ from: r.from, to: r.to, att: r.attacker, def: r.defender, won: !!r.won });
+    (r.surrendered || []).forEach((id) => s.moves.push({ from: r.to, to: id, att: r.attacker, def: r.defender, won: true, kind: 'fall' }));
+  }
   const ga = s.gens[r.gid], gd = r.dgid ? s.gens[r.dgid] : null;
   if (ga) { const a = recOf(ga); if (r.won) { a.w++; a.cap++; shiHit(s, ga, 'cap', r.to); } else a.l++; }
   addClash(s, ga, gd, 1);
@@ -1689,6 +1695,7 @@ function finaleTick(s, log) {
       Object.values(s.gens).filter((g) => g.loc === id && g.clan === 'none').forEach((g) => { g.clan = PLAYER; g.loyal = randInt(60, 75); });
       s.castles[id].owner = PLAYER;
       s.delegate[id] = true; // 帰順した城は、ひとまず委任しておく
+      if (s.moves) s.moves.push({ from: null, to: id, att: PLAYER, def: 'none', won: true, kind: 'kijun' });
       log.push(`🎌 ${MAP.byId[id].name}が、${pName()}の威光に帰順した`);
       addNews(s, `${MAP.byId[id].short}、${pName()}に帰順`, '戦わずして門を開く', 60);
     });

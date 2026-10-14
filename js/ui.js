@@ -517,7 +517,8 @@ function drawMap() {
     <g>${sceneryMarkup()}</g>
     <g id="territory">${MAP.nodes.map((n) => `<path class="cell" data-id="${n.id}" d="${CELLS[n.id]}"/>`).join('')}</g>
     <g id="roads"></g>
-    <g id="castles"></g>`;
+    <g id="castles"></g>
+    <g id="world-fx"></g>`;
   applyScale();
 
   const roads = $('roads');
@@ -3050,27 +3051,107 @@ function showSeason(turn, then) {
   setTimeout(() => { box.hidden = true; then(); }, 1900);
 }
 
+// ---------- 世界が動く地図：ターン終了のあいだの合戦を、地図の上で順に見せる ----------
+// owners0 = ターン前の城の持ち主。矢が伸びて、落ちた城は攻め手の色に塗り替わる。タップで飛ばせる
+function playWorld(owners0, moves, done) {
+  const fx = $('world-fx');
+  const list = (moves || []).filter((m) => MAP.byId[m.to] && (!m.from || MAP.byId[m.from]));
+  if (!fx || !list.length) { done(); return; }
+  const paint = (id, owner) => {
+    const col = owner === 'none' ? 'transparent' : CLANS[owner].color;
+    const cell = document.querySelector(`#territory .cell[data-id="${id}"]`);
+    if (cell) cell.setAttribute('fill', col);
+    const g = document.querySelector(`#map .castle[data-id="${id}"]`);
+    if (g) g.style.setProperty('--c', CLANS[owner].color);
+  };
+  Object.entries(owners0).forEach(([id, o]) => { if (S.castles[id] && S.castles[id].owner !== o) paint(id, o); });
+  // カメラ：動きのあった城がすべて入るように引く（終わったら元に戻す）
+  const view = { scale, left: mapwrap.scrollLeft, top: mapwrap.scrollTop };
+  const pts = list.flatMap((m) => [m.to, m.from].filter(Boolean)).map((id) => MAP.byId[id]);
+  const x0 = Math.min(...pts.map((p) => p.x)) - 90, x1 = Math.max(...pts.map((p) => p.x)) + 90;
+  const y0 = Math.min(...pts.map((p) => p.y)) - 90, y1 = Math.max(...pts.map((p) => p.y)) + 90;
+  zoomAt(Math.min(1.1, mapwrap.clientWidth / (x1 - x0), mapwrap.clientHeight / (y1 - y0)));
+  mapwrap.scrollLeft = ((x0 + x1) / 2) * scale - mapwrap.clientWidth / 2;
+  mapwrap.scrollTop = ((y0 + y1) / 2) * scale - mapwrap.clientHeight / 2;
+  // 見出しと、飛ばすための覆い
+  const area = mapwrap.parentElement;
+  const cover = document.createElement('div');
+  cover.className = 'world-cover';
+  cover.innerHTML = `<div class="world-banner"><b>諸国の動き</b><span id="wb-n"></span><button>飛ばす ›</button></div>`;
+  area.appendChild(cover);
+  const step = Math.max(260, Math.min(700, 5000 / list.length));
+  let i = 0, timer = null, over = false;
+  const finish = () => {
+    if (over) return;
+    over = true;
+    clearTimeout(timer);
+    cover.remove();
+    fx.innerHTML = '';
+    scale = view.scale; applyScale();
+    mapwrap.scrollLeft = view.left; mapwrap.scrollTop = view.top;
+    render();
+    done();
+  };
+  cover.onclick = () => { Sound.tap(); finish(); };
+  const next = () => {
+    if (over) return;
+    if (i >= list.length) { timer = setTimeout(finish, 700); return; }
+    const m = list[i++];
+    $('wb-n').textContent = `${i} / ${list.length}`;
+    const B = MAP.byId[m.to], col = CLANS[m.att] ? CLANS[m.att].color : '#857b6c';
+    const mine = m.def === PLAYER || m.att === PLAYER;
+    let html = '';
+    if (m.from) {
+      // 弓なりの矢：始点から少し離して、終点の手前で止める
+      const A = MAP.byId[m.from];
+      const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1;
+      const sx = A.x + (dx / d) * 22, sy = A.y + (dy / d) * 22, ex = B.x - (dx / d) * 26, ey = B.y - (dy / d) * 26;
+      const cx = (sx + ex) / 2 - (dy / d) * d * 0.22, cy = (sy + ey) / 2 + (dx / d) * d * 0.22;
+      const ang = (Math.atan2(ey - cy, ex - cx) * 180) / Math.PI;
+      html += `<path class="wf-arrow ${m.kind === 'fall' ? 'fall' : ''}" pathLength="100" d="M${sx.toFixed(0)},${sy.toFixed(0)} Q${cx.toFixed(0)},${cy.toFixed(0)} ${ex.toFixed(0)},${ey.toFixed(0)}" style="--c:${col};animation-duration:${(step * 0.55).toFixed(0)}ms"/>
+        <path class="wf-head" d="M0,0 L-13,-7 L-9,0 L-13,7Z" transform="translate(${ex.toFixed(0)},${ey.toFixed(0)}) rotate(${ang.toFixed(0)})" style="--c:${col};animation-delay:${(step * 0.5).toFixed(0)}ms"/>`;
+    }
+    const at = (step * (m.from ? 0.58 : 0.1)).toFixed(0);
+    const word = m.kind === 'kijun' ? '帰順' : m.kind === 'fall' ? '降伏' : m.won ? '落' : '退';
+    html += `<g transform="translate(${B.x},${B.y - 6})"><g class="wf-stamp ${m.won ? 'won' : 'lost'} ${mine ? 'mine' : ''}" style="--c:${col};animation-delay:${at}ms">
+      <circle r="${word.length > 1 ? 21 : 16}"/><text>${word}</text></g></g>`;
+    const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    grp.innerHTML = html;
+    fx.appendChild(grp);
+    timer = setTimeout(() => {
+      if (over) return;
+      if (m.won) { paint(m.to, m.att); Sound.stamp(0); }
+      timer = setTimeout(() => { grp.classList.add('fade'); next(); }, step * 0.42);
+    }, +at);
+  };
+  next();
+}
+
 function onEndTurn() {
   Sound.unlock();
   selected = null;
   mode = null;
   const before = S.gold[PLAYER];
   S.deferDefense = getSettings().defenseMode === 'command';
+  const owners0 = {};
+  Object.keys(S.castles).forEach((id) => { owners0[id] = S.castles[id].owner; });
   const log = endTurn(S);
+  const moves = S.moves;
+  S.moves = null;
   save();
   render();
   const gain = S.gold[PLAYER] - before;
   const news = (S.news || []).slice();
   S.news = [];
   save();
-  showSeason(S.turn, () => {
+  playWorld(owners0, moves, () => showSeason(S.turn, () => {
     showNewspaper(news, log, gain);
     $('ok').onclick = () => {
       Sound.tap();
       closeModal();
       afterDefenses();
     };
-  });
+  }));
 }
 
 // ---------- 学園新聞 ----------

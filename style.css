@@ -1890,3 +1890,25 @@ table.best td { font-family: var(--gothic); font-weight: 900; background: #fffaf
 @keyframes townPop { from { transform: scale(0) translateY(6px); opacity: 0; } }
 #mapwrap[data-season="3"] #map .town .tr { fill: #fffaf0; }
 .stat .town-name { display: block; margin-top: 1px; font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+
+/* ---------- 世界が動く地図：ターン終了の合戦を地図で見せる ---------- */
+.world-cover { position: absolute; inset: 0; z-index: 5; cursor: pointer; background: radial-gradient(circle at 50% 50%, transparent 55%, rgba(28, 26, 23, 0.25)); }
+.world-banner { position: absolute; left: 10px; right: 60px; top: 10px; display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+  background: var(--ink); color: var(--paper); border: 2px solid #f3d27a; box-shadow: 3px 3px 0 var(--red); animation: drop 0.25s ease-out; }
+.world-banner b { font-family: var(--brush); font-weight: 400; font-size: 18px; color: #f3d27a; }
+.world-banner span { font-family: var(--gothic); font-weight: 900; font-size: 13px; }
+.world-banner button { margin-left: auto; padding: 3px 10px; border: 0; background: var(--paper); color: var(--ink); font-weight: 900; cursor: pointer; }
+#world-fx { pointer-events: none; }
+#world-fx .fade { opacity: 0.35; transition: opacity 0.6s; }
+.wf-arrow { fill: none; stroke: var(--c); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100;
+  filter: drop-shadow(2px 2px 0 rgba(28, 26, 23, 0.6)); animation: wfDraw ease-out forwards; }
+.wf-arrow.fall { stroke-width: 4; stroke-dasharray: 4 6; stroke-dashoffset: 0; animation: wfFade 0.3s ease-out both; }
+@keyframes wfDraw { to { stroke-dashoffset: 0; } }
+@keyframes wfFade { from { opacity: 0; } }
+.wf-head { fill: var(--c); stroke: var(--ink); stroke-width: 1.5; animation: wfFade 0.15s ease-out both; }
+.wf-stamp { animation: wfStamp 0.35s cubic-bezier(0.2, 1.8, 0.4, 1) both; transform-box: fill-box; transform-origin: center; }
+.wf-stamp circle { fill: var(--c); stroke: var(--paper); stroke-width: 3; }
+.wf-stamp text { fill: #fff; font-family: var(--brush); font-size: 18px; text-anchor: middle; dominant-baseline: central; }
+.wf-stamp.lost circle { fill: #6f6a60; }
+.wf-stamp.mine circle { stroke: #f3d27a; stroke-width: 4; }
+@keyframes wfStamp { from { opacity: 0; scale: 2.2; } }
