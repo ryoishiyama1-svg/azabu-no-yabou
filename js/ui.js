@@ -483,7 +483,7 @@ const scenarioSize = (scKey) => SCHOOL_ROWS.filter(SCENARIOS[scKey].filter).leng
 
 function showSetup() {
   const rec = loadRecords();
-  const st = { diff: 'normal', ed: 'tokyo', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '' };
+  const st = { diff: 'normal', ed: 'tokyo', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '', ch: new Set() };
   const pickList = (attr, keys, obj, cur, label) => `<div class="diff-list">${keys.map((k) => { const d = obj[k];
     return `<button data-${attr}="${k}" class="${k === cur ? 'on' : ''}"><b>${d.name}</b>${label(d, k)}<small>${d.desc}</small></button>`; }).join('')}</div>`;
   // 版の札：大きな一文字と、学校・家の数
@@ -519,6 +519,8 @@ function showSetup() {
     <input class="name-input" id="lord-name" maxlength="10" value="${defaultName()}" autocomplete="off">
     ${step('五', '難易度')}
     ${pickList('diff', Object.keys(DIFFICULTY), DIFFICULTY, st.diff, () => '')}
+    ${step('六', '挑戦状（えらばなくてもよい）')}
+    <div class="ch-pick">${Object.entries(CHALLENGES).map(([k, c]) => `<button data-ch="${k}"><span>${c.mark}</span><b>${c.name}</b><small>${c.desc}</small>${(rec.challenges || {})[k] ? '<i>済</i>' : ''}</button>`).join('')}</div>
     <label class="check-row"><input type="checkbox" id="tut" ${tutDone() ? '' : 'checked'}> 軍師の手ほどき（チュートリアル）を受ける</label>
     <button class="btn red" id="setup-go">出 陣</button>
     <button class="btn plain" data-close>やめる</button>`);
@@ -560,9 +562,11 @@ function showSetup() {
   bindScenarios();
   bindClans();
   bindPick('diff', (v) => { st.diff = v; });
+  // 挑戦状：いくつでも重ねられる（押すたびに付け外し）
+  modalBody.querySelectorAll('[data-ch]').forEach((b) => { b.onclick = () => { Sound.tap(); const k = b.dataset.ch; if (st.ch.has(k)) st.ch.delete(k); else st.ch.add(k); b.classList.toggle('on', st.ch.has(k)); }; });
   $('setup-go').onclick = () => {
     const name = $('lord-name').value.trim() || defaultName();
-    S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked });
+    S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked, challenges: [...st.ch] });
     save();
     closeModal();
     startGame(true);
@@ -1164,7 +1168,8 @@ function renderCouncil() {
     <div class="cn-head">
       ${lord ? portrait(lord, 48) : crestBadge(PLAYER, 48)}
       <div class="cn-who"><h2>軍議<small>${dateLabel(S.turn)}</small></h2>
-        <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p></div>
+        <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p>
+        ${(S.challenges || []).length ? `<p class="cn-ch">${S.challenges.map((c) => `<span title="${CHALLENGES[c].desc}">${CHALLENGES[c].mark}</span>`).join("")}<small>挑戦状${hasCh(S, "speed") ? `・天下の期限まで あと${Math.max(0, CHALLENGES.speed.limit - S.turn)}季` : ""}</small></p>` : ""}</div>
       ${S.debug ? '<b class="dbg">DEBUG</b>' : ''}
     </div>
     <div class="cn-tiles">
@@ -1308,6 +1313,7 @@ function currentTip() {
 
 // ---------- 外交 ----------
 function showDiplomacy(message) {
+  if (hasCh(S, 'nodiplo')) { toast('挑戦状「外交禁止」：他家と言葉を交わすことはできない'); return; }
   const envoy = envoyOf(S);
   const alive = aiClans().filter((k) => castlesOf(S, k).length);
   const rows = alive.map((k) => {
@@ -3864,7 +3870,7 @@ function showEnding() {
       <div class="big">${win ? '天下統一' : '落 日'}</div>
       <p>${win
         ? `${dateLabel(S.turn)}、${pName()} ${S.lords.length}代目当主 ${esc(lord ? lord.name : S.lords[S.lords.length - 1].name)} は${MAP.nodes.length}校をすべて制覇した！`
-        : `${dateLabel(S.turn)}、${pName()}の城はすべて奪われた…`}</p>
+        : S.failReason === 'speed' ? `${dateLabel(S.turn)}、挑戦状「二十季の天下」の期限が尽きた。天下はまだ遠い…` : `${dateLabel(S.turn)}、${pName()}の城はすべて奪われた…`}</p>
       <p class="hint">${SCENARIOS[S.scenario].name} ・ 難易度：${diffOf(S).name} ・ ${S.turn}季${S.debugUsed ? '<br>（デバッグを使ったため記録されません）' : ''}</p>
     </div>
     ${unlockedNow ? '<p class="result">🔓 すべての家で遊べるようになった！</p>' : ''}
@@ -3937,6 +3943,8 @@ function showRecords() {
     ${clans}
     <p class="hint">${rec.unlocked.length > 1 ? '🔓 すべての家で遊べます' : '🔒 一度天下統一すると、他の家でも遊べるようになります'}</p>
     ${(rec.annals || []).length ? `<h3>天下取りの年表</h3><div class="an-list">${rec.annals.map((a, i) => `<button class="an-row" data-ann="${i}">${CLANS[a.player] ? crestBadge(a.player, 26) : ''}<b>${esc(a.house)}</b><small>${(SCENARIOS[a.scenario] || SCENARIOS.tokyo).name}・${a.turn}季・${new Date(a.at).getMonth() + 1}/${new Date(a.at).getDate()}</small><i class="${a.result}">${a.result === 'win' ? '統一' : '落日'}</i></button>`).join('')}</div>` : ''}
+    <h3>挑戦状</h3>
+    <div class="ch-seals">${Object.entries(CHALLENGES).map(([k, c]) => { const done = (rec.challenges || {})[k] || []; return `<div class="ch-seal ${done.length ? 'got' : ''}"><span>${c.mark}</span><b>${c.name}</b><small>${done.length ? done.map((sc) => (SCENARIOS[sc] || {}).name).join('・') : c.desc}</small></div>`; }).join('')}</div>
     <h3>名場面帖</h3>
     <div class="mb-book-grid">${Object.entries(MEIBA).map(([id, m]) => (rec.meiba || {})[id] ? `<div class="mb-slot got"><b>${m.name}</b><small>${m.sub}</small></div>` : `<div class="mb-slot"><b>？？？</b><small>${m.desc.split("。")[0]}…</small></div>`).join("")}</div>
     <h3>実績の印</h3>

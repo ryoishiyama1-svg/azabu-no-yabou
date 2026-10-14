@@ -516,7 +516,7 @@ function rollEvents(s) {
   }
 
   // 他家からの使者
-  if (!s.encircle && Math.random() < 0.25) {
+  if (!s.encircle && !hasCh(s, 'nodiplo') && Math.random() < 0.25) { // 外交禁止の挑戦状では、使者は来ない
     const p = pickEnvoy(s);
     if (p) list.push({ id: 'envoy', p });
   }

@@ -26,6 +26,8 @@ const ACHIEVEMENTS = [
   { id: 'rival', icon: '宿', name: '宿命の好敵手', desc: '宿敵が生まれる', play: (s) => Object.values(s.rivals || {}).some((n) => n >= RIVAL_AT) },
   { id: 'legend', icon: '伝', name: '語り継がれる者', desc: '名を上げた武将が列伝に名を残す', play: (s) => (s.hall || []).some((h) => h.rec.w + h.rec.cap + h.rec.dw * 2 + h.rec.def >= 10) },
   { id: 'first_lose', icon: '落', name: '落日を知る', desc: '初めて敗北する', end: (s) => s.result === 'lose' },
+  { id: 'challenger', icon: '挑', name: '挑戦者', desc: '挑戦状をつけて天下統一する', end: (s) => s.result === 'win' && (s.challenges || []).length > 0 },
+  { id: 'challenge_all', icon: '極', name: '挑戦状を極める', desc: '五つの挑戦状すべてで天下統一する', end: (s, rec) => Object.keys(CHALLENGES).every((c) => (rec.challenges || {})[c] || (s.result === 'win' && (s.challenges || []).includes(c))) },
   { id: 'zukan50', icon: '鑑', name: '名門録', desc: '学校図鑑に50校を載せる', play: (s, rec) => Object.keys(rec.zukan || {}).length >= 50 },
   { id: 'zukan_ed', icon: '録', name: '一国の図鑑', desc: 'ひとつの版の学校をすべて図鑑に載せる', play: (s, rec) => Object.keys(EDITIONS).some((ed) => zukanIds(ed).every((id) => (rec.zukan || {})[id])) },
 ];
@@ -99,6 +101,11 @@ function recordEnding(s) {
   s.recorded = true;
   const rec = loadRecords();
   rec.annals = [chronicleOf(s), ...(rec.annals || [])].slice(0, 10);
+  // 挑戦状：天下統一したら、挑戦状ごとに果たしたシナリオを残す
+  if (s.result === 'win' && (s.challenges || []).length) {
+    rec.challenges = rec.challenges || {};
+    s.challenges.forEach((c) => { rec.challenges[c] = [...new Set([...(rec.challenges[c] || []), s.scenario])]; });
+  }
   rec.plays++;
   let unlockedNow = false;
   if (s.result === 'win') {

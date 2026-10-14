@@ -202,7 +202,7 @@ function autoBuild(s, clan, id, reserve) {
 }
 
 // ---------- ゲームの状態 ----------
-function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu' } = {}) {
+function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'tokyo', tutorial = false, clan = 'azabu', challenges = [] } = {}) {
   scenario = setScenario(scenario);
   const lead = EDITIONS[edOf(scenario)].lead;
   setPlayer(MAP.byId[clan] && MAP.byId[clan].clan === clan ? clan : lead);
@@ -256,7 +256,9 @@ function newGame({ lordName = '麻布 一郎', diff = 'normal', scenario = 'toky
   const lord = lordOf(s);
   s.kakun = kakunOf(lord);
   s.lords = [{ name: lord.name, from: 0, kakun: s.kakun }];
-  return migrate(s);
+  migrate(s);
+  applyChallenges(s, challenges);
+  return s;
 }
 
 // 古いセーブデータに、あとから増えた項目を足す
@@ -579,7 +581,7 @@ function castleIncome(s, id) {
 function income(s, clan) {
   const base = castlesOf(s, clan).reduce((a, id) => a + castleIncome(s, id), 0);
   const sc = SCENARIOS[s.scenario] || SCENARIOS.tokyo;
-  if (clan === PLAYER) return Math.round(base * (s.kakun === 'pol' ? 1.15 : 1));
+  if (clan === PLAYER) return Math.round(base * (s.kakun === 'pol' ? 1.15 : 1) * (hasCh(s, 'poor') ? 0.7 : 1));
   return Math.round(base * diffOf(s).aiIncome * sc.aiIncome * (s.encircle ? 1.2 : 1));
 }
 
@@ -1318,6 +1320,8 @@ function checkWin(s) {
   const mine = castlesOf(s, PLAYER).length;
   if (mine === 0) s.result = 'lose';
   else if (mine === MAP.nodes.length) s.result = 'win';
+  // 挑戦状「二十季の天下」：期限までに天下統一できなければ負け
+  else if (hasCh(s, 'speed') && s.turn >= CHALLENGES.speed.limit) { s.result = 'lose'; s.failReason = 'speed'; }
 }
 
 // ---------- 武将列伝：戦歴・あだ名・卒業生 ----------
@@ -2053,4 +2057,24 @@ function siegeTick(s, log) {
       meibaHit(s, 'hiboshi', { gid: sg.gid, to: sg.to, turns: sg.turns, foe: def });
     }
   });
+}
+
+// ---------- 挑戦状（やり込みの縛り） ----------
+// 旗揚げのときに選ぶ条件。s.challenges = ['solo', ...]。天下統一すると、戦績に挑戦状の印が残る
+const CHALLENGES = {
+  solo: { name: '当主ひとり', mark: '独', desc: '家臣なしで旗揚げする（当主だけ）' },
+  nodiplo: { name: '外交禁止', mark: '断', desc: '外交を使えず、他家の使者も来ない' },
+  speed: { name: '二十季の天下', mark: '速', desc: '20季（5年）のうちに天下統一できなければ負け', limit: 20 },
+  poor: { name: '貧乏旗揚げ', mark: '貧', desc: '軍資金なしで始まり、収入は7割' },
+  shimen: { name: '四面楚歌', mark: '囲', desc: 'はじめから包囲網。他家はみな敵で、軍資金も多い' },
+};
+const hasCh = (s, id) => !!(s && s.challenges && s.challenges.includes(id));
+function applyChallenges(s, list) {
+  s.challenges = (list || []).filter((c) => CHALLENGES[c]);
+  if (hasCh(s, 'solo')) gensOf(s, PLAYER).filter((g) => !g.lord).forEach((g) => { delete s.gens[g.id]; });
+  if (hasCh(s, 'poor')) s.gold[PLAYER] = 0;
+  if (hasCh(s, 'shimen')) {
+    s.encircle = true;
+    aiClans().forEach((k) => { if (s.rel[k]) { s.rel[k].friend = 0; s.rel[k].truce = 0; s.rel[k].ally = 0; } s.gold[k] = Math.round(s.gold[k] * 1.5); });
+  }
 }
