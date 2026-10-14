@@ -317,6 +317,79 @@ function openSiege(from, to) {
   };
   draw();
 }
+// ---------- 評定：季のはじめに、家臣が顔をそろえて献策する ----------
+// 守り（援兵）・攻め・褒美・開発・外交から、いま意味のある献策を三つまで。採用すると献策した家臣の忠誠が上がり、その場で行う
+function hyojoProposals() {
+  const out = [], used = new Set();
+  const all = gensOf(S, PLAYER).filter((g) => g.loc && !g.lord);
+  const take = (pool, key) => { const g = pool.filter((x) => !used.has(x.id)).sort((a, b) => b[key] - a[key])[0]; if (g) used.add(g.id); return g; };
+  const rp = castlesOf(S, PLAYER).map((id) => reinforcePlan(S, id)).filter(Boolean).sort((a, b) => a.before - b.before)[0];
+  if (rp) { const g = take(all, 'int'); if (g) out.push({ kind: 'reinforce', g, plan: rp, title: `${MAP.byId[rp.to].short}に援兵を`, text: `${MAP.byId[rp.to].name}の守りが危うい。${MAP.byId[rp.from].short}から${fmt(rp.amount)}の兵を送りましょう`, sub: `守り切る見込み 約${pctOf(rp.before)}% → 約${pctOf(rp.after)}%` }); }
+  const ch = attackChances(S)[0];
+  if (ch) {
+    const g = S.gens[ch.gid] && !used.has(ch.gid) ? S.gens[ch.gid] : take(all, 'str');
+    if (g) { used.add(g.id); out.push({ kind: 'attack', g, plan: ch, title: `${MAP.byId[ch.to].short}を攻める`, text: `${MAP.byId[ch.to].name}は手薄。この私に攻めさせてくだされ`, sub: `勝つ見込み 約${pctOf(ch.p)}%` }); }
+  }
+  const low = all.filter((g) => g.loyal < LOYAL.leaveBelow && canReward(S, g)).sort((a, b) => a.loyal - b.loyal)[0];
+  if (low) { used.add(low.id); const g = take(all.filter((x) => x !== low), 'cha'); if (g) out.push({ kind: 'reward', g, target: low, title: `${low.name.split(' ')[1] || low.name}に褒美を`, text: `${low.name}の心が離れかけております。褒美で引き留めては`, sub: `金${LOYAL.rewardCost}・忠誠が上がる` }); }
+  if (out.length < 3) {
+    const dev = castlesOf(S, PLAYER).filter((id) => !S.delegate[id] && idleGensAt(S, id).some((g) => !used.has(g.id)) && canDevelop(S, id)).sort((a, b) => S.castles[a].eco - S.castles[b].eco)[0];
+    if (dev) { const g = take(idleGensAt(S, dev), 'pol'); if (g) out.push({ kind: 'develop', g, castle: dev, title: `${MAP.byId[dev].short}を開発`, text: `${MAP.byId[dev].name}の町を育てれば、年貢が増えまする`, sub: `金${RULES.developCost}・経済が上がる` }); }
+  }
+  if (out.length < 3 && !hasCh(S, 'nodiplo') && !S.encircle) {
+    const k = aiClans().filter((x) => S.rel[x] && !S.rel[x].truce && !S.rel[x].ally && S.rel[x].friend >= 45).sort((a, b) => S.rel[b].friend - S.rel[a].friend)[0];
+    if (k) { const g = take(all, 'cha'); if (g) out.push({ kind: 'diplo', g, clan: k, title: `${CLANS[k].name}と和を`, text: `${CLANS[k].name}とは話が通じます。停戦を結べば、背後が安らぎましょう`, sub: '外交の画面へ' }); }
+  }
+  return out.slice(0, 3);
+}
+function adoptProposal(p) {
+  changeLoyal(p.g, 3);
+  if (p.kind === 'reinforce') { doReinforce(p.plan.to); return; }
+  if (p.kind === 'attack') { selected = p.plan.to; openAttack(null, p.plan.to, p.plan); return; }
+  if (p.kind === 'reward') { showReward([p.target], '褒美（評定の献策）'); return; }
+  if (p.kind === 'develop') {
+    develop(S, p.castle, p.g); S.acted[p.g.id] = true; save(); render();
+    toast(`${esc(p.g.name)}が${MAP.byId[p.castle].short}を開発した`); return;
+  }
+  if (p.kind === 'diplo') showDiplomacy();
+}
+function showHyojo(force) {
+  const props = hyojoProposals();
+  if (!props.length) { if (force) toast('評定：いま申し上げることはございませぬ'); return; }
+  const lord = lordOf(S);
+  let box = $('hyojo');
+  if (!box) { box = document.createElement('div'); box.id = 'hyojo'; box.className = 'kime hyojo'; document.body.appendChild(box); }
+  box.innerHTML = `<div class="hy-hall">
+      <div class="hy-head"><span>評　定</span><small>${dateLabel(S.turn)}・${esc(pName())}</small></div>
+      ${lord ? `<div class="hy-lord">${portrait(lord, 76, 'think')}<b>${esc(lord.name)}</b></div>` : ''}
+      <div class="hy-list">${props.map((p, i) => `<button class="hy-card" data-hy="${i}" style="animation-delay:${(0.25 + i * 0.15).toFixed(2)}s">
+        ${portrait(p.g, 64, 'smile')}<div><small>${esc(p.g.name)}の献策</small><b>${esc(p.title)}</b><p>「${esc(p.text)}」</p><em>${esc(p.sub)}</em></div><i class="hy-stamp">採用</i></button>`).join('')}</div>
+      <button class="btn plain hy-close" id="hy-close">評定を終える</button>
+    </div>`;
+  box.hidden = false;
+  Sound.hyoshigi(2); Sound.taiko(0.3, 0.8);
+  box.onclick = null;
+  $('hy-close').onclick = (e) => { e.stopPropagation(); Sound.tap(); box.hidden = true; render(); };
+  box.querySelectorAll('[data-hy]').forEach((b) => {
+    b.onclick = (e) => {
+      e.stopPropagation();
+      if (box.dataset.busy) return;
+      box.dataset.busy = '1';
+      b.classList.add('adopted');
+      Sound.stamp(0);
+      setTimeout(() => { delete box.dataset.busy; box.hidden = true; adoptProposal(props[+b.dataset.hy]); }, 700);
+    };
+  });
+}
+// 季のはじめに評定を開くか（設定：毎季・年に一度（春）・開かない）
+function maybeHyojo() {
+  const m = getSettings().hyojo;
+  if (!S || S.result || m === 'off' || (m === 'year' && S.turn % 4 !== 0)) return;
+  if (S.hyojoTurn === S.turn) return;
+  S.hyojoTurn = S.turn;
+  showHyojo(false);
+}
+
 // ---------- 茶の湯：家臣を招いて茶会を開く ----------
 function teaRoom(guests, lord) {
   // 茶室：畳・炉・茶碗と、向かい合う当主と客
@@ -1304,10 +1377,12 @@ function renderCouncil() {
       <button class="btn" id="bulk-develop" ${S.gold[PLAYER] >= RULES.developCost && idleGens ? '' : 'disabled'}>全城で開発</button>
       <button class="btn" id="btn-diplo">外 交</button>
     </div>
-    <button class="btn tea-btn" id="btn-tea" ${canTea(S) ? "" : "disabled"}>🍵 茶の湯<small>${S.teaTurn === S.turn ? "この季の茶会は済んだ" : `家臣を招いて本音を聞く・金${TEA.cost}`}</small></button>
+    <div class="cn-duo"><button class="btn tea-btn" id="btn-hyojo">📜 評定<small>家臣の献策を聞く</small></button>
+    <button class="btn tea-btn" id="btn-tea" ${canTea(S) ? "" : "disabled"}>🍵 茶の湯<small>${S.teaTurn === S.turn ? "この季の茶会は済んだ" : `家臣を招いて本音を聞く・金${TEA.cost}`}</small></button></div>
     <button class="btn red end-btn" id="btn-end">ターン終了</button></div>`;
   $('btn-end').onclick = onEndTurn;
   $('btn-tea').onclick = () => { Sound.tap(); showTea(); };
+  $('btn-hyojo').onclick = () => { Sound.tap(); showHyojo(true); };
   $('bulk-recruit').onclick = () => bulk('recruit');
   $('bulk-develop').onclick = () => bulk('develop');
   $('btn-diplo').onclick = () => { Sound.tap(); showDiplomacy(); };
@@ -2927,7 +3002,7 @@ const SETTINGS_KEY = 'azabu-settings';
 function getSettings() {
   let v = {};
   try { v = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch (e) {}
-  return Object.assign({ attackMode: 'command', defenseMode: 'command', speed: 'normal', tips: 'on' }, v);
+  return Object.assign({ attackMode: 'command', defenseMode: 'command', speed: 'normal', tips: 'on', hyojo: 'season' }, v);
 }
 function setSetting(k, v) {
   const s = getSettings();
@@ -2944,6 +3019,7 @@ function showSettings() {
     ${row('attackMode', '攻める合戦', [['command', '采配する'], ['auto', 'おまかせ']], '「おまかせ」にすると、出陣したあとは自動で決着します。')}
     ${row('defenseMode', '守りの合戦', [['command', '采配する'], ['auto', 'おまかせ']], '「采配する」にすると、敵に攻められたとき「敵襲！」として迎え撃てます。委任中の城は自動で守ります。')}
     ${row('speed', '合戦の演出', [['normal', 'ふつう'], ['fast', '速い']], '')}
+    ${row('hyojo', '評定', [['season', '毎季'], ['year', '年に一度'], ['off', '開かない']], '季のはじめに家臣がそろって献策します。軍議の「評定」からいつでも開けます。')}
     ${row('tips', '軍師の献策', [['on', '受ける'], ['off', '受けない']], '新しい場面が来たとき、軍師が一度だけ心得を教えます。')}
     <button class="btn plain" id="tips-reset">献策をはじめから聞き直す</button>
     <button class="btn plain" data-close>閉じる</button>`);
@@ -3887,7 +3963,7 @@ function afterDefenses() {
     save();
     render();
     if (S.result) showEnding();
-    else runEvents(() => achievementToast(checkAchievements(S)));
+    else runEvents(() => { achievementToast(checkAchievements(S)); maybeHyojo(); });
   });
 }
 
