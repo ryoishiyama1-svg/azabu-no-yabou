@@ -3680,11 +3680,13 @@ function showEnding() {
     ${endingNumbers()}
     <h3>歴代当主</h3>
     ${lordsHistory()}
+    <button class="btn" id="see-card">絵にして残す</button>
     <button class="btn" id="see-annals">年表を見る</button>
     <button class="btn red" id="again">もう一度</button>
     <button class="btn plain" id="to-title">タイトルへ</button>`);
   $('again').onclick = () => { clearSave(); closeModal(); showSetup(); };
   $('see-annals').onclick = () => { Sound.tap(); showChronicle(chronicleOf(S), showEnding); };
+  $('see-card').onclick = () => { Sound.tap(); showShareCard(showEnding); };
   $('to-title').onclick = () => { clearSave(); closeModal(); showTitle(); };
 }
 
@@ -3833,6 +3835,7 @@ $('btn-menu').onclick = () => {
     <button class="btn plain" id="m-settings">設定（合戦のおまかせ・速さ）</button>
     <button class="btn plain" id="m-records">戦績・実績</button>
     <button class="btn plain" id="m-annals">年表（この天下取りのあゆみ）</button>
+    <button class="btn plain" id="m-card">いまの勢力を絵にする（共有・保存）</button>
     <button class="btn plain" id="m-zukan">学校図鑑</button>
     <button class="btn plain" id="m-export">セーブの書き出し（枠${currentSlot}）</button>
     <button class="btn plain" id="m-help">遊び方</button>
@@ -3844,6 +3847,7 @@ $('btn-menu').onclick = () => {
   $('m-records').onclick = () => { Sound.tap(); showRecords(); };
   $('m-zukan').onclick = () => { Sound.tap(); save(); showZukan(edOf(S.scenario)); };
   $('m-annals').onclick = () => { Sound.tap(); showChronicle(chronicleOf(S)); };
+  $('m-card').onclick = () => { Sound.tap(); showShareCard(); };
   $('m-settings').onclick = () => { Sound.tap(); showSettings(); };
   $('m-export').onclick = () => { Sound.tap(); save(); showExport(currentSlot, closeModal); };
   $('m-help').onclick = () => { Sound.tap(); showHelp(); };

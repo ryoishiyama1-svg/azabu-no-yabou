@@ -2105,3 +2105,7 @@ table.best tr.ed-row th { padding-top: 8px; text-align: left; font-family: var(-
 .an-row small { flex: 1; font-size: 11px; color: var(--muted); }
 .an-row i { font-style: normal; padding: 1px 6px; font-family: var(--brush); font-size: 13px; color: #fff; background: #6f6a60; }
 .an-row i.win { background: var(--red); }
+
+/* ---------- 共有用の一枚絵 ---------- */
+.share-img { display: block; width: 100%; max-width: 360px; margin: 0 auto 10px; border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--red); }
+a.btn.sh-dl { display: block; text-align: center; text-decoration: none; }

@@ -1,6 +1,6 @@
 // オフラインでも遊べるようにファイルを保存しておく
 // ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
-const V = 67;
+const V = 68;
 const VERSION = `v${V}`;
 const FILES = [
   './',
@@ -20,6 +20,7 @@ const FILES = [
   `js/ukiyo.js?v=${V}`,
   `js/portrait.js?v=${V}`,
   `js/sound.js?v=${V}`,
+  `js/share.js?v=${V}`,
   `js/ui.js?v=${V}`,
   'icons/icon-180.png',
   'icons/icon-192.png',
