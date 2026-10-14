@@ -506,8 +506,8 @@ function waterTest() {
   const sc = sceneryOf();
   const toPts = (poly) => poly.map(([la, lo]) => MAP.geo(la, lo));
   if (!sc) { const bay = toPts(bayPoints()); return (x, y) => inPolygon(bay, x, y); }
-  const lands = (sc.lands || []).map(toPts), water = [...(sc.seas || []), ...(sc.lakes || [])].map(toPts);
-  return (x, y) => (lands.length && !lands.some((p) => inPolygon(p, x, y))) || water.some((p) => inPolygon(p, x, y));
+  const lands = (sc.lands || []).map(toPts), water = [...(sc.seas || []), ...(sc.lakes || [])].map(toPts), isles = (sc.islands || []).map(toPts);
+  return (x, y) => (lands.length && !lands.some((p) => inPolygon(p, x, y))) || (water.some((p) => inPolygon(p, x, y)) && !isles.some((p) => inPolygon(p, x, y)));
 }
 function drawRivers(list) {
   let s = '';
@@ -532,7 +532,8 @@ function editionScenery(sc) {
     sc.lands.forEach((l) => { s += `<path class="land" d="${poly(l)}"/>`; });
   }
   (sc.seas || []).forEach((p) => { s += `<path class="bay" d="${poly(p)}"/><path class="bay-waves" d="${poly(p)}"/>`; });
-  (sc.lakes || []).forEach((p) => { s += `<path class="bay lake" d="${poly(p)}"/>`; });
+  (sc.islands || []).forEach((p) => { s += `<path class="land" d="${poly(p)}"/>`; }); // 海に浮かぶ島（淡路島など）
+  (sc.lakes || []).forEach((p) => { s += `<path class="bay lake" d="${poly(p)}"/><path class="bay-waves" d="${poly(p)}"/>`; });
   s += drawRivers(sc.rivers || []);
   s += seasonTrees();
   const clouds = [[W * 0.02, H * 0.82, 260], [W * 0.55, H * 0.03, 300], [W * 0.78, H * 0.22, 220], [W * 0.25, H * 0.06, 200]];
