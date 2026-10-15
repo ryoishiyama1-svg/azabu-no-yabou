@@ -20,6 +20,7 @@ function portraitOptions(g) {
   else if (rr(3) === 0) over = 'haori';
   return {
     female,
+    lord: !!g.lord,
     hair: female ? ['long', 'pony', 'bob'][rr(3)] : ['spiky', 'neat'][rr(2)],
     garment: female ? 'sailor' : 'gakuran',
     over,

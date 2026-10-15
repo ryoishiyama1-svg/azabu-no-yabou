@@ -320,6 +320,38 @@ const UKIYO = (() => {
       <circle cx="150" cy="104" r="6" fill="${GOLD}" stroke="${INK}" stroke-width="2"/>`;
   }
 
+  // ---------- 大きな肖像の描き込み（v88） ----------
+  // 平塗りの上に、墨のぼかしの陰影・髪の毛筋・衣の明暗・当主の金の後光を重ねる。小さい顔（o.small）には描かない
+  const FACE_D = 'M118,118 Q100,140 104,176 Q108,210 128,232 Q140,242 152,238 Q176,230 190,204 Q200,176 196,146 Q192,118 170,108 Q140,100 118,118Z';
+  const FACE_F_D = 'M120,120 Q104,142 108,176 Q112,206 130,226 Q142,236 152,232 Q174,224 186,200 Q196,174 192,146 Q188,120 168,110 Q140,102 120,120Z';
+  const BODY_D = 'M40,430 Q46,300 150,272 Q256,296 280,430Z';
+  const paintDefs = `<defs>
+    <radialGradient id="pt-face" cx="0.62" cy="0.42" r="0.62"><stop offset="0.45" stop-color="#fff6e6" stop-opacity="0.35"/><stop offset="0.8" stop-color="#c98f62" stop-opacity="0"/><stop offset="1" stop-color="#9a5d3a" stop-opacity="0.5"/></radialGradient>
+    <linearGradient id="pt-cloth" x1="0.15" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.16"/><stop offset="0.45" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.38"/></linearGradient>
+    <radialGradient id="pt-vig" cx="0.55" cy="0.42" r="0.75"><stop offset="0.55" stop-color="#1c1a17" stop-opacity="0"/><stop offset="1" stop-color="#1c1a17" stop-opacity="0.42"/></radialGradient>
+    <radialGradient id="pt-kin" cx="0.5" cy="0.5" r="0.5"><stop offset="0.55" stop-color="#f3d27a" stop-opacity="0.95"/><stop offset="0.85" stop-color="#e0a526" stop-opacity="0.75"/><stop offset="1" stop-color="#e0a526" stop-opacity="0"/></radialGradient>
+  </defs>`;
+  // 当主の後光：金箔の円に、放射の細い線
+  const halo = `<circle cx="152" cy="168" r="104" fill="url(#pt-kin)"/>
+    <g stroke="#b8862a" stroke-width="1.2" opacity="0.55">${Array.from({ length: 36 }, (_, i) => { const a = (i / 36) * Math.PI * 2; return `<path d="M${(152 + Math.cos(a) * 70).toFixed(1)},${(168 + Math.sin(a) * 70).toFixed(1)} L${(152 + Math.cos(a) * 100).toFixed(1)},${(168 + Math.sin(a) * 100).toFixed(1)}"/>`; }).join('')}</g>`;
+  // 髪の毛筋：つむじから前髪の先へ流れる細い墨線（前髪の形で切り抜く）
+  function strands(key, color) {
+    const fh = frontHair[key];
+    if (!fh) return '';
+    const lines = Array.from({ length: 22 }, (_, i) => {
+      const t = i / 21, x = 96 + t * 116, y = 150 - Math.sin(t * Math.PI) * 26;
+      return `<path d="M${150 + (t - 0.5) * 24},86 Q${(150 + x) / 2 + (t - 0.5) * 20},${(86 + y) / 2 - 10} ${x.toFixed(1)},${y.toFixed(1)}"/>`;
+    }).join('');
+    return `<clipPath id="pt-hair-${key}">${fh}</clipPath>
+      <g clip-path="url(#pt-hair-${key})" fill="none" stroke="${color === INK ? '#4f4842' : '#6a5040'}" stroke-width="0.9" opacity="0.75">${lines}</g>`;
+  }
+  // 顔の陰影：輪郭の内側を、光の当たる頬は明るく、あごと奥は墨のぼかし
+  const faceShade = (female) => `<path d="${female ? FACE_F_D : FACE_D}" fill="url(#pt-face)"/>
+    <path d="M${female ? '146,194 Q156,200 168,194' : '146,196 Q158,203 172,196'}" stroke="#c98f62" stroke-width="2" fill="none" opacity="0.5" stroke-linecap="round"/>`;
+  // 衣の明暗：左上から光、右下が沈む
+  const clothShade = `<path d="${BODY_D}" fill="url(#pt-cloth)"/>
+    <path d="M104,300 Q120,350 112,420 M196,300 Q186,352 194,420" stroke="rgba(0,0,0,0.22)" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+
   // ---------- 組み立て ----------
   // o.small = true：地図や一覧用。顔に寄せ、柄や細かい線を省いて小さくても読めるようにする
   function bust(o) {
@@ -328,17 +360,22 @@ const UKIYO = (() => {
     const frontKey = isFemaleHair ? 'bangs' : o.hair;
     // 髪の色：墨のほか、こげ茶も（墨の塗りだけを置きかえる）
     const tint = (svg) => (o.hairColor && svg ? svg.split(`fill="${INK}"`).join(`fill="${o.hairColor}"`) : svg || '');
+    const fine = !o.small;
     const art = `
+      ${fine && o.lord ? halo : ''}
       ${tint(backHair[o.hair])}
       ${itemBack(o)}
       ${body(o)}
+      ${fine ? clothShade : ''}
       ${itemFront(o)}
       ${o.small ? '' : folds}
       ${neck}${neckShadow}
       ${scarf(o)}
       ${o.female ? faceF : face}
       ${shadows(o.female)}
+      ${fine ? faceShade(o.female) : ''}
       ${tint(frontHair[frontKey])}
+      ${fine && o.hair !== 'bozu' ? strands(frontKey, o.hairColor || INK) : ''}
       ${o.small ? '' : (hairShine[frontKey] || '') + (o.hair === 'bozu' ? '' : kegaki)}
       ${headgear(o)}
       ${itemHead(o)}
@@ -351,8 +388,9 @@ const UKIYO = (() => {
     let bg = '';
     if (o.small) bg = `<rect width="200" height="220" fill="${shade(o.color, 1.5)}"/><rect width="200" height="220" fill="${KINARI}" opacity="0.55"/>`;
     else if (o.bg !== 'none') bg = `<rect width="200" height="220" fill="url(#${o.bg})"/><rect width="200" height="84" fill="url(#bokashi)" opacity="0.75"/>`;
-    return `<svg viewBox="0 0 200 220" aria-hidden="true">${bg}
+    return `<svg viewBox="0 0 200 220" aria-hidden="true">${fine ? paintDefs : ''}${bg}
       <g transform="${flip}"><g transform="${frame}">${art}</g></g>
+      ${fine && o.bg !== 'none' ? '<rect width="200" height="220" fill="url(#pt-vig)"/>' : ''}
     </svg>`;
   }
 
