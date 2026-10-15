@@ -2424,3 +2424,18 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .bf .bf-smoke ellipse:nth-child(2) { animation-delay: -2.5s; } .bf .bf-smoke ellipse:nth-child(3) { animation-delay: -4.5s; }
 @keyframes bf-smoke { from { transform: translateX(-14px); opacity: 0.35; } to { transform: translateX(14px); opacity: 0.65; } }
 @media (prefers-reduced-motion: reduce) { .bf .bf-nobori, .bf .bf-smoke ellipse { animation: none; } }
+
+/* ---------- 腕比べ（v91） ---------- */
+.ude-make { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.ude-make select { font: inherit; padding: 9px 8px; border: 2px solid var(--ink); background: var(--paper); border-radius: 0; }
+.ude-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.ude-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; padding: 8px 10px; background: var(--paper-2); border-left: 4px solid var(--gold-line); }
+.ude-list li b { font-family: var(--gothic); letter-spacing: 0.05em; }
+.ude-list li small, .ude-list li span { grid-column: 1; font-size: 12px; }
+.ude-list li .btn { grid-column: 2; grid-row: 1 / span 3; width: auto; margin: 0; padding: 8px 12px; font-size: 13px; }
+.ude-card { margin: 14px 0; padding: 12px; text-align: center; color: #f6ecd2; background: var(--maki-e) left bottom 4px / 36px 8px repeat-x, var(--lacquer); border: 2px solid var(--gold-line); box-shadow: inset 0 0 0 3px #000, inset 0 0 0 4px rgba(201, 154, 46, 0.5); }
+.ude-head span { font-family: var(--brush); font-size: 20px; color: #f3d27a; margin-right: 8px; }
+.ude-head b { font-family: var(--gothic); letter-spacing: 0.08em; }
+.ude-score { font-family: var(--brush); font-size: 28px; color: #f3d27a; margin: 6px 0 2px; text-shadow: 2px 2px 0 #8a1d15; }
+.ude-score i { display: inline-block; margin-left: 8px; font: 800 12px var(--gothic); font-style: normal; color: #fff; background: var(--red); padding: 2px 6px; vertical-align: middle; text-shadow: none; }
+.ude-card small { display: block; font-size: 12px; opacity: 0.85; margin-bottom: 4px; }
