@@ -2334,3 +2334,24 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .ic-hero { position: absolute; left: 4%; top: 50%; transform: translateY(-50%); animation: icHero 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.15s both; }
 .ic-hero .portrait { display: block; border: 4px solid var(--paper); box-shadow: 6px 6px 0 var(--red); background: var(--paper); }
 @keyframes icHero { from { transform: translate(-140%, -50%) skewX(-8deg); opacity: 0; } }
+
+/* ---------- 漆と金：窓の題・城の札・軍議の頭を、黒漆に金の縁で ---------- */
+:root { --lacquer: linear-gradient(180deg, #2a1d16, #140d0a 60%, #24170f); --gold-line: #c99a2e; }
+.sheet h2 { margin: -6px -4px 14px; padding: 8px 10px 9px; color: #f3d27a; background: var(--lacquer);
+  border-top: 2px solid var(--gold-line); border-bottom: 2px solid var(--gold-line); box-shadow: inset 0 1px 0 rgba(255, 220, 140, 0.25), 0 3px 0 rgba(28, 26, 23, 0.25);
+  text-shadow: 2px 2px 0 #000; }
+.sheet h2 small { color: #e8d5a6; }
+#panel .p-head { margin: -2px 0 8px; padding: 6px 10px; background: var(--lacquer); border-top: 2px solid var(--gold-line); border-bottom: 2px solid var(--gold-line); color: #f3d27a; }
+#panel .p-head h2 { color: #f3d27a; text-shadow: 2px 2px 0 #000; }
+#panel .p-head .p-sub { color: #e8d5a6; }
+#panel .p-head .crest { filter: drop-shadow(0 0 0 #f3d27a) drop-shadow(0 0 1.5px #f3d27a); }
+#panel .p-head .switch span { border-color: var(--gold-line); }
+.council .cn-head { padding: 8px 10px; background: var(--lacquer); border-top: 2px solid var(--gold-line); border-bottom: 2px solid var(--gold-line); color: #f3d27a; }
+.council .cn-who h2 { color: #f3d27a; text-shadow: 2px 2px 0 #000; }
+.council .cn-who h2 small { color: #f08a7a; }
+.council .cn-who .kakun { color: #f1e6cc; }
+.council .cn-who .kakun small { color: #c9b98f; }
+.council .cn-head > .portrait, .council .cn-head > svg { box-shadow: 0 0 0 2px var(--gold-line), 3px 3px 0 var(--red); }
+/* 見出しの小さな札（三・四…）にも金の縁 */
+.setup-h span, .cn-h { text-shadow: none; }
+.setup-h span { box-shadow: 0 0 0 2px var(--gold-line); }
