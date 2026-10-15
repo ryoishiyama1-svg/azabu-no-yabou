@@ -2546,3 +2546,15 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .tp-sheet > b { font-family: var(--mincho); font-size: 18px; }
 .tp-sheet > small { display: block; margin-bottom: 4px; }
 @media (prefers-reduced-motion: reduce) { .tp-walker, .tplot.open .tp-lot { animation: none; } }
+
+/* ---------- 時代を動かす出来事と、武将の列伝の絵巻（v97） ---------- */
+.event.era { position: relative; padding: 14px 10px 6px; color: #f6ecd2; background: var(--maki-e) left bottom 4px / 36px 8px repeat-x, var(--lacquer); border: 2px solid var(--gold-line); box-shadow: inset 0 0 0 3px #000; }
+.event.era .ev-icon { color: #f3d27a; border-color: var(--gold-line); background: #8a1d15; }
+.event.era h2 { color: #f3d27a; background: none; border: 0; box-shadow: none; }
+.event.era .ev-text { color: #f6ecd2; }
+.era-tag { margin: 0 0 4px; text-align: center; font-family: var(--brush); font-size: 15px; letter-spacing: 0.4em; color: #e0a526; }
+.saga { list-style: none; margin: 10px 0 0; padding: 0 0 0 14px; border-left: 2px solid var(--gold-line); }
+.saga li { position: relative; margin: 0 0 8px; }
+.saga li::before { content: ''; position: absolute; left: -20px; top: 4px; width: 9px; height: 9px; background: var(--red); border: 1.5px solid var(--ink); transform: rotate(45deg); }
+.saga li span { font-family: var(--mincho); font-weight: 800; font-size: 11px; color: #8a6420; }
+.saga li p { margin: 1px 0 0; font-size: 13px; }

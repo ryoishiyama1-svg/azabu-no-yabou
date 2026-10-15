@@ -2213,6 +2213,8 @@ function runEvents(done) {
     return;
   }
   const v = eventView(S, ev);
+  const era = !!(EVENTS[ev.id] && EVENTS[ev.id].era);
+  if (era && !ev.cut) { ev.cut = true; inkCut('時代が動く', v.title); Sound.horagai(); } // 時代の出来事は墨の一閃から
   Sound.taiko(0, 0.7);
   const choiceHtml = v.choiceGens
     // 後継者選びなど：武将のカードをそのまま選択肢にする
@@ -2223,7 +2225,7 @@ function runEvents(done) {
     Sound.bgmStart('meeting');
     openModal(`${envoyScene(ev, v.title, ev.p.kind === 'tribute' ? 'angry' : ev.p.kind === 'plea' ? 'think' : null, v.text)}${choiceHtml}`);
   } else {
-    openModal(`<div class="event" data-lock>
+    openModal(`<div class="event${era ? ' era' : ''}" data-lock>${era ? '<p class="era-tag">時代が動く</p>' : ''}
       ${v.art ? `<div class="ev-art">${seasonArt(v.art)}<span class="ev-art-title ${v.title.length > 5 ? 'long' : ''}">${v.title}</span></div>` : `<div class="ev-icon">${v.icon}</div>`}
       ${v.art ? "" : `<h2>${v.title}</h2>`}
       ${v.gid ? `<div class="glist pick">${genCard(S.gens[v.gid])}</div>` : ''}
@@ -2646,6 +2648,7 @@ function chronicleTable(g, until) {
       ${cell('合戦', `${r.w}勝${r.l}敗`)}${cell('落とした城', r.cap)}${cell('守り抜いた城', r.def)}${cell('一騎打ち', `${r.dw}勝${r.dl}敗`)}
     </div>
     <p class="hint">${seasons ? `在籍 ${Math.floor(seasons / 4) ? `${Math.floor(seasons / 4)}年` : ''}${seasons % 4 ? `${seasons % 4}季` : ''}` : 'この季に入学'}</p>
+    ${sagaScroll(g)}
   </div>`;
 }
 
