@@ -2413,3 +2413,6 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .zoom button { background: radial-gradient(circle at 35% 30%, #3a2a20, #120b08); color: #f3d27a; border: 2px solid var(--gold-line);
   box-shadow: 0 0 0 1px #000, 0 3px 8px rgba(0, 0, 0, 0.45); }
 #zoom-home { background: radial-gradient(circle at 35% 30%, #e05246, #9c2219); color: #fff3d6; font-family: var(--brush); }
+
+/* ---------- 城の絵を精細に（v87）：鯱は細く ---------- */
+#map .castle .shachi, .conq-castle .shachi { stroke-width: 1.6; }

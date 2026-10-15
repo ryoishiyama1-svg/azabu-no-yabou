@@ -224,24 +224,61 @@ function meetingRoom(clan) {
 }
 
 // ---------- 天守閣 ----------
-// 学園城：校舎に天守（時計台）を載せた城。墨の輪郭、屋根が家の色になる。本拠には金の飾り
+// 学園城：扇の勾配の石垣に、下見板張りの校舎、反りのある屋根に時計台の天守。屋根が家の色になる
+// 家の本拠は三重の天守に金の鯱、金の棟、左右に隅櫓を構えた堂々たる城
 function castleMarkup(capital) {
-  const gold = capital
-    ? '<path class="shachi" d="M-5,-31 Q0,-38 5,-31"/><circle class="shachi-dot" cx="0" cy="-35" r="1.6"/>'
-    : '';
-  return `
-    <ellipse class="shadow" cx="0" cy="17" rx="24" ry="4.5"/>
-    <path class="stone" d="M-22,8 L22,8 L26,16 L-26,16 Z"/>
-    <path class="stone-line" d="M-24,12 L24,12 M-12,8 L-13,16 M0,8 L0,16 M12,8 L13,16"/>
+  const K = '#1c1a17', G = '#e0a526';
+  // 反りのある屋根（左右の軒先 x=±w, 軒の高さ y, 棟の高さ top）
+  const roof = (w, y, top) => {
+    const m = w * 0.48, h = y - top;
+    return `M${-w},${y} Q${-w * 0.7},${y - h * 0.12} ${-m},${y - h * 0.45} L0,${top} L${m},${y - h * 0.45} Q${w * 0.7},${y - h * 0.12} ${w},${y} Q${w * 0.55},${y - h * 0.07} 0,${y - h * 0.05} Q${-w * 0.55},${y - h * 0.07} ${-w},${y} Z`;
+  };
+  // 屋根の雪：軒から棟への上の縁だけ白く
+  const snowOn = (w, y, top) => {
+    const m = w * 0.48, h = y - top;
+    return `M${-w},${y} Q${-w * 0.7},${y - h * 0.12} ${-m},${y - h * 0.45} L0,${top} L${m},${y - h * 0.45} Q${w * 0.7},${y - h * 0.12} ${w},${y} L${w * 0.8},${y - h * 0.08} Q${w * 0.6},${y - h * 0.2} ${m * 0.9},${y - h * 0.55} L0,${top + h * 0.3} L${-m * 0.9},${y - h * 0.55} Q${-w * 0.6},${y - h * 0.2} ${-w * 0.8},${y - h * 0.08} Z`;
+  };
+  const hafu = (x, y, s) => `<path d="M${x - 4 * s},${y} L${x},${y - 4.5 * s} L${x + 4 * s},${y} Z" fill="#f3ead2" stroke="${K}" stroke-width="${0.9 * s}" class="hafu"/><circle cx="${x}" cy="${y - 1.6 * s}" r="${0.8 * s}" fill="${G}" class="trim"/>`;
+  const shitami = (x, y, w, h) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#2b2622" class="shitami"/><path d="${Array.from({ length: Math.floor(h / 1.6) }, (_, i) => `M${x},${(y + 1.2 + i * 1.6).toFixed(1)} H${x + w}`).join(' ')}" stroke="#4a423a" stroke-width="0.4" class="shitami-line"/>`;
+  const stone = (w) => `
+    <ellipse class="shadow" cx="0" cy="17" rx="${w + 3}" ry="4.5"/>
+    <path class="stone" d="M${-w + 4},8 L${w - 4},8 Q${w - 3},13 ${w + 1},16 L${-w - 1},16 Q${-w + 3},13 ${-w + 4},8 Z"/>
+    <path class="stone-line" d="M${-w + 3},10.7 H${w - 3} M${-w + 2},13.4 H${w - 2} ${Array.from({ length: Math.ceil(w / 5) }, (_, i) => { const x = -w + 6 + i * 10; return x > w - 5 ? '' : `M${x},8 V10.7 M${x + 5},10.7 V13.4 M${x},13.4 V16`; }).join(' ')}"/>`;
+  if (!capital) {
+    return `${stone(22)}
     <rect class="wall" x="-16" y="-6" width="32" height="14"/>
-    <rect class="window" x="-12.5" y="-3" width="5" height="5"/><rect class="window" x="7.5" y="-3" width="5" height="5"/>
-    <rect class="window" x="-3" y="0" width="6" height="8"/>
-    <path class="roof" d="M-21,-5 L0,-15 L21,-5 Z"/>
-    <rect class="wall" x="-7" y="-24" width="14" height="10"/>
-    <circle class="clock" cx="0" cy="-19" r="3.2"/>
-    <path class="roof" d="M-12,-23 L0,-31 L12,-23 Z"/>
-    <path class="snow" d="M-21,-5 L0,-15 L21,-5 L15,-6.5 L0,-12 L-15,-6.5Z M-12,-23 L0,-31 L12,-23 L8,-24 L0,-28.5 L-8,-24Z"/>
-    ${gold}`;
+    ${shitami(-15.2, 3, 30.4, 4.2)}
+    <rect class="window" x="-12.5" y="-3.5" width="5" height="4"/><rect class="window" x="7.5" y="-3.5" width="5" height="4"/>
+    <path class="window" d="M-3,8 V1.5 Q0,-1 3,1.5 V8 Z"/>
+    <path class="roof" d="${roof(21, -4.5, -15)}"/>
+    <rect class="wall" x="-7" y="-23.5" width="14" height="10"/>
+    <circle class="clock" cx="0" cy="-18.5" r="3.2"/>
+    <path d="M0,-18.5 V-20.6 M0,-18.5 H1.6" stroke="${K}" stroke-width="0.6" class="trim"/>
+    <path class="roof" d="${roof(12, -22.5, -31)}"/>
+    <path class="snow" d="${snowOn(21, -4.5, -15)} ${snowOn(12, -22.5, -31)}"/>`;
+  }
+  const turret = (x) => `<g transform="translate(${x},0)"><rect class="wall" x="-4" y="-1" width="8" height="9"/>${shitami(-3.4, 4.2, 6.8, 3.2)}<rect class="window" x="-1.2" y="0.6" width="2.4" height="2.4"/><path class="roof" d="${roof(7, -0.5, -7)}"/><path class="snow" d="${snowOn(7, -0.5, -7)}"/></g>`;
+  return `${stone(27)}
+    ${turret(-22)}${turret(22)}
+    <rect class="wall" x="-16" y="-6" width="32" height="14"/>
+    ${shitami(-15.2, 3, 30.4, 4.2)}
+    <rect class="window" x="-12.5" y="-3.5" width="5" height="4"/><rect class="window" x="7.5" y="-3.5" width="5" height="4"/>
+    <path class="window" d="M-3,8 V1.5 Q0,-1 3,1.5 V8 Z"/>
+    <path class="roof" d="${roof(21, -4.5, -14)}"/>
+    ${hafu(-9.5, -7.8, 1)}${hafu(9.5, -7.8, 1)}
+    <rect class="wall" x="-11" y="-21" width="22" height="9"/>
+    ${shitami(-10.4, -15.6, 20.8, 3)}
+    <rect class="window" x="-7.5" y="-19.5" width="3.5" height="3"/><rect class="window" x="4" y="-19.5" width="3.5" height="3"/>
+    <path class="roof" d="${roof(15.5, -20.5, -28)}"/>
+    <path d="M-6,-23.6 Q0,-28.6 6,-23.6" fill="#f3ead2" stroke="${K}" stroke-width="0.9" class="hafu"/>
+    <rect class="wall" x="-6.5" y="-35" width="13" height="8.5"/>
+    <circle class="clock" cx="0" cy="-30.8" r="2.9"/>
+    <path d="M0,-30.8 V-32.7 M0,-30.8 H1.5" stroke="${K}" stroke-width="0.6" class="trim"/>
+    <path class="roof" d="${roof(11, -34.5, -41)}"/>
+    <path d="M-5.3,-38.5 L0,-41 L5.3,-38.5 M-21,-4.5 Q-14.7,-5.8 -10,-9.2 M21,-4.5 Q14.7,-5.8 10,-9.2 M-15.5,-20.5 Q-10.8,-21.4 -7.4,-23.9 M15.5,-20.5 Q10.8,-21.4 7.4,-23.9" fill="none" stroke="${G}" stroke-width="1" stroke-linecap="round" class="trim"/>
+    <path class="shachi" d="M-5.6,-38.6 Q-7.4,-41.6 -5.4,-43.4" fill="none" stroke="${G}" stroke-width="1.6" stroke-linecap="round"/><path class="shachi" d="M5.6,-38.6 Q7.4,-41.6 5.4,-43.4" fill="none" stroke="${G}" stroke-width="1.6" stroke-linecap="round"/>
+    <circle class="shachi-dot" cx="-5.4" cy="-43.4" r="1.2" fill="${G}"/><circle class="shachi-dot" cx="5.4" cy="-43.4" r="1.2" fill="${G}"/>
+    <path class="snow" d="${snowOn(21, -4.5, -14)} ${snowOn(15.5, -20.5, -28)} ${snowOn(11, -34.5, -41)}"/>`;
 }
 
 // ---------- 合戦の絵 ----------
