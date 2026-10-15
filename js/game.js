@@ -695,8 +695,8 @@ function defensePower(s, id) {
 }
 
 // 家訓による補正
-const atkKakun = (s, clan) => (clan === PLAYER && s.kakun === 'str' ? 1.1 : 1);
-const defKakun = (s, clan) => (clan === PLAYER && s.kakun === 'int' ? 1.15 : 1);
+const atkKakun = (s, clan) => (clan === PLAYER && s.kakun === 'str' ? 1.1 : 1) * (typeof taishiAtk === 'function' ? taishiAtk(s, clan) : 1);
+const defKakun = (s, clan) => (clan === PLAYER && s.kakun === 'int' ? 1.15 : 1) * (typeof taishiDef === 'function' ? taishiDef(s, clan) : 1);
 
 // ---------- 合戦の作戦 ----------
 // 守る側の作戦：城の固さ・兵の多さ・知略で選びやすさが変わる

@@ -682,9 +682,11 @@ function showSetup() {
     <div id="clan-box">${clanList()}</div>
     ${step('四', '当主の名前')}
     <input class="name-input" id="lord-name" maxlength="10" value="${defaultName()}" autocomplete="off">
-    ${step('五', '難易度')}
+    ${step('五', '家の志')}
+    <div class="ts-pick"><button data-ts="" class="on"><b>家訓にまかせる</b><small>当主の家訓から志が決まる</small></button>${Object.entries(TAISHI).map(([k, t]) => `<button data-ts="${k}"><span class="ts-motto">${t.motto}</span><b>${t.name}</b><small>${t.desc}</small></button>`).join('')}</div>
+    ${step('六', '難易度')}
     ${pickList('diff', Object.keys(DIFFICULTY), DIFFICULTY, st.diff, () => '')}
-    ${step('六', '挑戦状（えらばなくてもよい）')}
+    ${step('七', '挑戦状（えらばなくてもよい）')}
     <div class="ch-pick">${Object.entries(CHALLENGES).map(([k, c]) => `<button data-ch="${k}"><span>${c.mark}</span><b>${c.name}</b><small>${c.desc}</small>${(rec.challenges || {})[k] ? '<i>済</i>' : ''}</button>`).join('')}</div>
     <label class="check-row"><input type="checkbox" id="tut" ${tutDone() ? '' : 'checked'}> 軍師の手ほどき（チュートリアル）を受ける</label>
     <button class="btn red" id="setup-go">出 陣</button>
@@ -727,11 +729,13 @@ function showSetup() {
   bindScenarios();
   bindClans();
   bindPick('diff', (v) => { st.diff = v; });
+  bindPick('ts', (v) => { st.taishi = v; });
   // 挑戦状：いくつでも重ねられる（押すたびに付け外し）
   modalBody.querySelectorAll('[data-ch]').forEach((b) => { b.onclick = () => { Sound.tap(); const k = b.dataset.ch; if (st.ch.has(k)) st.ch.delete(k); else st.ch.add(k); b.classList.toggle('on', st.ch.has(k)); }; });
   $('setup-go').onclick = () => {
     const name = $('lord-name').value.trim() || defaultName();
     S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked, challenges: [...st.ch] });
+    if (st.taishi) { S.playerTaishi = st.taishi; S.taishi = {}; }
     save();
     closeModal();
     startGame(true);
@@ -1348,6 +1352,7 @@ function renderCouncil() {
       ${lord ? portrait(lord, 48) : crestBadge(PLAYER, 48)}
       <div class="cn-who"><h2>軍議<small>${dateLabel(S.turn)}</small></h2>
         <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p>
+        ${taishiLine(S, PLAYER)}
         ${(S.challenges || []).length ? `<p class="cn-ch">${S.challenges.map((c) => `<span title="${CHALLENGES[c].desc}">${CHALLENGES[c].mark}</span>`).join("")}<small>挑戦状${hasCh(S, "speed") ? `・天下の期限まで あと${Math.max(0, CHALLENGES.speed.limit - S.turn)}季` : ""}</small></p>` : ""}</div>
       ${S.debug ? '<b class="dbg">DEBUG</b>' : ''}
     </div>
@@ -1507,6 +1512,7 @@ function showDiplomacy(message) {
     return `<div class="diplo-row ${r.sister ? 'sister' : ''}">
       <div class="dr-head">${clanChip(k)}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
       ${(() => { const lo = aiLordOf(S, k); return lo ? `<div class="dr-lord">${portrait(lo, 48, r.friend >= 60 ? "smile" : r.friend < 30 ? "angry" : null)}<div><small>当主</small><b>${esc(lo.name)}</b>${lordVoice(k).catch ? `<i>「${lordVoice(k).catch}」</i>` : ""}</div></div>` : ""; })()}
+      ${taishiLine(S, k)}
       <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
       ${(() => {
         const rs = aiRelations(S, k);
@@ -4496,3 +4502,22 @@ function fusuma() {
     document.documentElement.style.setProperty('--brush-sweep', `url(${cv.toDataURL('image/png')})`);
   } catch (e) {}
 })();
+
+// ---------- 家の志が高まったときの決め絵 ----------
+const _tsRender = render;
+render = function (...a) {
+  const r = _tsRender.apply(this, a);
+  if (S && S.taishiUp) {
+    const up = S.taishiUp;
+    setTimeout(() => {
+      const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || !$('battle').hidden;
+      if (busy || !S || S.taishiUp !== up) return; // 合戦や窓が閉じたあとの render でもう一度
+      S.taishiUp = null;
+      const T = TAISHI[up.k];
+      Sound.horagai();
+      showKime(lordOf(S) || bestBy(gensOf(S, PLAYER), 'cha'), `志、${'一二三'[up.lv - 1]}段`, `${T.motto}——この志、天下に示す`, null, 'laugh',
+        `<p class="ts-up"><b>${T.name}</b>の志が高まった：${T.step}（いまは${'一二三'[up.lv - 1]}段）</p>`);
+    }, 900);
+  }
+  return r;
+};

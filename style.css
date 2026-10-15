@@ -2499,3 +2499,24 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .rp-map .ink-mtn .m1 { fill: url(#mtn); stroke: #2a2a30; stroke-width: 2.5; stroke-linejoin: round; opacity: 0.85; }
 .rp-map .ink-mtn .m3 { fill: #6b6f74; opacity: 0.22; }
 .rp-map .ink-mtn .m2 { stroke: #2a2a30; stroke-width: 1.6; stroke-linecap: round; opacity: 0.55; }
+
+/* ---------- 家の志（v95） ---------- */
+.ts-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 7px; margin: 3px 0 0; font-size: 12px; }
+.ts-line .ts-motto { font-family: var(--brush); font-size: 14px; padding: 0 5px; color: #f3d27a; background: var(--lacquer); border: 1px solid var(--gold-line); letter-spacing: 0.08em; }
+.ts-line b { font-family: var(--mincho); font-weight: 900; }
+.ts-lv { display: inline-flex; gap: 2px; font-style: normal; }
+.ts-lv em { width: 9px; height: 9px; border: 1.5px solid var(--gold-line); transform: rotate(45deg); background: transparent; }
+.ts-lv em.on { background: linear-gradient(135deg, #f3d27a, #c99a2e); }
+.ts-gauge { width: 54px; height: 5px; background: rgba(0, 0, 0, 0.2); display: inline-block; }
+.ts-gauge u { display: block; height: 100%; background: var(--gold-line); text-decoration: none; }
+.ts-line small { flex-basis: 100%; opacity: 0.8; }
+.cn-head .ts-line small { color: inherit; }
+.ts-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.ts-pick button { text-align: left; padding: 8px 10px; border: 2px solid var(--ink); background: var(--paper); font: inherit; cursor: pointer; }
+.ts-pick button.on { background: #2a1d16; color: #f6ecd2; border-color: var(--gold-line); box-shadow: inset 0 0 0 1px #000; }
+.ts-pick .ts-motto { display: block; font-family: var(--brush); font-size: 18px; color: var(--red); letter-spacing: 0.1em; }
+.ts-pick button.on .ts-motto { color: #f3d27a; }
+.ts-pick b { font-family: var(--mincho); font-weight: 900; margin-right: 4px; }
+.ts-pick small { display: block; font-size: 11px; opacity: 0.8; margin-top: 2px; }
+.ts-up { margin: 10px 0 0; font-size: 14px; color: #f3d27a; }
+.cn-head .ts-gauge { background: rgba(243, 210, 122, 0.22); }
