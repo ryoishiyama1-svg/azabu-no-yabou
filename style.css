@@ -2564,3 +2564,23 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .nemesis-chip span { font-family: var(--brush); font-size: 13px; color: #fff3d6; background: linear-gradient(180deg, #d4473a, #8a1d15); padding: 0 6px; border: 1px solid var(--gold-line); }
 .nemesis-chip.done { opacity: 0.7; text-decoration: line-through; }
 .nemesis-tag { font-family: var(--brush); font-weight: 400; font-size: 13px; color: #fff3d6; background: linear-gradient(180deg, #d4473a, #8a1d15); padding: 0 6px; margin-left: 4px; border: 1px solid var(--gold-line); }
+
+/* ---------- 陣立て（v99） ---------- */
+.jk-pick { color: var(--paper); }
+.jk-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 8px; }
+.jk-head b { font-family: var(--brush); font-size: 22px; color: #f3d27a; letter-spacing: 0.2em; }
+.jk-head span { font-size: 13px; }
+.jk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+@media (max-width: 420px) { .jk-grid { grid-template-columns: repeat(2, 1fr); } }
+.jk-card { position: relative; display: grid; justify-items: center; gap: 2px; padding: 6px 4px 8px; text-align: center; font: inherit; cursor: pointer;
+  color: var(--ink); background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4); }
+.jk-card .jk-icon { width: 64px; height: 48px; }
+.jk-card b { font-family: var(--brush); font-size: 18px; font-weight: 400; }
+.jk-card small { font-size: 10.5px; line-height: 1.35; opacity: 0.85; }
+.jk-card i { position: absolute; top: 3px; right: 4px; font-style: normal; font: 900 11px var(--gothic); padding: 0 4px; }
+.jk-card.good { border-color: var(--gold-line); box-shadow: 0 0 0 2px #f3d27a, 3px 3px 0 rgba(0, 0, 0, 0.4); }
+.jk-card.good i { color: #fff; background: var(--red); }
+.jk-card.bad { opacity: 0.75; }
+.jk-card.bad i { color: #fff; background: #555; }
+.jk-card:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4); }
+.jk-pick .hint { color: #d9c9a3; }

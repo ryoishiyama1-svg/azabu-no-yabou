@@ -3270,9 +3270,45 @@ function runBattle(B, { auto = false, onClose } = {}) {
   let carry = []; // 決着の直前に出た文（一騎打ちの結果など）を、決着の画面にも残す
 
   // 命令のボタン
+  // 陣形を兵の並びに映す
+  function showForm() {
+    if (!B.form) return;
+    ['a', 'd'].forEach((sd) => {
+      const el = $(`army-${sd}`);
+      if (!el || !B.form[sd]) return;
+      const n = el.querySelectorAll('.sol').length;
+      el.innerHTML = jinkeiArmy(sd, n, CLANS[B[sd].clan].color, B.form[sd]);
+    });
+    updateBars();
+  }
+  function setForm(k) {
+    B.form[me] = k;
+    showForm();
+    const edge = jinkeiEdge(B.form.a, B.form.d) * (me === 'a' ? 1 : -1);
+    const cut = $('b-cut');
+    cut.textContent = `${JINKEI[B.form[me]].name}　対　${JINKEI[B.form[foe]].name}`;
+    cut.className = `b-cut go ${edge > 0 ? 'me' : edge < 0 ? 'foe' : ''}`;
+    report([`${shortName(B[me].clan)}は「${JINKEI[k].name}」の陣を敷いた。${shortName(B[foe].clan)}は「${JINKEI[B.form[foe]].name}」！`,
+      edge > 0 ? '陣形で優位に立った！' : edge < 0 ? '陣形で後れを取った…' : '陣形は互角']);
+    Sound.taiko(0, 0.8); Sound.taiko(0.18, 0.8);
+  }
   function renderCmds() {
     const el = $('b-cmds');
     if (B.over) { el.innerHTML = ''; return; }
+    if (B.form && !B.form[me]) {
+      if (auto) { setForm(autoJinkei(B.formRead)); }
+      else {
+        const rd = B.formRead || { level: 'none' };
+        const scout = rd.level === 'clear' ? `🔍 物見の報せ：敵は「${JINKEI[rd.k].name}」の構え`
+          : rd.level === 'guess' ? `🔍 たぶん「${JINKEI[rd.k].name}」……確かではない` : '🔍 敵の陣形は見えない';
+        el.innerHTML = `<div class="jk-pick"><p class="jk-head"><b>陣 立 て</b><span>${scout}</span></p><div class="jk-grid">${Object.entries(JINKEI).map(([k, J]) => {
+          const good = rd.level !== 'none' && J.beats === rd.k, bad = rd.level !== 'none' && JINKEI[rd.k].beats === k;
+          return `<button class="jk-card ${good ? 'good' : bad ? 'bad' : ''}" data-jk="${k}">${jinkeiIcon(k, CLANS[B[me].clan].color)}<b>${J.name}</b><small>${J.desc}</small>${good ? '<i>◎ 有利</i>' : bad ? '<i>× 不利</i>' : ''}</button>`;
+        }).join('')}</div><p class="hint">${Object.values(JINKEI).map((J) => J.name).join('→')}→${JINKEI.hoshi.name}：それぞれ次の陣に強い</p></div>`;
+        el.querySelectorAll('[data-jk]').forEach((b) => { b.onclick = () => { Sound.tap(); setForm(b.dataset.jk); renderCmds(); }; });
+        return;
+      }
+    }
     if (auto) {
       el.innerHTML = '<div class="b-autonote">おまかせで進めています… <button id="b-manual">采配に戻る</button></div>';
       $('b-manual').onclick = () => { Sound.tap(); auto = false; clearTimeout(timer); renderCmds(); };
@@ -3297,6 +3333,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
   }
 
   function doRound(cmd) {
+    if (B.form && !B.form[me]) setForm(autoJinkei(B.formRead));
     busy = true;
     carry = [];
     $('b-cmds').querySelectorAll('button').forEach((b) => { b.disabled = true; });
@@ -3627,6 +3664,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
   $('b-skip').onclick = () => {
     Sound.tap();
     clearTimeout(timer);
+    if (B.form && !B.form[me]) B.form[me] = autoJinkei(B.formRead);
     $('duel').hidden = true;
     autoBattle(S, B);
     finish();

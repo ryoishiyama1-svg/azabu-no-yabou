@@ -211,6 +211,9 @@ function stepBattle(s, B, cmds) {
     }
   }
 
+  // 陣形（js/jinkei.js）
+  if (typeof jinkeiEffect === 'function') jinkeiEffect(s, B, eff, baseCmd, act, lines, name);
+
   // 鉄壁・築陣・兵糧攻めの効果
   ['a', 'd'].forEach((sd) => {
     const me = B[sd];
