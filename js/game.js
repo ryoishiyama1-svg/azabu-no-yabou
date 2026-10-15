@@ -1021,7 +1021,8 @@ function autoCastle(s, clan, id, cfg, dist, log) {
       (jointTarget(s, clan, t) ? 0.5 : 1) * // 共同出兵の標的を優先
       (1 / seaPower(id, t, leader)) * // 海を越える先は、水軍がいなければ後回し
       (clan !== PLAYER && retakeTarget(s, clan, t) ? 0.6 : 1) * // 奪われたばかりの城は取り返しに行く
-      (clan !== PLAYER && weakHouse(s, s.castles[t].owner) ? 0.8 : 1); // 弱った家から先に討つ
+      (clan !== PLAYER && weakHouse(s, s.castles[t].owner) ? 0.8 : 1) * // 弱った家から先に討つ
+      (s.hasha && s.hasha.until > s.turn && clan !== s.hasha.top && s.castles[t].owner === s.hasha.top ? 0.7 : 1); // 包囲網は覇者を狙う
     const target = enemies.reduce((a, b) => (aim(a) <= aim(b) ? a : b));
     const send = Math.floor(c.troops * 0.8);
     const need = defensePower(s, target) * cfg.ratio * (jointTarget(s, clan, target) ? 0.85 : 1) *

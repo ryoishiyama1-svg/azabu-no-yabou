@@ -1352,7 +1352,7 @@ function renderCouncil() {
       ${lord ? portrait(lord, 48) : crestBadge(PLAYER, 48)}
       <div class="cn-who"><h2>軍議<small>${dateLabel(S.turn)}</small></h2>
         <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p>
-        ${taishiLine(S, PLAYER)}
+        ${taishiLine(S, PLAYER)}${nemesisChip(S)}
         ${(S.challenges || []).length ? `<p class="cn-ch">${S.challenges.map((c) => `<span title="${CHALLENGES[c].desc}">${CHALLENGES[c].mark}</span>`).join("")}<small>挑戦状${hasCh(S, "speed") ? `・天下の期限まで あと${Math.max(0, CHALLENGES.speed.limit - S.turn)}季` : ""}</small></p>` : ""}</div>
       ${S.debug ? '<b class="dbg">DEBUG</b>' : ''}
     </div>
@@ -1510,7 +1510,7 @@ function showDiplomacy(message) {
     const peace = r.ally > 0 || r.truce > 0 || r.sister || r.trade > 0;
     const off = !envoy || (S.encircle && !r.sister);
     return `<div class="diplo-row ${r.sister ? 'sister' : ''}">
-      <div class="dr-head">${clanChip(k)}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
+      <div class="dr-head">${clanChip(k)}${k === S.nemesis ? '<b class="nemesis-tag">宿敵</b>' : ''}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
       ${(() => { const lo = aiLordOf(S, k); return lo ? `<div class="dr-lord">${portrait(lo, 48, r.friend >= 60 ? "smile" : r.friend < 30 ? "angry" : null)}<div><small>当主</small><b>${esc(lo.name)}</b>${lordVoice(k).catch ? `<i>「${lordVoice(k).catch}」</i>` : ""}</div></div>` : ""; })()}
       ${taishiLine(S, k)}
       <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
@@ -4568,6 +4568,26 @@ render = function (...a) {
       showKime(lordOf(S) || bestBy(gensOf(S, PLAYER), 'cha'), `志、${'一二三'[up.lv - 1]}段`, `${T.motto}——この志、天下に示す`, null, 'laugh',
         `<p class="ts-up"><b>${T.name}</b>の志が高まった：${T.step}（いまは${'一二三'[up.lv - 1]}段）</p>`);
     }, 900);
+  }
+  return r;
+};
+
+// ---------- 宿敵を討ち果たしたときの決め絵 ----------
+const _nmRender = render;
+render = function (...a) {
+  const r = _nmRender.apply(this, a);
+  if (S && S.nemesis && !S.nemesisDone && !castlesOf(S, S.nemesis).length) {
+    const k = checkNemesis(S);
+    if (k) {
+      const shot = () => {
+        const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || !$('battle').hidden;
+        if (busy) { setTimeout(shot, 1200); return; }
+        Sound.horagai();
+        showKime(lordOf(S) || bestBy(gensOf(S, PLAYER), 'str'), '宿敵、討ち果たす', `${CLANS[k].name}との因縁、ここに決着！`, null, 'laugh',
+          `<p class="ts-up">褒美：金+${NEMESIS.gold}・全家臣の忠誠+${NEMESIS.loyal}</p>`);
+      };
+      setTimeout(shot, 900);
+    }
   }
   return r;
 };

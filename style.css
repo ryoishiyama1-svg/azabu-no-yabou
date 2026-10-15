@@ -2558,3 +2558,9 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .saga li::before { content: ''; position: absolute; left: -20px; top: 4px; width: 9px; height: 9px; background: var(--red); border: 1.5px solid var(--ink); transform: rotate(45deg); }
 .saga li span { font-family: var(--mincho); font-weight: 800; font-size: 11px; color: #8a6420; }
 .saga li p { margin: 1px 0 0; font-size: 13px; }
+
+/* ---------- 群雄の構図：宿敵（v98） ---------- */
+.nemesis-chip { display: inline-flex; align-items: center; gap: 5px; margin: 4px 0 0; font-size: 12px; }
+.nemesis-chip span { font-family: var(--brush); font-size: 13px; color: #fff3d6; background: linear-gradient(180deg, #d4473a, #8a1d15); padding: 0 6px; border: 1px solid var(--gold-line); }
+.nemesis-chip.done { opacity: 0.7; text-decoration: line-through; }
+.nemesis-tag { font-family: var(--brush); font-weight: 400; font-size: 13px; color: #fff3d6; background: linear-gradient(180deg, #d4473a, #8a1d15); padding: 0 6px; margin-left: 4px; border: 1px solid var(--gold-line); }
