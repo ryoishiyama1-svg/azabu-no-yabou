@@ -730,41 +730,54 @@ function buildCells() {
 }
 
 // ---------- タイトルの屏風絵 ----------
+// 金屏風：金箔の地に、すやり霞の金雲、群青の川、三家の天守、松、幟の行列。四曲の折り目に陰、黒漆の縁
 function titleArt(season = realSeason()) {
-  // 錦絵学園のタイトル：一文字ぼかしの空、朱の日輪（版ずれ）、霞、富士、学園城、北斎風の大波
   const K = '#1c1a17', P = '#f1e6cc';
+  const r = seeded(4242 + season);
+  // すやり霞：角の丸い長い金雲。縁を茶で取り、内側に一段明るい金
+  const kasumi = (x, y, w, h = 30) => `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="url(#tb-kin)" stroke="#7a5418" stroke-width="2.5"/>
+    <rect x="${x + 8}" y="${y + 5}" width="${w - 16}" height="${h - 10}" rx="${(h - 10) / 2}" fill="none" stroke="#f6dc8a" stroke-width="1.6" opacity="0.8"/></g>`;
+  const pine = (x, y, s) => `<g transform="translate(${x},${y}) scale(${s})">
+    <path d="M0,40 Q-4,20 4,6 Q10,-6 2,-18" stroke="#3b2a22" stroke-width="6" fill="none" stroke-linecap="round"/>
+    ${[[-14, -18, 18], [12, -8, 16], [-4, -30, 15], [16, -26, 12]].map(([cx, cy, w]) => `<ellipse cx="${cx}" cy="${cy}" rx="${w}" ry="${w * 0.42}" fill="#2f5d3a" stroke="${K}" stroke-width="2"/><path d="M${cx - w * 0.7},${cy} H${cx + w * 0.7}" stroke="#4f8a5a" stroke-width="1.4"/>`).join('')}</g>`;
+  const keep = (x, y, s, clan) => `<g class="zk-castle" style="--c:${CLANS[clan] ? CLANS[clan].color : '#c8372d'}" transform="translate(${x},${y}) scale(${s})">${castleMarkup(true)}</g>`;
+  const marchers = Array.from({ length: 9 }, (_, i) => {
+    const x = 40 + i * 20, y = 560 + Math.sin(i * 0.8) * 3;
+    return `<g transform="translate(${x},${y}) scale(0.9)">${soldier(i % 3 === 0 ? '#c8372d' : '#22406b', false)}</g>`;
+  }).join('');
+  const seams = [100, 200, 300].map((x, i) => `<rect x="${x - (i % 2 ? 0 : 40)}" y="0" width="40" height="800" fill="url(#tb-fold${i % 2})"/><line x1="${x}" y1="0" x2="${x}" y2="800" stroke="#7a5418" stroke-width="1.5" opacity="0.6"/>`).join('');
+  const dust = Array.from({ length: 40 }, () => `<rect x="${(r() * 400).toFixed(0)}" y="${(r() * 620).toFixed(0)}" width="${(2 + r() * 4).toFixed(1)}" height="${(2 + r() * 4).toFixed(1)}" fill="#f6dc8a" opacity="${(0.4 + r() * 0.5).toFixed(2)}" transform="rotate(${(r() * 90).toFixed(0)})"/>`).join('');
   return `<svg class="byobu" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <rect width="400" height="800" fill="${P}"/>
-    <rect width="400" height="260" fill="url(#bokashi)"/>
-    <circle cx="300" cy="206" r="110" fill="#c8372d"/>
-    <circle cx="293" cy="199" r="110" fill="none" stroke="${K}" stroke-width="5"/>
+    <defs>
+      <pattern id="tb-kin" width="24" height="24" patternUnits="userSpaceOnUse"><rect width="24" height="24" fill="#e2b64c"/><rect width="12" height="12" fill="#e9c25e"/><rect x="12" y="12" width="12" height="12" fill="#d8aa40"/><path d="M0,0 H24 V24" fill="none" stroke="#c99a35" stroke-width="0.6"/></pattern>
+      <linearGradient id="tb-fold0" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#3a2408" stop-opacity="0.12"/></linearGradient>
+      <linearGradient id="tb-fold1" x1="0" x2="1"><stop offset="0" stop-color="#fff6d6" stop-opacity="0.16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+      <linearGradient id="tb-river" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a4f8f"/><stop offset="1" stop-color="#1b3466"/></linearGradient>
+    </defs>
+    <rect width="400" height="800" fill="url(#tb-kin)"/>
+    ${dust}
+    <circle cx="300" cy="190" r="86" fill="#c8372d"/>
+    <circle cx="294" cy="184" r="86" fill="none" stroke="${K}" stroke-width="4"/>
     ${titleSeasonArt(season)}
-    <g stroke="${K}" stroke-width="3.5">
-      <path d="M-10,286 H200 a16,16 0 0 1 0,32 H150 a9,9 0 0 0 0,18 H240 a9,9 0 0 1 0,18 H60 a9,9 0 0 1 0,-18 H100 a9,9 0 0 0 0,-18 H-10Z" fill="#e9a3a8"/>
-      <path d="M250,378 H410 V410 H290 a16,16 0 0 1 0,-32Z" fill="#e0a526"/>
-    </g>
-    <g transform="translate(0,-70)">
-    <path d="M44,560 L174,382 L304,560Z" fill="#3c6aa3"/>
-    <path d="M38,554 L168,376 L298,554Z" fill="none" stroke="${K}" stroke-width="5"/>
-    <path d="M136,420 L168,376 L200,420 L186,413 L177,427 L168,413 L157,427 L148,413Z" fill="${P}" stroke="${K}" stroke-width="3.5"/>
-    <g transform="translate(236,430)" stroke="${K}" stroke-width="3.5">
-      <rect x="-2" y="90" width="160" height="70" fill="#c8372d" stroke="none"/>
-      <rect x="-8" y="84" width="160" height="70" fill="${P}"/>
-      <g fill="#22406b" stroke-width="2.5">
-        <rect x="6" y="98" width="16" height="16"/><rect x="30" y="98" width="16" height="16"/><rect x="98" y="98" width="16" height="16"/><rect x="122" y="98" width="16" height="16"/>
-        <rect x="6" y="124" width="16" height="16"/><rect x="30" y="124" width="16" height="16"/><rect x="98" y="124" width="16" height="16"/><rect x="122" y="124" width="16" height="16"/>
-      </g>
-      <rect x="56" y="108" width="32" height="46" fill="${K}"/>
-      <path d="M-20,86 L72,58 L164,86Z" fill="#22406b"/>
-      <rect x="50" y="24" width="44" height="36" fill="${P}"/>
-      <circle cx="72" cy="42" r="10" fill="${P}" stroke-width="3"/><path d="M72,42 L72,35 M72,42 L78,44" stroke-width="2.5"/>
-      <path d="M34,28 L72,2 L110,28Z" fill="#22406b"/>
-      <path d="M62,4 Q72,-10 82,4" fill="none" stroke="#e0a526" stroke-width="5"/>
-    </g>
-    </g>
-    <path d="M0,610 Q48,550 96,588 Q132,526 192,578 Q240,518 300,572 Q348,532 400,576 L400,800 L0,800Z" fill="#22406b" stroke="${K}" stroke-width="5"/>
-    <path d="M96,588 q-8,-12 5,-20 q-3,10 8,12 M192,578 q-8,-12 5,-20 q-3,10 8,12 M300,572 q-8,-12 5,-20 q-3,10 8,12" fill="${P}" stroke="${K}" stroke-width="2.5"/>
-    <path d="M0,650 Q48,614 96,640 T192,636 T300,630 T400,636 M0,690 Q48,660 96,682 T192,676 T300,670 T400,676 M0,732 Q48,704 96,724 T192,718 T300,712 T400,718" fill="none" stroke="#3c6aa3" stroke-width="5"/>
+    <path d="M70,330 L136,248 L202,330Z" fill="#3c6aa3" stroke="${K}" stroke-width="3.5"/>
+    <path d="M116,272 L136,248 L156,272 L148,268 L142,277 L136,268 L129,277 L123,268Z" fill="${P}" stroke="${K}" stroke-width="2.5"/>
+    ${kasumi(-20, 300, 250, 34)}${kasumi(210, 284, 220, 30)}
+    <path d="M0,360 Q80,340 150,360 T300,352 T400,358 L400,470 L0,470Z" fill="#6f9a5a" stroke="${K}" stroke-width="3"/>
+    <path d="M-10,440 Q90,400 180,430 Q270,462 410,410 L410,452 Q270,500 180,470 Q90,440 -10,482Z" fill="url(#tb-river)" stroke="${K}" stroke-width="3"/>
+    <path d="M30,452 q12,-8 24,0 M120,440 q12,-8 24,0 M230,462 q12,-8 24,0 M330,440 q12,-8 24,0" stroke="#cfe0f0" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    ${keep(312, 404, 1.4, 'kaisei')}${pine(40, 392, 1)}${keep(118, 428, 1.7, 'azabu')}${pine(372, 424, 0.8)}${keep(222, 392, 1.1, 'tsukukoma')}
+    ${kasumi(150, 478, 280, 34)}${kasumi(-30, 500, 160, 28)}
+    <path d="M0,540 Q100,528 200,540 T400,536 L400,620 L0,620Z" fill="#b69a6a" stroke="${K}" stroke-width="3"/>
+    <path d="M20,572 Q200,560 380,572" stroke="#8d7550" stroke-width="2" fill="none"/>
+    <g class="tb-march">${marchers}${[40, 100, 160].map((x, i) => bfNobori(x, 566, 54, 'azabu', false, i * 0.4)).join('')}</g>
+    ${pine(330, 590, 1.2)}
+    ${kasumi(200, 606, 240, 30)}
+    <path d="M0,650 Q48,600 96,630 Q132,580 192,622 Q240,570 300,616 Q348,584 400,620 L400,800 L0,800Z" fill="#22406b" stroke="${K}" stroke-width="5"/>
+    <path d="M96,630 q-8,-12 5,-20 q-3,10 8,12 M192,622 q-8,-12 5,-20 q-3,10 8,12 M300,616 q-8,-12 5,-20 q-3,10 8,12" fill="${P}" stroke="${K}" stroke-width="2.5"/>
+    <path d="M0,690 Q48,654 96,680 T192,676 T300,670 T400,676 M0,730 Q48,700 96,722 T192,716 T300,710 T400,716" fill="none" stroke="#3c6aa3" stroke-width="5"/>
+    ${seams}
+    <rect x="0" y="0" width="400" height="800" fill="none" stroke="#120b08" stroke-width="10"/>
+    <rect x="5" y="5" width="390" height="790" fill="none" stroke="#c99a2e" stroke-width="2"/>
   </svg>`;
 }
 
