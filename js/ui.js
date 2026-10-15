@@ -836,7 +836,7 @@ function helpChapters() {
       <h3>学校の特色と施設</h3>
       ${li([
         `学校の<b>特色</b>：${Object.values(TRAITS).map((t) => `<b>${t.name}</b>（${t.desc}）`).join('、')}`,
-        `「建設」で<b>施設</b>を${FAC_SLOTS}つまで：${Object.values(FACILITIES).map((f) => `${f.name}（${f.desc}）`).join('、')}`,
+        `「城下町」の区画に<b>施設</b>を建てる（町が育つと区画が増え、最大${FAC_SLOTS + 3}つ）：${Object.values(FACILITIES).map((f) => `${f.name}（${f.desc}）`).join('、')}`,
         `特色と施設は、城を落とすとそのまま引き継げます`,
       ])}` },
     { k: '将', t: '武将', name: '武将', body: `
@@ -1221,7 +1221,7 @@ function renderPanel() {
     <p class="motto">${(() => { const lo = schoolLore(selected); return `<b>校風</b>「${lo.motto}」${lo.sight ? `<small>名物：${lo.sight}</small>` : ""}`; })()}</p>
     <p class="facline"><span class="trait t-${traitOf(selected)}" title="${TRAITS[traitOf(selected)].desc}">${TRAITS[traitOf(selected)].name}</span>
       ${(c.fac || []).map((f) => `<span class="fac">${FACILITIES[f].name}</span>`).join('')}
-      <span class="facnote">${TRAITS[traitOf(selected)].desc}${own && (c.fac || []).length < FAC_SLOTS ? `・施設の空き ${FAC_SLOTS - (c.fac || []).length}` : ''}</span></p>
+      <span class="facnote">${TRAITS[traitOf(selected)].desc}${own && (c.fac || []).length < facSlots(S, selected) ? `・区画の空き ${facSlots(S, selected) - (c.fac || []).length}` : ''}</span></p>
     ${gens.length ? `<p class="glabel">武将 ${gens.length}人${own ? `（命令できる ${gens.filter((g) => !S.acted[g.id]).length}人）` : ''}<span class="scroll-hint">${gens.length > 2 ? '横にスクロール →' : ''}</span></p>` : ''}
     <div class="glist">${gens.length ? gens.map((g) => genCard(g, { acted: own && !!S.acted[g.id] })).join('') : '<p class="hint">この城に武将はいない</p>'}</div>`;
 
@@ -1245,7 +1245,7 @@ function renderPanel() {
         <button class="btn" id="c-recruit" ${dis(canRecruit(S, selected))}><span class="k">兵</span>徴兵<small>金${RULES.recruitCost}</small></button>
         <button class="btn" id="c-develop" ${dis(canDevelop(S, selected))}><span class="k">商</span>開発<small>金${RULES.developCost}</small></button>
         <button class="btn" id="c-fortify" ${dis(canFortify(S, selected))}><span class="k">城</span>築城<small>金${RULES.fortifyCost}</small></button>
-        <button class="btn" id="c-build" ${dis((c.fac || []).length < FAC_SLOTS && Object.keys(FACILITIES).some((f) => canBuild(S, selected, f)))}><span class="k">建</span>建設<small>施設を建てる</small></button>
+        <button class="btn" id="c-build"><span class="k">町</span>城下町<small>区画に施設を建てる</small></button>
         <button class="btn" id="c-reward" ${gens.some((g) => canReward(S, g)) ? '' : 'disabled'}><span class="k">賞</span>褒美<small>金${LOYAL.rewardCost}・忠誠+</small></button>
         <button class="btn" id="c-scheme" ${dis(S.gold[PLAYER] >= 150)}><span class="k">謀</span>計略<small>流言・引き抜き…</small></button>
         <button class="btn plain wide" id="c-close">閉じる</button>
@@ -2284,29 +2284,76 @@ function bulk(kind) {
 }
 
 // ---------- 建設 ----------
-function showBuild(id) {
+// ---------- 城下町の普請：町の絵の区画をタップして、施設を建てる ----------
+// 区画は町が育つと開く（facSlots）。建った施設はその区画に絵で立つ。取り壊して建て直すこともできる
+const TOWN_PLOTS = [[84, 132], [276, 132], [62, 196], [298, 196], [180, 214]];
+function townScene(id, pick = -1) {
+  const c = S.castles[id], fac = c.fac || [], slots = facSlots(S, id), lv = townLevel(c.eco);
+  const color = CLANS[c.owner] ? CLANS[c.owner].color : '#8a8170';
+  const plots = TOWN_PLOTS.map(([x, y], i) => {
+    const f = fac[i];
+    const open = i < slots;
+    const needLv = i < FAC_SLOTS ? 0 : i - FAC_SLOTS + 2;
+    const body = f ? `<g transform="translate(0,6)">${facArt(f, color)}</g><text class="tp-name" y="20">${FACILITIES[f].name}</text>`
+      : open ? '<text class="tp-plus" y="-2">＋</text><text class="tp-name" y="14">空き地</text>'
+        : `<text class="tp-lock" y="-2">🔒</text><text class="tp-name" y="14">${TOWN_LEVELS[needLv].name}で開く</text>`;
+    return `<g class="tplot ${f ? 'built' : open ? 'open' : 'locked'} ${i === pick ? 'pick' : ''}" data-plot="${i}" transform="translate(${x},${y})">
+      <rect class="tp-lot" x="-40" y="-30" width="80" height="58" rx="3"/>${body}</g>`;
+  }).join('');
+  const people = Array.from({ length: 2 + lv * 2 }, (_, i) => `<circle class="tp-walker" r="2.6" cx="${172 + (i % 3) * 7}" cy="0" style="animation-delay:-${(i * 1.7).toFixed(1)}s; --c:${['#c8372d', '#2d5fb4', '#e0a526', '#2f8a55'][i % 4]}"/>`).join('');
+  return `<svg class="town-scene" viewBox="0 0 360 250" aria-hidden="true">
+    <rect width="360" height="250" fill="#efe3c4"/>
+    <path d="M0,70 Q60,30 120,58 Q180,22 240,56 Q300,30 360,62 L360,96 L0,96 Z" fill="#9db08a" stroke="#1c1a17" stroke-width="1.6"/>
+    <rect y="92" width="360" height="158" fill="#e3d3ab"/>
+    <path d="M166,92 L194,92 L240,250 L120,250 Z" fill="#cdb98c" stroke="#8d7550" stroke-width="1.2"/>
+    <path d="M150,180 L210,180 M140,215 L220,215" stroke="#b49c6c" stroke-width="1.4"/>
+    <g transform="translate(180,90) scale(1.5)" class="zk-castle" style="--c:${color}">${castleMarkup(isCapital(id, c.owner))}</g>
+    <g class="tp-people">${people}</g>
+    ${plots}
+  </svg>`;
+}
+function showBuild(id, pick = -1) {
   const c = S.castles[id];
   const g = bestBy(idleGensAt(S, id), 'pol');
-  const rows = Object.entries(FACILITIES).map(([k, f]) => {
-    const built = hasFac(S, id, k);
-    const ok = g && canBuild(S, id, k);
-    const why = built ? '建設済み' : (c.fac || []).length >= FAC_SLOTS ? '空きがない' : S.gold[PLAYER] < f.cost ? '金が足りない' : '';
-    return `<button class="scheme-row" data-fac="${k}" ${ok ? '' : 'disabled'}>
-      <b>${f.name}</b><span class="cost">${built ? '✔' : `金${f.cost}`}</span><small>${f.desc}</small>${why ? `<em>${why}</em>` : ''}</button>`;
-  }).join('');
-  openModal(`<h2>建 設</h2>
-    <p class="hint" style="text-align:center">${MAP.byId[id].name}（${TRAITS[traitOf(id)].name}）・ 施設は${FAC_SLOTS}つまで（空き ${FAC_SLOTS - (c.fac || []).length}）<br>
-    ${g ? `担当：${esc(g.name)}（政治${g.pol}）` : '命令できる武将がいません'}</p>
-    <div class="scheme-list">${rows}</div>
-    <button class="btn plain" data-close>やめる</button>`);
+  const lv = townLevel(c.eco), next = TOWN_LEVELS[lv + 1];
+  const slots = facSlots(S, id), fac = c.fac || [];
+  const prev = TOWN_LEVELS[lv].eco;
+  const grow = next ? `<span class="tp-grow"><u style="width:${clamp(((c.eco - prev) / (next.eco - prev)) * 100, 0, 100)}%"></u></span><small>経済 ${c.eco}／${next.eco}で「${next.name}」</small>` : '<small>これ以上は育たない、天下の大都</small>';
+  let sheet = '';
+  if (pick >= 0 && fac[pick]) {
+    const f = fac[pick];
+    sheet = `<div class="tp-sheet"><b>${FACILITIES[f].name}</b><small>${FACILITIES[f].desc}</small>
+      <button class="btn plain" id="tp-demolish">取り壊す<small>区画を空ける（費用は戻らない）</small></button></div>`;
+  } else if (pick >= 0) {
+    sheet = `<div class="tp-sheet"><p class="hint">この区画に建てる施設 ${g ? `── 担当：${esc(g.name)}（政治${g.pol}）` : '── 命令できる武将がいません'}</p><div class="scheme-list">${Object.entries(FACILITIES).map(([k, f]) => {
+      const built = hasFac(S, id, k);
+      const ok = g && canBuild(S, id, k);
+      const why = built ? '建設済み' : S.gold[PLAYER] < f.cost ? '金が足りない' : '';
+      return `<button class="scheme-row" data-fac="${k}" ${ok ? '' : 'disabled'}><b>${f.name}</b><span class="cost">${built ? '✔' : `金${f.cost}`}</span><small>${f.desc}</small>${why ? `<em>${why}</em>` : ''}</button>`;
+    }).join('')}</div></div>`;
+  }
+  openModal(`<h2>城 下 町</h2>
+    <p class="tp-head"><b>${MAP.byId[id].name}</b>・${TOWN_LEVELS[lv].name}（区画 ${fac.length}／${slots}）${grow}</p>
+    <div class="town-wrap">${townScene(id, pick)}</div>
+    ${sheet || `<p class="hint" style="text-align:center">区画をタップして普請する。町は「開発」で経済を上げると育ち、区画が開いていく</p>`}
+    <button class="btn plain" data-close>閉じる</button>`);
+  modalBody.querySelectorAll('[data-plot]').forEach((p) => {
+    const i = +p.dataset.plot;
+    if (i >= slots) return;
+    p.onclick = () => { Sound.tap(); showBuild(id, i === pick ? -1 : Math.min(i, fac.length)); };
+  });
+  if ($('tp-demolish')) $('tp-demolish').onclick = () => { Sound.tap(); demolish(S, id, fac[pick]); save(); render(); showBuild(id); };
   modalBody.querySelectorAll('[data-fac]').forEach((b) => {
     b.onclick = () => {
       const f = b.dataset.fac;
       build(S, id, f, g);
       Sound.win();
       save();
-      closeModal();
       render();
+      showBuild(id);
+      const n = (S.castles[id].fac || []).length - 1;
+      const lot = modalBody.querySelector(`[data-plot="${n}"]`);
+      if (lot) lot.classList.add('just');
       toast(`${portrait(g, 30)}<span>${esc(g.name)}：${FACILITIES[f].name}を建てた！<br><b>${FACILITIES[f].desc}</b></span>`);
     };
   });

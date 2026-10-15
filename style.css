@@ -2520,3 +2520,29 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .ts-pick small { display: block; font-size: 11px; opacity: 0.8; margin-top: 2px; }
 .ts-up { margin: 10px 0 0; font-size: 14px; color: #f3d27a; }
 .cn-head .ts-gauge { background: rgba(243, 210, 122, 0.22); }
+
+/* ---------- 城下町の普請（v96） ---------- */
+.tp-head { text-align: center; margin: 0 0 8px; font-size: 13px; }
+.tp-head small { display: block; font-size: 11px; opacity: 0.8; }
+.tp-grow { display: block; width: 70%; height: 6px; margin: 4px auto 2px; background: rgba(0, 0, 0, 0.15); }
+.tp-grow u { display: block; height: 100%; background: linear-gradient(90deg, #6f9a5a, #e0a526); text-decoration: none; }
+.town-wrap { border: 3px solid #120b08; box-shadow: inset 0 0 0 2px var(--gold-line); }
+.town-scene { display: block; width: 100%; height: auto; }
+.tplot { cursor: pointer; }
+.tplot .tp-lot { fill: #d9c79c; stroke: #8d7550; stroke-width: 1.4; }
+.tplot.open .tp-lot { fill: rgba(255, 250, 235, 0.55); stroke: #1c1a17; stroke-dasharray: 5 3; animation: tp-blink 1.6s ease-in-out infinite; }
+@keyframes tp-blink { 50% { stroke: var(--red); } }
+.tplot.locked { cursor: default; }
+.tplot.locked .tp-lot { fill: rgba(28, 26, 23, 0.12); stroke: rgba(28, 26, 23, 0.3); }
+.tplot.pick .tp-lot { stroke: var(--red); stroke-width: 3; stroke-dasharray: none; }
+.tp-name { font: 800 9px var(--gothic); text-anchor: middle; fill: #1c1a17; paint-order: stroke; stroke: #f1e6cc; stroke-width: 3px; }
+.tp-plus { font: 900 22px var(--gothic); text-anchor: middle; fill: var(--red); }
+.tp-lock { font-size: 14px; text-anchor: middle; opacity: 0.6; }
+.tplot.just { animation: tp-rise 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3); transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes tp-rise { from { transform: scale(0.4); opacity: 0; } }
+.tp-walker { fill: var(--c); stroke: #1c1a17; stroke-width: 0.8; animation: tp-walk 9s linear infinite; }
+@keyframes tp-walk { 0% { transform: translate(0, 100px); } 50% { transform: translate(10px, 240px); } 100% { transform: translate(0, 100px); } }
+.tp-sheet { margin-top: 10px; }
+.tp-sheet > b { font-family: var(--mincho); font-size: 18px; }
+.tp-sheet > small { display: block; margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .tp-walker, .tplot.open .tp-lot { animation: none; } }

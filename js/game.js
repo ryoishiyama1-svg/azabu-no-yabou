@@ -166,9 +166,19 @@ function traitOf(id) {
 function hasFac(s, id, f) {
   return (s.castles[id].fac || []).includes(f);
 }
+// 区画の数：町が育つと増える（田畑の村・門前町 2 → 宿場町 3 → 城下町 4 → 天下の大都 5）
+function facSlots(s, id) {
+  const lv = typeof townLevel === 'function' ? townLevel(s.castles[id].eco) : 0;
+  return FAC_SLOTS + Math.max(0, lv - 1);
+}
+// 取り壊し：区画を空けて、別の施設を建て直せるようにする（費用は戻らない）
+function demolish(s, id, f) {
+  const c = s.castles[id];
+  c.fac = (c.fac || []).filter((x) => x !== f);
+}
 function canBuild(s, id, f) {
   const c = s.castles[id];
-  return (c.fac || []).length < FAC_SLOTS && !hasFac(s, id, f) && s.gold[c.owner] >= FACILITIES[f].cost;
+  return (c.fac || []).length < facSlots(s, id) && !hasFac(s, id, f) && s.gold[c.owner] >= FACILITIES[f].cost;
 }
 function build(s, id, f, g) {
   const c = s.castles[id];
@@ -181,10 +191,12 @@ function build(s, id, f, g) {
 function traitTick(s) {
   Object.keys(s.castles).forEach((id) => {
     const stat = TRAITS[traitOf(id)].stat;
-    const lib = hasFac(s, id, 'library');
+    const lib = hasFac(s, id, 'library'), dojo = hasFac(s, id, 'dojo'), tea = hasFac(s, id, 'teahouse');
     gensAt(s, id).forEach((g) => {
       if (g[stat] < 100 && Math.random() < 0.2) g[stat]++;
       if (lib && Math.random() < 0.3) { const k = pick(['pol', 'int']); if (g[k] < 100) g[k]++; }
+      if (dojo && g.str < 100 && Math.random() < 0.3) g.str++; // 道場：統率が伸びる
+      if (tea && typeof g.loyal === 'number' && !g.lord) g.loyal = Math.min(100, g.loyal + 2); // 茶屋：忠誠が上がる
     });
   });
 }
@@ -192,9 +204,9 @@ function traitTick(s) {
 // 他家と委任した城の建設：金に余裕があるときに、役に立つ施設を建てる
 function autoBuild(s, clan, id, reserve) {
   const c = s.castles[id];
-  if ((c.fac || []).length >= FAC_SLOTS) return false;
+  if ((c.fac || []).length >= facSlots(s, id)) return false;
   const front = hostileNeighbors(s, id).some((n) => s.castles[n].owner !== 'none');
-  const order = front ? ['gym', 'tower', 'shop'] : ['shop', 'library', 'gym'];
+  const order = front ? ['gym', 'tower', 'shop', 'dojo'] : ['shop', 'market', 'library', 'gym', 'teahouse'];
   const f = order.find((x) => !hasFac(s, id, x));
   if (!f || s.gold[clan] < FACILITIES[f].cost + reserve) return false;
   build(s, id, f, null);
@@ -573,7 +585,7 @@ function castleIncome(s, id) {
   if (isBesieged(s, id)) return 0; // 囲まれた城は年貢が届かない
   const c = s.castles[id];
   const merchant = gensAt(s, id).some((g) => g.skill === 'shousai');
-  const shop = hasFac(s, id, 'shop') ? 1.25 : 1;
+  const shop = (hasFac(s, id, 'shop') ? 1.25 : 1) * (hasFac(s, id, 'market') ? 1.15 : 1);
   const arts = traitOf(id) === 'arts' ? 1.1 : 1;
   return Math.round(c.eco * (merchant ? 1.2 : 1) * shop * arts);
 }
@@ -634,7 +646,7 @@ function canDevelop(s, id) {
 function develop(s, id, g) {
   const c = s.castles[id];
   s.gold[c.owner] -= RULES.developCost;
-  const n = Math.round(developAmount(g) * (traitOf(id) === 'academic' ? 1.2 : 1));
+  const n = Math.round(developAmount(g) * (traitOf(id) === 'academic' ? 1.2 : 1) * (hasFac(s, id, 'market') ? 1.2 : 1));
   c.eco = Math.min(RULES.ecoCap, c.eco + n);
   return { text: `経済+${n}`, grew: grow(g, 'pol') };
 }

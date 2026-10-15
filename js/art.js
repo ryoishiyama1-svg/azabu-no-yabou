@@ -989,3 +989,41 @@ function inkMountains() {
     <path class="m1" d="M-50,28 Q-30,-14 -8,-46 Q6,-30 18,-12 Q30,-24 52,28Z"/>
     <path class="m2" d="M-8,-46 Q-14,-30 -26,-12 M-8,-46 Q2,-26 -2,-6 M18,-12 Q14,0 8,10" fill="none"/></g>`).join('')}</g>`;
 }
+
+// ---------- 城下町の普請：区画に建つ施設の絵（足もと中央が 0,0。幅およそ 56） ----------
+function facArt(k, color = '#c8372d') {
+  const K = '#1c1a17', P = '#f1e6cc', W = '#e8dcc0';
+  const roof = (w, y, h, fill = '#3a3f4a') => `<path d="M${-w},${y} L${-w + 6},${y - h} L${w - 6},${y - h} L${w},${y} Z" fill="${fill}" stroke="${K}" stroke-width="1.6"/>`;
+  const wall = (w, y, h, fill = W) => `<rect x="${-w}" y="${y}" width="${w * 2}" height="${h}" fill="${fill}" stroke="${K}" stroke-width="1.6"/>`;
+  switch (k) {
+    case 'shop': // 購買部：のれんの商家
+      return `${wall(22, -24, 24)}${roof(26, -24, 10)}<rect x="-16" y="-22" width="32" height="9" fill="${color}" stroke="${K}" stroke-width="1"/>
+        <path d="M-8,-22 V-13 M0,-22 V-13 M8,-22 V-13" stroke="${P}" stroke-width="1"/><text x="0" y="-15.5" font-size="6" text-anchor="middle" fill="${P}" font-weight="900">購</text>
+        <rect x="-14" y="-10" width="28" height="10" fill="#6b4a2c" stroke="${K}" stroke-width="1"/>`;
+    case 'library': // 図書館：白壁の蔵
+      return `${wall(18, -30, 30, P)}${roof(22, -30, 10, '#2f3a4a')}<rect x="-18" y="-8" width="36" height="8" fill="#2b2622"/>
+        <rect x="-5" y="-24" width="10" height="9" fill="${K}"/><path d="M-12,-8 V0 M12,-8 V0" stroke="#4a423a"/>`;
+    case 'gym': // 体育館：大屋根の館
+      return `${wall(26, -20, 20)}<path d="M-30,-20 Q0,-40 30,-20 Z" fill="#7a3a2a" stroke="${K}" stroke-width="1.6"/>
+        <rect x="-6" y="-14" width="12" height="14" fill="#6b4a2c" stroke="${K}" stroke-width="1"/><path d="M-20,-14 h8 M12,-14 h8" stroke="${K}" stroke-width="2"/>`;
+    case 'tower': // 物見やぐら
+      return `<path d="M-10,0 L-6,-34 M10,0 L6,-34 M-9,-10 L9,-22 M9,-10 L-9,-22" stroke="#5a3a22" stroke-width="2.4" fill="none"/>
+        <rect x="-10" y="-42" width="20" height="9" fill="${W}" stroke="${K}" stroke-width="1.4"/>${roof(14, -42, 7)}
+        <rect x="-3" y="-60" width="1.6" height="12" fill="${K}"/><rect x="-1.4" y="-60" width="8" height="5" fill="${color}" stroke="${K}" stroke-width="0.8"/>`;
+    case 'market': // 楽市：日よけの屋台が並ぶ
+      return [-17, 0, 17].map((x, i) => `<g transform="translate(${x},0)"><rect x="-7" y="-12" width="14" height="12" fill="#a87b4f" stroke="${K}" stroke-width="1.2"/>
+        <path d="M-10,-12 L10,-12 L8,-20 L-8,-20 Z" fill="${i === 1 ? color : i ? '#2d5fb4' : '#e0a526'}" stroke="${K}" stroke-width="1.2"/>
+        <path d="M-6,-12 v3 M0,-12 v3 M6,-12 v3" stroke="${P}" stroke-width="1"/><circle cx="${i - 1}" cy="-5" r="2" fill="${['#e66', '#fd6', '#6a6'][i]}"/></g>`).join('') +
+        `<rect x="-3" y="-34" width="1.4" height="14" fill="${K}"/><path d="M-1.6,-34 h9 v11 h-9 Z" fill="${P}" stroke="${K}" stroke-width="0.8"/><text x="3" y="-25.5" font-size="6" text-anchor="middle" font-weight="900" fill="${color}">市</text>`;
+    case 'dojo': // 道場：看板を掲げた館
+      return `${wall(22, -24, 24)}${roof(27, -24, 12, '#4a3a2a')}<rect x="-10" y="-34" width="20" height="8" fill="${P}" stroke="${K}" stroke-width="1"/>
+        <text x="0" y="-28" font-size="6.5" text-anchor="middle" font-weight="900" fill="${K}">道場</text>
+        <rect x="-8" y="-16" width="16" height="16" fill="#6b4a2c" stroke="${K}" stroke-width="1"/><path d="M0,-16 V0" stroke="${K}"/>`;
+    case 'teahouse': // 茶屋：赤い野点傘と縁台
+      return `${wall(14, -18, 18)}${roof(18, -18, 8, '#5a6a4a')}<rect x="-6" y="-14" width="12" height="9" fill="${color}" opacity="0.9"/>
+        <path d="M16,-30 Q26,-40 36,-30 Z" fill="${color}" stroke="${K}" stroke-width="1.2"/><path d="M26,-30 V0" stroke="${K}" stroke-width="1.2"/>
+        <rect x="14" y="-6" width="22" height="3" fill="#c94a3a" stroke="${K}" stroke-width="0.8"/><path d="M16,-3 v3 M34,-3 v3" stroke="${K}"/>`;
+    default:
+      return '';
+  }
+}

@@ -597,8 +597,11 @@ const FACILITIES = {
   library: { name: '図書館', cost: 400, desc: '武将の政治・知略が伸びやすい' },
   shop: { name: '購買部', cost: 500, desc: 'この城の収入+25%' },
   tower: { name: '物見やぐら', cost: 350, desc: '敵の計略を防ぐ' },
+  market: { name: '楽市', cost: 600, desc: 'この城の収入+15%・開発+20%' },
+  dojo: { name: '道場', cost: 450, desc: 'この城の武将の統率が伸びやすい' },
+  teahouse: { name: '茶屋', cost: 300, desc: 'この城の武将の忠誠が季ごとに上がる' },
 };
-const FAC_SLOTS = 2;
+const FAC_SLOTS = 2; // 区画の数（町が宿場町・城下町・天下の大都に育つと一つずつ増える。facSlots）
 
 // 他家の性格（架空の設定）
 // ratio = 攻める目安（小さいほど好戦的）、scheme = 計略の多さ、build = 建設の多さ、
