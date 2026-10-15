@@ -298,6 +298,10 @@ const Sound = (() => {
   // 陽音階（レ・ミ・ソ・ラ・シ）で、琴の分散和音と尺八の旋律。ゆったり16小節
   const MAP_STEP = 60 / 72 / 4;
   const YO = [50, 52, 55, 57, 59, 62, 64, 67, 69, 71, 74, 76, 79, 81];
+  // 都節（陰音階）：秋の地図の曲。陽音階の音を同じ位置の陰の音へ置きかえる
+  const IN = [50, 51, 55, 57, 58, 62, 63, 67, 69, 70, 74, 75, 79, 81];
+  const toIn = (m) => { const i = YO.indexOf(m); return i >= 0 ? IN[i] : m; };
+  let mapSeason = 0;
   const SHAKU = [
     [69, 4], [71, 2], [74, 2],
     [71, 6], [69, 2],
@@ -562,18 +566,51 @@ const Sound = (() => {
         if (FUE_AT[s]) bgmFue(c, out, t, FUE_AT[s][0], FUE_AT[s][1] * STEP);
       },
     },
+    // 地図の曲は季節で装いを変える：春はそのまま、夏は祭りの締太鼓と鉦、秋は都節（陰音階）、冬はまばらな琴に笙
     map: {
       step: MAP_STEP, loop: 16 * 16, vol: 0.5,
       play(c, out, s, t) {
         const bar = Math.floor(s / 16), b = s % 16;
+        const se = mapSeason;
+        const sc = se === 2 ? IN : YO;
         const r = KOTO_ROOT[bar] + 3; // 分散和音の最初の音
-        const arp = [YO[r], YO[r + 2], YO[r + 4], YO[r + 5]];
+        const arp = [sc[r], sc[r + 2], sc[r + 4], sc[r + 5]];
         const up = bar % 2 === 0;
-        if (b === 0) bgmKoto(c, out, t, YO[KOTO_ROOT[bar]], 0.16); // 低音
+        if (se === 3) {
+          if (b === 0) bgmKoto(c, out, t, sc[KOTO_ROOT[bar]], 0.13);
+          if (b === 8) bgmKoto(c, out, t, arp[bar % 4], 0.06);
+          if (b === 0 && bar % 2 === 0) bgmSho(c, out, t, [62, 69, 74], MAP_STEP * 32);
+          if (SHAKU_AT[s] && bar % 2 === 0) bgmShaku(c, out, t, SHAKU_AT[s][0], SHAKU_AT[s][1] * MAP_STEP);
+          return;
+        }
+        if (b === 0) bgmKoto(c, out, t, sc[KOTO_ROOT[bar]], 0.16); // 低音
         if (b % 4 === 0) bgmKoto(c, out, t + (b ? 0 : 0.03), up ? arp[b / 4] : arp[3 - b / 4], 0.1);
         if (b === 14 && bar % 4 === 3) bgmKoto(c, out, t, arp[2], 0.07);
-        if (SHAKU_AT[s]) bgmShaku(c, out, t, SHAKU_AT[s][0], SHAKU_AT[s][1] * MAP_STEP);
+        if (SHAKU_AT[s]) bgmShaku(c, out, t, se === 2 ? toIn(SHAKU_AT[s][0]) : SHAKU_AT[s][0], SHAKU_AT[s][1] * MAP_STEP * (se === 2 ? 1.15 : 1));
+        if (se === 1) {
+          if (bar % 2 === 1 && MATSURI_SHIME[b] === 't') bgmShime(c, out, t, false);
+          if (b === 0 && bar % 4 === 0) bgmKane(c, out, t);
+        }
       },
+    },
+  };
+
+  // ---------- 決戦BGM（天下分け目） ----------
+  // 合戦の曲より速く重く：大太鼓の連打、締太鼓、三味線の低音、八小節ごとに笙の唸り
+  const KESSEN_STEP = 60 / 150 / 4;
+  const KESSEN_DRUM = ['D.D.D...D.D.DdDd', 'D..dD..dD.D.DDDD'];
+  TRACKS.kessen = {
+    step: KESSEN_STEP, loop: 16 * 8, vol: 0.42,
+    play(c, out, s, t) {
+      const bar = Math.floor(s / 16), b = s % 16;
+      const k = KESSEN_DRUM[bar % 4 === 3 ? 1 : 0][b];
+      if (k === 'D') bgmDrum(c, out, t, true);
+      if (k === 'd') bgmDrum(c, out, t, false);
+      if (b % 2 === 0) bgmShime(c, out, t, b % 4 === 0);
+      if (b % 4 === 0) bgmShamisen(c, out, t, BASS[bar] - 12);
+      if (b % 4 === 2) bgmShamisen(c, out, t, BASS[bar]);
+      if (b === 0 && bar % 4 === 0) bgmSho(c, out, t, [50, 57, 62, 64], KESSEN_STEP * 48);
+      if (FUE_AT[s]) bgmFue(c, out, t, FUE_AT[s][0] + 2, FUE_AT[s][1] * KESSEN_STEP);
     },
   };
 
@@ -710,6 +747,51 @@ const Sound = (() => {
     else bgmTsuzumi(c, c.destination, t, 'P');
   }
 
+  // 陣太鼓：だんだん詰まって、最後に大きく一打
+  function jindaiko() {
+    if (!ensure()) return;
+    let d = 0;
+    for (let i = 0; i < 9; i++) { taiko(d, 0.35 + i * 0.06); d += 0.11 - i * 0.008; }
+    taiko(d + 0.08, 1.15);
+  }
+  // 時代が動く：低い鐘の余韻に、笙がふくらむ
+  function era() {
+    const c = ensure(); if (!c) return;
+    const t = c.currentTime;
+    [[43, 0.3], [55, 0.12], [62.05, 0.08]].forEach(([m, v]) => {
+      const o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = midi(m);
+      env(c, g, t, v, 0.004, 3.2);
+      o.connect(g).connect(c.destination);
+      o.start(t); o.stop(t + 3.5);
+    });
+    bgmSho(c, c.destination, t + 0.3, [50, 57, 62, 69], 2.6);
+  }
+  // 鼓をひとつ「ポン」
+  function pon() { const c = ensure(); if (c) bgmTsuzumi(c, c.destination, c.currentTime, 'P'); }
+  // 地図の天気の音：雨・風・雪をかすかに
+  let amb = null;
+  function ambient(kind) {
+    const c = ctx;
+    if (!c) return;
+    kind = on && ['rain', 'wind', 'snow'].includes(kind) ? kind : null;
+    if ((amb ? amb.kind : null) === kind) return;
+    if (amb) { const a = amb; a.g.gain.setTargetAtTime(0.0001, c.currentTime, 0.4); setTimeout(() => { try { a.src.stop(); a.lfo && a.lfo.stop(); } catch (e) {} }, 2000); amb = null; }
+    if (!kind) return;
+    noise = noise || noiseBuffer(c);
+    const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = noise; src.loop = true;
+    g.gain.value = 0.0001;
+    let lfo = null;
+    if (kind === 'rain') { f.type = 'highpass'; f.frequency.value = 1800; }
+    else if (kind === 'wind') { f.type = 'bandpass'; f.frequency.value = 500; f.Q.value = 0.8; lfo = c.createOscillator(); const lg = c.createGain(); lfo.frequency.value = 0.13; lg.gain.value = 320; lfo.connect(lg).connect(f.frequency); lfo.start(); }
+    else { f.type = 'lowpass'; f.frequency.value = 380; }
+    src.connect(f).connect(g).connect(c.destination);
+    src.start();
+    g.gain.setTargetAtTime({ rain: 0.045, wind: 0.055, snow: 0.02 }[kind], c.currentTime, 1.2);
+    amb = { kind, src, g, lfo };
+  }
+
   // アプリが裏に回ったら音を止め、戻ったら再開する
   document.addEventListener('visibilitychange', () => {
     if (!ctx) return;
@@ -724,9 +806,14 @@ const Sound = (() => {
     toggle() {
       on = !on;
       try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {}
-      if (on) tap(); else bgmStop(0.1);
+      if (on) tap(); else { bgmStop(0.1); ambient(null); }
       return on;
     },
+    setSeason(n) { mapSeason = ((n % 4) + 4) % 4; },
+    ambient,
+    jindaiko,
+    era,
+    pon,
     bgmStart,
     bgmStop,
     analyze,

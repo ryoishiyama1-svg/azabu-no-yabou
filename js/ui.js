@@ -2214,7 +2214,7 @@ function runEvents(done) {
   }
   const v = eventView(S, ev);
   const era = !!(EVENTS[ev.id] && EVENTS[ev.id].era);
-  if (era && !ev.cut) { ev.cut = true; inkCut('時代が動く', v.title); Sound.horagai(); } // 時代の出来事は墨の一閃から
+  if (era && !ev.cut) { ev.cut = true; inkCut('時代が動く', v.title); Sound.era(); } // 時代の出来事は墨の一閃から
   Sound.taiko(0, 0.7);
   const choiceHtml = v.choiceGens
     // 後継者選びなど：武将のカードをそのまま選択肢にする
@@ -3290,7 +3290,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     cut.className = `b-cut go ${edge > 0 ? 'me' : edge < 0 ? 'foe' : ''}`;
     report([`${shortName(B[me].clan)}は「${JINKEI[k].name}」の陣を敷いた。${shortName(B[foe].clan)}は「${JINKEI[B.form[foe]].name}」！`,
       edge > 0 ? '陣形で優位に立った！' : edge < 0 ? '陣形で後れを取った…' : '陣形は互角']);
-    Sound.taiko(0, 0.8); Sound.taiko(0.18, 0.8);
+    Sound.jindaiko();
   }
   function renderCmds() {
     const el = $('b-cmds');
@@ -4654,6 +4654,7 @@ render = function (...a) {
       b.onclick = () => {
         Sound.tap();
         const reply = talkAnswer(S, +b.dataset.talk);
+        Sound.pon();
         if (S.talk) S.talk.reply = reply;
         save();
         render();
@@ -4663,3 +4664,19 @@ render = function (...a) {
   }
   return r;
 };
+
+// ---------- 季節の曲と、地図の天気の音 ----------
+const _sdRender = render;
+render = function (...a) {
+  const r = _sdRender.apply(this, a);
+  if (S) {
+    Sound.setSeason(S.turn % 4);
+    const onMap = !$('game').hidden && $('battle').hidden && !(document.getElementById('seki') && !$('seki').hidden);
+    Sound.ambient(onMap ? S.weather : null);
+  }
+  return r;
+};
+const _sdShowTitle = showTitle;
+showTitle = function (...a) { Sound.ambient(null); return _sdShowTitle.apply(this, a); };
+const _sdRunBattle = runBattle;
+runBattle = function (...a) { Sound.ambient(null); return _sdRunBattle.apply(this, a); };

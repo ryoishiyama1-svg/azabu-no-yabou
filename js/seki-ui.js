@@ -59,7 +59,7 @@ function showSeki(plan) {
   </div>`;
   box.hidden = false;
   Sound.horagai(); setTimeout(() => Sound.horagai(), 800);
-  Sound.bgmStart('battle');
+  Sound.bgmStart('kessen');
   const lord = lordOf(S);
   inkCut('天下分け目', fieldName, lord, lord ? '天下の行方、この一戦にあり！' : '');
   const paint = () => {
