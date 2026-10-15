@@ -2642,3 +2642,23 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .talk.done { grid-template-columns: 44px 1fr; align-items: center; opacity: 0.85; }
 .talk.done p { margin: 0; font-size: 12px; }
 .talk.done p b { margin-right: 6px; }
+
+/* ---------- 演出の仕上げ（v103）：地図の落城、天下のゲージ、窓の題字 ---------- */
+#map .cap-fx { pointer-events: none; }
+#map .cap-fx .cf-ink { fill: var(--fx); opacity: 0; transform-box: fill-box; transform-origin: center; animation: cf-ink 1.8s cubic-bezier(0.2, 0.8, 0.3, 1) forwards; }
+@keyframes cf-ink { 0% { transform: scale(0.1); opacity: 0.75; } 60% { opacity: 0.4; } 100% { transform: scale(1.6); opacity: 0; } }
+#map .cap-fx .cf-drop { fill: var(--fx); opacity: 0; transform-box: fill-box; transform-origin: center; animation: cf-drop 1.6s ease-out forwards; }
+@keyframes cf-drop { 0% { transform: scale(0); opacity: 0.85; } 40% { transform: scale(1.2); opacity: 0.8; } 100% { transform: scale(1); opacity: 0; } }
+#map .cap-fx .cf-seal { animation: cf-seal 2.4s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards; }
+#map .cap-fx .cf-seal rect { fill: var(--red); stroke: #fff3d6; stroke-width: 3; }
+#map .cap-fx.loss .cf-seal rect { fill: #3a3430; }
+#map .cap-fx .cf-seal text { font-family: var(--brush); font-size: 24px; text-anchor: middle; fill: #fff3d6; }
+@keyframes cf-seal { 0% { transform: translate(0, -46px) scale(2.4) rotate(-14deg); opacity: 0; } 18% { transform: translate(0, -46px) scale(1) rotate(-6deg); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(0, -60px) scale(1) rotate(-6deg); opacity: 0; } }
+.tenka { position: relative; }
+.tenka .tk-bar i { transition: width 0.8s cubic-bezier(0.3, 0.7, 0.3, 1); }
+.tenka.up .tk-bar { animation: tk-glow 1.2s ease-out; }
+@keyframes tk-glow { 0% { box-shadow: 0 0 0 0 rgba(243, 210, 122, 0.9); } 100% { box-shadow: 0 0 0 10px rgba(243, 210, 122, 0); } }
+.tk-plus { position: absolute; right: 64px; top: -6px; font: 900 15px var(--gothic); color: var(--red); paint-order: stroke; -webkit-text-stroke: 3px #fff3d6; animation: tk-plus 1.5s ease-out forwards; pointer-events: none; }
+@keyframes tk-plus { 0% { transform: translateY(6px); opacity: 0; } 20% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-18px); opacity: 0; } }
+.sheet h2 { animation: fude 0.7s cubic-bezier(0.6, 0.1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { #map .cap-fx * , .tenka.up .tk-bar, .tk-plus, .sheet h2 { animation: none !important; } }

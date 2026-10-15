@@ -4680,3 +4680,46 @@ const _sdShowTitle = showTitle;
 showTitle = function (...a) { Sound.ambient(null); return _sdShowTitle.apply(this, a); };
 const _sdRunBattle = runBattle;
 runBattle = function (...a) { Sound.ambient(null); return _sdRunBattle.apply(this, a); };
+
+// ---------- 地図の上の落城の演出と、天下のゲージの輝き ----------
+// 城の持ち主が変わったら、その城に墨が広がって印が押される（取れば家の色と「落城」、失えば黒煙と「陥落」）
+let fxOwners = null, fxState = null, fxCount = 0;
+function mapCaptureFx(id, kind) {
+  const n = MAP.byId[id], layer = $('world-fx');
+  if (!n || !layer) return;
+  const color = kind === 'gain' ? CLANS[PLAYER].color : '#2a2622';
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', `cap-fx ${kind}`);
+  g.setAttribute('transform', `translate(${n.x},${n.y})`);
+  const drops = Array.from({ length: 9 }, (_, i) => {
+    const a = (i / 9) * Math.PI * 2 + (i % 2) * 0.3, d = 60 + (i % 3) * 20;
+    return `<circle class="cf-drop" cx="${(Math.cos(a) * d).toFixed(1)}" cy="${(Math.sin(a) * d * 0.7).toFixed(1)}" r="${5 + (i % 3) * 3}" style="animation-delay:${(0.08 + i * 0.02).toFixed(2)}s"/>`;
+  }).join('');
+  g.innerHTML = `<g style="--fx:${color}"><circle class="cf-ink" r="70"/>${drops}
+    <g class="cf-seal" transform="translate(0,-46)"><rect x="-32" y="-18" width="64" height="36" rx="4"/><text y="8.5">${kind === 'gain' ? '落城' : '陥落'}</text></g></g>`;
+  layer.appendChild(g);
+  setTimeout(() => g.remove(), 2600);
+}
+const _fxRender = render;
+render = function (...a) {
+  const r = _fxRender.apply(this, a);
+  if (!S || !MAP || !MAP.nodes) return r;
+  const now = Object.fromEntries(MAP.nodes.map((n) => [n.id, S.castles[n.id].owner]));
+  const mine = castlesOf(S, PLAYER).length;
+  if (fxState === S && fxOwners) {
+    const changed = Object.keys(now).filter((id) => fxOwners[id] !== now[id] && (now[id] === PLAYER || fxOwners[id] === PLAYER));
+    if (changed.length && changed.length <= 6) {
+      changed.forEach((id, i) => setTimeout(() => mapCaptureFx(id, now[id] === PLAYER ? 'gain' : 'loss'), 250 + i * 260));
+    }
+    if (mine > fxCount) {
+      const t = document.querySelector('.tenka');
+      if (t) {
+        t.classList.remove('up'); void t.getBoundingClientRect(); t.classList.add('up');
+        t.insertAdjacentHTML('beforeend', `<span class="tk-plus">＋${mine - fxCount}</span>`);
+        setTimeout(() => { const p = t.querySelector('.tk-plus'); if (p) p.remove(); }, 1600);
+      }
+    }
+  }
+  fxState = S; fxOwners = now; fxCount = mine;
+  return r;
+};
