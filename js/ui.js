@@ -3045,15 +3045,22 @@ function showSettings() {
 // ---------- 合戦（1合ずつ采配する） ----------
 // B = startBattle() で作った合戦。auto = おまかせで進める
 // 墨の一閃：合戦のはじまりに、太い筆の一画が画面を横切り「合戦」と城の名
-function inkCut(title, sub) {
+// hero を渡すと、その武将の大首絵が滑り込み、名乗りを上げる（自分の家の合戦）
+function inkCut(title, sub, hero = null, line = '') {
   const d = document.createElement('div');
-  d.className = 'ink-cut';
-  d.innerHTML = `<svg viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path class="ink-band" d="M-10,70 C60,40 120,52 200,46 C280,40 340,30 410,44 L410,92 C330,78 270,96 200,94 C120,92 60,104 -10,96Z"/></svg><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}`;
+  d.className = hero ? 'ink-cut hero' : 'ink-cut';
+  d.innerHTML = `<svg viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path class="ink-band" d="M-10,70 C60,40 120,52 200,46 C280,40 340,30 410,44 L410,92 C330,78 270,96 200,94 C120,92 60,104 -10,96Z"/></svg>
+    ${hero ? `<div class="ic-hero">${portrait(hero, 128, 'angry', 'R')}</div>` : ''}
+    <div class="ic-text"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}${hero && line ? `<p>${esc(hero.name)}「${esc(line)}」</p>` : ''}</div>`;
   document.body.appendChild(d);
-  setTimeout(() => d.remove(), 1500);
+  setTimeout(() => d.remove(), hero ? 2100 : 1500);
 }
 function runBattle(B, { auto = false, onClose } = {}) {
-  inkCut(B.decisive ? '決　戦' : '合　戦', MAP.byId[B.to] ? MAP.byId[B.to].name : '');
+  {
+    // 自分の家の合戦なら、こちらの大将が名乗りを上げる
+    const heroG = B.playerSide === 'a' ? S.gens[B.gid] : B.playerSide === 'd' && B.dgid ? S.gens[B.dgid] : null;
+    inkCut(B.decisive ? '決　戦' : '合　戦', MAP.byId[B.to] ? MAP.byId[B.to].name : '', heroG, heroG ? duelCall(heroG) : '');
+  }
   const box = $('battle');
   const me = B.playerSide, foe = me === 'a' ? 'd' : 'a';
   const fast = getSettings().speed === 'fast';

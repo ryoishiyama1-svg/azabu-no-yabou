@@ -2312,7 +2312,7 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 #season.s3 .season-seal { background: #3c5a82; box-shadow: inset 0 0 0 3px #3c5a82, inset 0 0 0 4.5px #fff; }
 
 .ink-cut { position: fixed; left: 0; right: 0; top: 34%; height: 150px; z-index: 120; pointer-events: none; display: grid; place-items: center; animation: inkFade 1.5s ease-in forwards; }
-.ink-cut svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ink-cut > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .ink-band { fill: #1c1a17; clip-path: inset(0 100% 0 0); animation: inkSweep 0.45s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
 .ink-cut b { position: relative; font-family: var(--brush); font-weight: 400; font-size: 54px; letter-spacing: 0.3em; color: #f3d27a; text-shadow: 3px 3px 0 #c8372d; animation: kime-bg 0.25s ease-out 0.3s both; }
 .ink-cut small { position: relative; margin-top: -8px; font-family: var(--mincho); font-weight: 800; font-size: 15px; color: var(--paper); animation: kime-bg 0.25s ease-out 0.4s both; }
@@ -2324,3 +2324,13 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .map-sky .kinun.top { top: 0; }
 .map-sky .kinun.bottom { bottom: 0; filter: drop-shadow(0 -2px 2px rgba(28, 26, 23, 0.35)); }
 @media (min-width: 900px) { .map-sky .kinun { height: 42px; } }
+
+/* 武将の見得：大首絵が墨の帯に滑り込み、名乗りを上げる */
+.ink-cut .ic-text { position: relative; display: grid; justify-items: center; }
+.ink-cut.hero { height: 170px; animation-duration: 2.1s; }
+.ink-cut.hero .ic-text { margin-left: 120px; justify-items: start; }
+.ink-cut.hero b { font-size: 46px; }
+.ink-cut .ic-text p { margin: 2px 0 0; max-width: 62vw; font-family: var(--mincho); font-weight: 800; font-size: 14px; color: var(--paper); text-shadow: 1px 1px 0 #000; animation: kime-bg 0.3s ease-out 0.55s both; }
+.ic-hero { position: absolute; left: 4%; top: 50%; transform: translateY(-50%); animation: icHero 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.15s both; }
+.ic-hero .portrait { display: block; border: 4px solid var(--paper); box-shadow: 6px 6px 0 var(--red); background: var(--paper); }
+@keyframes icHero { from { transform: translate(-140%, -50%) skewX(-8deg); opacity: 0; } }
