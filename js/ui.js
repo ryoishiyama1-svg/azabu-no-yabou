@@ -4629,3 +4629,37 @@ render = function (...a) {
   }
   return r;
 };
+
+// ---------- 家臣の声：軍議の画面に、話しかけてくる家臣の吹き出し ----------
+function talkCard() {
+  if (!S || S.result) return '';
+  const t = talkOfSeason(S);
+  if (!t || t.none) return '';
+  const g = S.gens[t.gid];
+  if (!g || g.clan !== PLAYER) return '';
+  if (t.done) return `<div class="talk done">${portrait(g, 40, 'smile')}<p><b>${esc(g.name)}</b>${esc(t.reply || '')}</p></div>`;
+  const btn = (x, i) => `<button class="btn ${i ? 'plain' : ''}" data-talk="${i}" ${x.gold && S.gold[PLAYER] < x.gold ? 'disabled' : ''}>${x.label}${x.sub ? `<small class="sub">${x.sub}</small>` : ''}</button>`;
+  return `<div class="talk">
+    <div class="talk-who">${portrait(g, 56, t.mood)}<b>${esc(g.name)}</b><small>${esc(g.title || '')}・${g.loc ? MAP.byId[g.loc].short : ''}</small></div>
+    <div class="talk-bubble"><span class="talk-tag">家臣の声</span><p>「${esc(t.line)}」</p><div class="talk-btns">${btn(t.a, 0)}${btn(t.b, 1)}</div></div>
+  </div>`;
+}
+const _tkRender = render;
+render = function (...a) {
+  const r = _tkRender.apply(this, a);
+  const tiles = document.querySelector('.council .cn-tiles');
+  if (tiles && !document.querySelector('.council .talk')) {
+    tiles.insertAdjacentHTML('afterend', talkCard());
+    document.querySelectorAll('.council [data-talk]').forEach((b) => {
+      b.onclick = () => {
+        Sound.tap();
+        const reply = talkAnswer(S, +b.dataset.talk);
+        if (S.talk) S.talk.reply = reply;
+        save();
+        render();
+        if (reply) toast(`${portrait(S.gens[S.talk.gid], 30, 'smile')}<span>${esc(reply)}</span>`);
+      };
+    });
+  }
+  return r;
+};

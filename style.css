@@ -2626,3 +2626,19 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .sk-cmds .btn small { display: block; font-size: 10px; font-weight: 600; letter-spacing: 0; }
 .sk-cut { position: absolute; inset: 35% 0 auto; text-align: center; font-family: var(--brush); font-size: 44px; color: #fff3d6; background: rgba(138, 29, 21, 0.85); letter-spacing: 0.3em; animation: inkFade 1.5s ease-in forwards; }
 .seki .stamp { position: absolute; }
+
+/* ---------- 家臣の声（v101） ---------- */
+.talk { display: grid; grid-template-columns: 72px 1fr; gap: 8px; margin: 10px 0; align-items: start; }
+.talk-who { display: grid; justify-items: center; text-align: center; }
+.talk-who b { font-size: 12px; margin-top: 2px; }
+.talk-who small { font-size: 10px; opacity: 0.7; }
+.talk-bubble { position: relative; padding: 8px 10px 10px; background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25); }
+.talk-bubble::before { content: ''; position: absolute; left: -10px; top: 18px; border: 8px solid transparent; border-right-color: var(--ink); border-left: 0; }
+.talk-tag { display: inline-block; font-family: var(--brush); font-size: 12px; color: #f3d27a; background: var(--lacquer); padding: 0 6px; border: 1px solid var(--gold-line); }
+.talk-bubble p { margin: 4px 0 6px; font-family: var(--mincho); font-weight: 700; font-size: 14px; line-height: 1.6; }
+.talk-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.talk-btns .btn { margin: 0; padding: 7px 4px; font-size: 13px; letter-spacing: 0.02em; }
+.talk-btns .btn small { font-size: 10px; }
+.talk.done { grid-template-columns: 44px 1fr; align-items: center; opacity: 0.85; }
+.talk.done p { margin: 0; font-size: 12px; }
+.talk.done p b { margin-right: 6px; }
