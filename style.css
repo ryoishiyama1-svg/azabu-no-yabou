@@ -2318,3 +2318,9 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .ink-cut small { position: relative; margin-top: -8px; font-family: var(--mincho); font-weight: 800; font-size: 15px; color: var(--paper); animation: kime-bg 0.25s ease-out 0.4s both; }
 @keyframes inkSweep { to { clip-path: inset(0 0 0 0); } }
 @keyframes inkFade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---------- 金雲の額縁：地図の上下に金箔の雲（屏風のように） ---------- */
+.map-sky .kinun { position: absolute; left: 0; width: 100%; height: 34px; filter: drop-shadow(0 2px 2px rgba(28, 26, 23, 0.35)); }
+.map-sky .kinun.top { top: 0; }
+.map-sky .kinun.bottom { bottom: 0; filter: drop-shadow(0 -2px 2px rgba(28, 26, 23, 0.35)); }
+@media (min-width: 900px) { .map-sky .kinun { height: 42px; } }
