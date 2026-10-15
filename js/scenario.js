@@ -92,7 +92,7 @@ rollEvents = function (s) {
 function nemesisChip(s) {
   if (!s.nemesis || !CLANS[s.nemesis]) return '';
   const alive = castlesOf(s, s.nemesis).length;
-  return `<p class="nemesis-chip ${alive ? '' : 'done'}"><span>宿敵</span>${CLANS[s.nemesis].name}${alive ? `（${alive}城）` : '──討ち果たした'}</p>`;
+  return `<p class="nemesis-chip ${alive ? '' : 'done'}"><span>宿敵の家</span>${CLANS[s.nemesis].name}${alive ? `（${alive}城）` : '──討ち果たした'}</p>`;
 }
 function checkNemesis(s) {
   if (!s.nemesis || s.nemesisDone || castlesOf(s, s.nemesis).length) return null;

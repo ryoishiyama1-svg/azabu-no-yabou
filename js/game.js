@@ -1103,7 +1103,7 @@ function aiTurn(s, log) {
 
 function graceTurns(s) {
   const g = (SCENARIOS[s.scenario] || SCENARIOS.tokyo).grace;
-  return s.diff === 'hard' ? Math.floor(g / 2) : g;
+  return (s.diff === 'hard' ? Math.floor(g / 2) : g) + (s.gentle ? 4 : 0); // 手ほどきつきは4季長く
 }
 
 // 敵の家は、浪人を雇って武将のいない城に置く

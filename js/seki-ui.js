@@ -70,7 +70,7 @@ function showSeki(plan) {
   const ctl = () => {
     if (B.over) return;
     const pc = sekiPlotChance(S, B, focus, 'me');
-    $('sk-ctl').innerHTML = `<p class="sk-lbl">本陣の後詰めを送る翼</p>
+    $('sk-ctl').innerHTML = `${B.round === 0 ? tipBox('seki') : ''}<p class="sk-lbl">本陣の後詰めを送る翼</p>
       <div class="sk-focus">${[0, 1, 2].map((i) => `<button class="${i === focus ? 'on' : ''}" data-focus="${i}" ${B.me[i] && !B.me[i].broken ? '' : 'disabled'}>${SEKI_LANES[i]}</button>`).join('')}</div>
       <div class="sk-cmds">${Object.entries(SEKI_CMDS).map(([k, c]) => `<button class="btn ${k === 'sougakari' ? 'red' : ''}" data-sk="${k}"><b>${c.name}</b><small>${c.desc}</small></button>`).join('')}</div>
       <button class="btn plain" id="sk-plot" ${B.plotUsed.me || !pc ? 'disabled' : ''}>調略：敵の${SEKI_LANES[focus]}を寝返らせる<small class="sub">${B.plotUsed.me ? 'もう使った' : pc ? `見込み ${Math.round(pc * 100)}%（一度だけ）` : 'その翼に寝返る将はいない'}</small></button>`;

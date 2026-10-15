@@ -637,6 +637,36 @@ $('btn-records').onclick = () => { Sound.unlock(); Sound.tap(); showRecords(); }
 
 // シナリオ・家・当主の名前・難易度を決める
 const TUT_KEY = 'azabu-tut-done';
+// ---------- 軍師のひとこと：はじめて見る機能に、一度だけ短い説明 ----------
+// 「わかった」を押すか、三度見たら、もう出さない（この端末に覚えておく）
+const HINT_KEY = 'azabu-hints';
+const HINT_SESSION = new Set();
+const HINTS = {
+  jinkei: '陣立てでござる。六つの陣形は巡りの相性。物見が敵の構えを見抜けば「◎有利」の陣を選びなされ。迷えば「魚鱗」が攻めの基本',
+  town: '城下町の普請でござる。光る空き地をタップして施設を。「開発」で町が育てば、区画が開いてゆきまする',
+  talk: '家臣が話しかけてまいりました。返事しだいで忠誠や士気が動きまする。献策を任せれば、その場で動きまするぞ',
+  debate: '舌戦は読み合い。弱点の論は二倍効き、反対の論は半分。読めぬ相手には、まだ使っておらぬ論を試し、反応を見なされ',
+  seki: '天下分け目の大戦でござる。三つの翼のうち二つが崩れた側の負け。後詰めを送る翼を選び、勝負どころで調略を',
+  nemesis: '「宿敵の家」とは、すぐ隣で天下を争う家。宿敵との戦は士気が上がり、本拠を落として滅ぼせば大きな褒美がござる',
+  taishi: '家の志でござる。志にかなう行いで三段まで高まり、家ならではの力が増しまする',
+};
+function hintsSeen() { try { return JSON.parse(localStorage.getItem(HINT_KEY)) || {}; } catch (e) { return {}; } }
+function hintSave(d) { try { localStorage.setItem(HINT_KEY, JSON.stringify(d)); } catch (e) {} }
+function tipBox(key) {
+  const d = hintsSeen();
+  const n = d[key] || 0;
+  if (n === 'ok' || n >= 3 || !HINTS[key] || getSettings().tips === 'off') return '';
+  if (!HINT_SESSION.has(key)) { HINT_SESSION.add(key); d[key] = n + 1; hintSave(d); } // 数えるのは、開くたびに一度だけ
+  return `<div class="tip" data-tip="${key}"><span class="tip-who">軍師</span><p>${HINTS[key]}</p><button type="button" data-tip-ok="${key}">わかった</button></div>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('[data-tip-ok]');
+  if (!b) return;
+  e.stopPropagation();
+  const d = hintsSeen(); d[b.dataset.tipOk] = 'ok'; hintSave(d);
+  const box = b.closest('.tip'); if (box) box.remove();
+}, true);
+
 function tutDone() { try { return localStorage.getItem(TUT_KEY) === '1'; } catch (e) { return false; } }
 
 // シナリオの顔ぶれ：学校の数と、家として動く家
@@ -673,7 +703,10 @@ function showSetup() {
   };
   const defaultName = () => `${CLANS[st.clan].name.replace('家', '').replace('・', '')} 一郎`;
   const step = (n, t) => `<h3 class="setup-h"><span>${n}</span>${t}</h3>`;
+  const fresh = !tutDone();
   openModal(`<h2>旗 揚 げ</h2>
+    <button class="btn red quick-start" id="setup-quick">おすすめで始める<small class="sub">${fresh ? 'はじめての人に：都心の陣・麻布家・初級・軍師の手ほどきつき' : '東京統一・麻布家・中級で、すぐに出陣'}</small></button>
+    <p class="hint" style="text-align:center">または、下で一つずつ選ぶ</p>
     ${step('一', '版を選ぶ')}
     <div id="ed-box">${edCards()}</div>
     ${step('二', '戦いを選ぶ')}
@@ -730,12 +763,22 @@ function showSetup() {
   bindClans();
   bindPick('diff', (v) => { st.diff = v; });
   bindPick('ts', (v) => { st.taishi = v; });
+  $('setup-quick').onclick = () => {
+    Sound.tap();
+    const sc = fresh ? 'toshin' : 'tokyo';
+    S = newGame({ lordName: '麻布 一郎', diff: fresh ? 'easy' : 'normal', scenario: sc, clan: 'azabu', tutorial: fresh, challenges: [] });
+    if (fresh) S.gentle = true;
+    save();
+    closeModal();
+    startGame(true);
+  };
   // 挑戦状：いくつでも重ねられる（押すたびに付け外し）
   modalBody.querySelectorAll('[data-ch]').forEach((b) => { b.onclick = () => { Sound.tap(); const k = b.dataset.ch; if (st.ch.has(k)) st.ch.delete(k); else st.ch.add(k); b.classList.toggle('on', st.ch.has(k)); }; });
   $('setup-go').onclick = () => {
     const name = $('lord-name').value.trim() || defaultName();
     S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked, challenges: [...st.ch] });
     if (st.taishi) { S.playerTaishi = st.taishi; S.taishi = {}; }
+    if ($('tut').checked) S.gentle = true; // 手ほどきつきは、序盤の猶予を長めに
     save();
     closeModal();
     startGame(true);
@@ -915,7 +958,7 @@ function helpChapters() {
       ])}
       <h3>群雄の構図</h3>
       ${li([
-        `旗揚げのとき、いちばん近い家が<b>宿敵</b>に。宿敵との合戦は士気+${NEMESIS.morale}、本拠を落として滅ぼせば金${NEMESIS.gold}と全家臣の忠誠+${NEMESIS.loyal}`,
+        `旗揚げのとき、いちばん近い家が<b>宿敵の家</b>に（武将どうしの「宿敵」とは別）。宿敵との合戦は士気+${NEMESIS.morale}、本拠を落として滅ぼせば金${NEMESIS.gold}と全家臣の忠誠+${NEMESIS.loyal}`,
         `他家にも、睨み合う二家と、手を結ぶ二家がいます`,
         `三年目に<b>三強の時代</b>が告げられ、どこかの家が天下の${Math.round(HASHA.share * 100)}%を握ると<b>覇者の台頭</b>。諸家が包囲網を敷き、加わるか見守るかを選べます`,
       ])}
@@ -1383,7 +1426,7 @@ function renderCouncil() {
       ${lord ? portrait(lord, 48) : crestBadge(PLAYER, 48)}
       <div class="cn-who"><h2>軍議<small>${dateLabel(S.turn)}</small></h2>
         <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p>
-        ${taishiLine(S, PLAYER)}${nemesisChip(S)}
+        ${taishiLine(S, PLAYER)}${nemesisChip(S)}${S.turn >= 1 && S.nemesis ? tipBox('nemesis') : ''}
         ${(S.challenges || []).length ? `<p class="cn-ch">${S.challenges.map((c) => `<span title="${CHALLENGES[c].desc}">${CHALLENGES[c].mark}</span>`).join("")}<small>挑戦状${hasCh(S, "speed") ? `・天下の期限まで あと${Math.max(0, CHALLENGES.speed.limit - S.turn)}季` : ""}</small></p>` : ""}</div>
       ${S.debug ? '<b class="dbg">DEBUG</b>' : ''}
     </div>
@@ -1541,7 +1584,7 @@ function showDiplomacy(message) {
     const peace = r.ally > 0 || r.truce > 0 || r.sister || r.trade > 0;
     const off = !envoy || (S.encircle && !r.sister);
     return `<div class="diplo-row ${r.sister ? 'sister' : ''}">
-      <div class="dr-head">${clanChip(k)}${k === S.nemesis ? '<b class="nemesis-tag">宿敵</b>' : ''}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
+      <div class="dr-head">${clanChip(k)}${k === S.nemesis ? '<b class="nemesis-tag">宿敵の家</b>' : ''}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
       ${(() => { const lo = aiLordOf(S, k); return lo ? `<div class="dr-lord">${portrait(lo, 48, r.friend >= 60 ? "smile" : r.friend < 30 ? "angry" : null)}<div><small>当主</small><b>${esc(lo.name)}</b>${lordVoice(k).catch ? `<i>「${lordVoice(k).catch}」</i>` : ""}</div></div>` : ""; })()}
       ${taishiLine(S, k)}
       <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
@@ -2367,7 +2410,7 @@ function showBuild(id, pick = -1) {
   }
   openModal(`<h2>城 下 町</h2>
     <p class="tp-head"><b>${MAP.byId[id].name}</b>・${TOWN_LEVELS[lv].name}（区画 ${fac.length}／${slots}）${grow}</p>
-    <div class="town-wrap">${townScene(id, pick)}</div>
+    ${tipBox('town')}<div class="town-wrap">${townScene(id, pick)}</div>
     ${sheet || `<p class="hint" style="text-align:center">区画をタップして普請する。町は「開発」で経済を上げると育ち、区画が開いていく</p>`}
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('[data-plot]').forEach((p) => {
@@ -2582,7 +2625,7 @@ function drawDebate(Dt) {
       </div>
       <div class="mt-say">${say}</div>
       <div class="mt-gauge db-gauge"><span>説得</span><i><b style="width:${pct}%"></b></i><em>${pct}%</em></div>
-      ${Dt.done ? '' : `<p class="mt-hint">${read}</p>`}
+      ${Dt.done ? '' : `<p class="mt-hint">${read}</p>${Dt.round === 0 ? tipBox('debate') : ''}`}
     </div>
     ${actions}`);
   modalBody.querySelectorAll('[data-arg]').forEach((b) => {
@@ -3332,7 +3375,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
         const rd = B.formRead || { level: 'none' };
         const scout = rd.level === 'clear' ? `🔍 物見の報せ：敵は「${JINKEI[rd.k].name}」の構え`
           : rd.level === 'guess' ? `🔍 たぶん「${JINKEI[rd.k].name}」……確かではない` : '🔍 敵の陣形は見えない';
-        el.innerHTML = `<div class="jk-pick"><p class="jk-head"><b>陣 立 て</b><span>${scout}</span></p><div class="jk-grid">${Object.entries(JINKEI).map(([k, J]) => {
+        el.innerHTML = `<div class="jk-pick">${tipBox('jinkei')}<p class="jk-head"><b>陣 立 て</b><span>${scout}</span></p><div class="jk-grid">${Object.entries(JINKEI).map(([k, J]) => {
           const good = rd.level !== 'none' && J.beats === rd.k, bad = rd.level !== 'none' && JINKEI[rd.k].beats === k;
           return `<button class="jk-card ${good ? 'good' : bad ? 'bad' : ''}" data-jk="${k}">${jinkeiIcon(k, CLANS[B[me].clan].color)}<b>${J.name}</b><small>${J.desc}</small>${good ? '<i>◎ 有利</i>' : bad ? '<i>× 不利</i>' : ''}</button>`;
         }).join('')}</div><p class="hint">${Object.values(JINKEI).map((J) => J.name).join('→')}→${JINKEI.hoshi.name}：それぞれ次の陣に強い</p></div>`;
@@ -4670,7 +4713,7 @@ function talkCard() {
   if (!g || g.clan !== PLAYER) return '';
   if (t.done) return `<div class="talk done">${portrait(g, 40, 'smile')}<p><b>${esc(g.name)}</b>${esc(t.reply || '')}</p></div>`;
   const btn = (x, i) => `<button class="btn ${i ? 'plain' : ''}" data-talk="${i}" ${x.gold && S.gold[PLAYER] < x.gold ? 'disabled' : ''}>${x.label}${x.sub ? `<small class="sub">${x.sub}</small>` : ''}</button>`;
-  return `<div class="talk">
+  return `${tipBox('talk')}<div class="talk">
     <div class="talk-who">${portrait(g, 56, t.mood)}<b>${esc(g.name)}</b><small>${esc(g.title || '')}・${g.loc ? MAP.byId[g.loc].short : ''}</small></div>
     <div class="talk-bubble"><span class="talk-tag">家臣の声</span><p>「${esc(t.line)}」</p><div class="talk-btns">${btn(t.a, 0)}${btn(t.b, 1)}</div></div>
   </div>`;

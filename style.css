@@ -2662,3 +2662,13 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 @keyframes tk-plus { 0% { transform: translateY(6px); opacity: 0; } 20% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-18px); opacity: 0; } }
 .sheet h2 { animation: fude 0.7s cubic-bezier(0.6, 0.1, 0.3, 1) both; }
 @media (prefers-reduced-motion: reduce) { #map .cap-fx * , .tenka.up .tk-bar, .tk-plus, .sheet h2 { animation: none !important; } }
+
+/* ---------- はじめての人に（v105）：軍師のひとこと・おすすめで始める ---------- */
+.tip { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: start; margin: 6px 0 10px; padding: 8px 10px; color: var(--ink);
+  background: #fff8e2; border: 2px solid var(--gold-line); box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.25); animation: tip-in 0.4s ease-out; }
+@keyframes tip-in { from { transform: translateY(-6px); opacity: 0; } }
+.tip-who { font-family: var(--brush); font-size: 14px; color: #fff3d6; background: linear-gradient(180deg, #d4473a, #8a1d15); padding: 2px 6px; writing-mode: vertical-rl; letter-spacing: 0.15em; grid-row: 1 / span 2; }
+.tip p { margin: 0; font-size: 13px; line-height: 1.6; }
+.tip button { justify-self: end; font: 800 12px var(--gothic); padding: 4px 12px; color: #f3d27a; background: var(--lacquer); border: 1.5px solid var(--gold-line); cursor: pointer; }
+.quick-start { margin-bottom: 4px; font-size: 19px; }
+.quick-start small { font-size: 11px; }
