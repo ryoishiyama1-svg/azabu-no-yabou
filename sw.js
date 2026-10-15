@@ -1,6 +1,6 @@
 // オフラインでも遊べるようにファイルを保存しておく
 // ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
-const V = 99;
+const V = 100;
 const VERSION = `v${V}`;
 const FILES = [
   './',
@@ -18,6 +18,7 @@ const FILES = [
   `js/taishi.js?v=${V}`,
   `js/scenario.js?v=${V}`,
   `js/jinkei.js?v=${V}`,
+  `js/sekigahara.js?v=${V}`,
   `js/records.js?v=${V}`,
   `js/saves.js?v=${V}`,
   `js/art.js?v=${V}`,
@@ -27,6 +28,7 @@ const FILES = [
   `js/share.js?v=${V}`,
   `js/ui.js?v=${V}`,
   `js/ude.js?v=${V}`,
+  `js/seki-ui.js?v=${V}`,
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

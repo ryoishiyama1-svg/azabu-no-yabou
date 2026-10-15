@@ -2584,3 +2584,45 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .jk-card.bad i { color: #fff; background: #555; }
 .jk-card:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4); }
 .jk-pick .hint { color: #d9c9a3; }
+
+/* ---------- 天下分け目の大合戦（v100） ---------- */
+.seki { position: fixed; inset: 0; z-index: 95; overflow-y: auto; padding: 16px 14px 28px; color: var(--paper); background: radial-gradient(ellipse at 50% 0%, rgba(200, 55, 45, 0.35), transparent 60%), var(--seigaiha) rgba(20, 14, 10, 0.97); }
+.sk-wrap { max-width: 560px; margin: 0 auto; }
+.sk-head { text-align: center; }
+.sk-title { font-family: var(--brush); font-size: 40px; letter-spacing: 0.3em; color: #f3d27a; text-shadow: 3px 3px 0 #8a1d15; animation: fude 1s cubic-bezier(0.6, 0.1, 0.3, 1) both; }
+.sk-sub { font-size: 13px; opacity: 0.9; }
+.sk-fieldbox { position: relative; margin: 10px 0 8px; border: 3px solid #120b08; box-shadow: inset 0 0 0 2px var(--gold-line), 0 6px 18px rgba(0, 0, 0, 0.5); }
+.sk-field { display: block; width: 100%; height: auto; }
+.sk-lname { font-family: var(--brush); font-size: 12px; fill: #1c1a17; paint-order: stroke; stroke: #f1e6cc; stroke-width: 3px; }
+.sk-corps { transition: transform 0.4s cubic-bezier(0.3, 0.7, 0.3, 1), opacity 0.6s; }
+.sk-corps.a.clash { transform: translateX(60px); }
+.sk-corps.d.clash { transform: translateX(-60px); }
+.sk-corps.broken { opacity: 0.25; }
+.sk-morale { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 6px; align-items: center; font-size: 11px; }
+.sk-morale .bar { height: 8px; background: rgba(255, 255, 255, 0.15); }
+.sk-morale .bar i { display: block; height: 100%; background: var(--red); transition: width 0.4s; }
+.sk-morale .bar.foe { transform: scaleX(-1); }
+.sk-morale .bar.foe i { background: #6f7a86; }
+.sk-lanes { display: grid; gap: 4px; margin: 8px 0; }
+.sk-row { display: grid; grid-template-columns: 34px 1fr 16px 1fr; gap: 4px; align-items: center; }
+.sk-row em { font-family: var(--brush); font-style: normal; color: #f3d27a; }
+.sk-row > i { font-style: normal; text-align: center; opacity: 0.6; font-size: 11px; }
+.sk-c { display: grid; grid-template-columns: 1fr auto; gap: 0 4px; padding: 3px 6px; background: rgba(255, 255, 255, 0.08); border-left: 4px solid var(--c); font-size: 12px; }
+.sk-c small { font-size: 10px; opacity: 0.75; }
+.sk-c .bar { grid-column: 1 / -1; height: 4px; background: rgba(255, 255, 255, 0.15); }
+.sk-c .bar i { display: block; height: 100%; background: var(--c); }
+.sk-c span { grid-row: 1; grid-column: 2; font-weight: 800; }
+.sk-c.broken { opacity: 0.45; text-decoration: line-through; }
+.sk-c.turned { box-shadow: inset 0 0 0 1px #f3d27a; }
+.sk-c.empty { opacity: 0.4; border-left-color: transparent; }
+.sk-round { text-align: center; font-family: var(--brush); font-size: 22px; color: #f3d27a; margin: 6px 0; }
+.sk-lbl { margin: 6px 0 4px; font-size: 12px; opacity: 0.85; }
+.sk-focus { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sk-focus button { font: 800 14px var(--gothic); padding: 8px; color: #f6ecd2; background: rgba(255, 255, 255, 0.08); border: 1.5px solid var(--gold-line); }
+.sk-focus button.on { background: linear-gradient(180deg, #d4473a, #8a1d15); }
+.sk-focus button:disabled { opacity: 0.3; }
+.sk-cmds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sk-cmds .btn { margin-top: 6px; padding: 8px 4px; font-size: 14px; }
+.sk-cmds .btn small { display: block; font-size: 10px; font-weight: 600; letter-spacing: 0; }
+.sk-cut { position: absolute; inset: 35% 0 auto; text-align: center; font-family: var(--brush); font-size: 44px; color: #fff3d6; background: rgba(138, 29, 21, 0.85); letter-spacing: 0.3em; animation: inkFade 1.5s ease-in forwards; }
+.seki .stamp { position: absolute; }
