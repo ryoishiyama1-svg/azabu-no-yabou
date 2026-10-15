@@ -3134,16 +3134,56 @@ function runBattle(B, { auto = false, onClose } = {}) {
   };
   const replay = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
   const report = (lines) => { $('b-report').innerHTML = lines.map((l) => `<p>${esc(l)}</p>`).join(''); };
-  const animate = () => {
+  // 兵の動き：両軍が間合いを詰めてぶつかり、討たれた数が浮かび、押した側へ前線が動く
+  // front：前線のずれ（＋は守り手の城の側へ押している）。合ごとに積み重なる
+  let front = 0;
+  const FRONT_A = 150, GAP = 70; // 攻め手の先頭の x と、両軍の先頭のあいだ
+  const place = (A, D, da, dd) => { A.style.transform = `translateX(${da.toFixed(1)}px)`; D.style.transform = `translateX(${dd.toFixed(1)}px)`; };
+  const animate = (prev = { a: B.a.troops, d: B.d.troops }, act = {}) => {
     const A = $('army-a'), D = $('army-d');
+    const kind = (sd) => { const c = act[sd] || ''; return c.startsWith('art:') ? 'art' : c; };
+    const reach = (sd) => ({ charge: 58, art: 48, attack: 40, scheme: 22, guard: 10, confused: 6 })[kind(sd)] || 30;
+    const ra = reach('a'), rd = reach('d');
+    const da = front + (GAP * ra) / (ra + rd), dd = front - (GAP * rd) / (ra + rd);
+    const meet = FRONT_A + da + 6; // ぶつかる所
+    const lossA = Math.max(0, prev.a - B.a.troops), lossD = Math.max(0, prev.d - B.d.troops);
+    // 1) 間合いを詰める（足軽が小走りに揺れる）
+    [A, D].forEach((x) => x.classList.add('march'));
+    place(A, D, da, dd);
     $('bf-arrows').innerHTML = arrowVolley(B.round % 2 === 1);
-    [A, D].forEach((x) => x.classList.add('lunge'));
-    replay($('spark'), 'go');
-    replay($('bf-dust'), 'go');
-    replay(box, 'shake');
-    Sound.clash(0.02);
-    setTimeout(() => [A, D].forEach((x) => x.classList.remove('lunge')), 260);
-    setTimeout(updateBars, 180);
+    // 2) ぶつかる：火花・土煙・討たれた数
+    setTimeout(() => {
+      if (!A.isConnected) return;
+      $('bf-arrows').insertAdjacentHTML('beforeend', meleeMarkup(meet, lossA, lossD, FRONT_A - 45 + da, 280 + dd));
+      const dust = $('bf-dust');
+      dust.style.transform = `translateX(${(meet - 192).toFixed(1)}px)`;
+      replay(dust, 'go');
+      replay($('spark'), 'go');
+      replay(box, 'shake');
+      Sound.clash(0.02);
+      updateBars();
+    }, wait(420));
+    // 3) 押した側へ前線が動き、にらみ合いの間合いに戻る
+    setTimeout(() => {
+      if (!A.isConnected || B.over) return;
+      front = clamp(front + clamp(((lossD / Math.max(1, B.d.start)) - (lossA / Math.max(1, B.a.start))) * 260, -18, 18), -48, 48);
+      [A, D].forEach((x) => x.classList.remove('march'));
+      place(A, D, front + 14, front - 14);
+      const fl = $('bf-front');
+      if (fl) {
+        fl.setAttribute('transform', `translate(${(FRONT_A + 41 + front).toFixed(1)},0)`);
+        fl.dataset.push = front > 6 ? 'a' : front < -6 ? 'd' : '';
+      }
+    }, wait(950));
+  };
+  // 決着の動き：勝てば城へなだれ込み、負ければ退く
+  const settle = (won) => {
+    const A = $('army-a'), D = $('army-d');
+    if (!A) return;
+    A.classList.remove('march');
+    A.style.transition = 'transform 1.2s ease-in, opacity 1.2s';
+    if (won) { A.style.transform = `translateX(${front + 110}px)`; D.style.opacity = '0.25'; }
+    else { A.style.transform = `translateX(${front - 80}px)`; A.style.opacity = '0.35'; }
   };
   updateBars();
   const openLines = [defense
@@ -3207,10 +3247,11 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const cmds = {};
     cmds[me] = cmd;
     cmds[foe] = aiCommand(S, B, foe);
+    const prev = { a: B.a.troops, d: B.d.troops };
     const rep = stepBattle(S, B, cmds);
     $('round').textContent = `第 ${'一二三四五六七八'[B.round - 1] || B.round} 合`;
     const lead = playBattleFx(rep.act || {});
-    setTimeout(() => { report(rep.lines); animate(); }, lead);
+    setTimeout(() => { report(rep.lines); animate(prev, rep.act || cmds); }, lead);
     timer = setTimeout(afterRound, wait(1100) + lead);
   }
 
@@ -3498,9 +3539,8 @@ function runBattle(B, { auto = false, onClose } = {}) {
       fall('army-d', 0);
       $('bf-fire').classList.add('on');
       document.querySelector('.bf-castle').style.setProperty('--c', CLANS[B.attacker].color);
-    } else {
-      $('army-a').classList.add('retreat');
     }
+    settle(r.won);
     $('round').textContent = defense
       ? (r.won ? `${MAP.byId[B.to].short}は落城した…` : `${MAP.byId[B.to].short}を守り抜いた！`)
       : (r.won ? `${MAP.byId[B.to].short}、落城！` : '攻略ならず…');

@@ -320,6 +320,14 @@ function armyMarkup(side, n, color) {
   return out.join('');
 }
 
+// ぶつかり合い：槍の交わる火花と、それぞれの軍の上に討たれた数（合戦の舞台と同じ 400×220 の座標）
+function meleeMarkup(x, lossA, lossD, xa, xd) {
+  const star = (cx, cy, r, d) => `<path class="bf-clash" style="animation-delay:${d}s" d="${Array.from({ length: 8 }, (_, i) => { const a = (i / 8) * Math.PI * 2, rr = i % 2 ? r * 0.4 : r; return `${i ? 'L' : 'M'}${(cx + Math.cos(a) * rr).toFixed(1)},${(cy + Math.sin(a) * rr).toFixed(1)}`; }).join(' ')}Z"/>`;
+  const spears = [0, 1, 2].map((i) => { const y = 172 + i * 13; return `<path class="bf-spear" style="animation-delay:${i * 0.06}s" d="M${x - 16},${y + 4} L${x + 6},${y - 6} M${x + 16},${y + 4} L${x - 6},${y - 6}"/>`; }).join('');
+  const dmg = (cx, n, side) => (n > 0 ? `<text class="bf-dmg ${side}" x="${cx.toFixed(0)}" y="150">−${Math.round(n).toLocaleString('ja-JP')}</text>` : '');
+  return `<g class="bf-melee">${star(x, 178, 11, 0)}${star(x - 8, 196, 8, 0.12)}${star(x + 7, 166, 7, 0.22)}${spears}${dmg(xa, lossA, 'a')}${dmg(xd, lossD, 'd')}</g>`;
+}
+
 // 合戦屏風の部品：金雲・陣幕・幟
 const bfKinun = (d) => `<path d="${d}" fill="url(#bf-kin)" stroke="#5a3a10" stroke-width="1.4"/>`;
 // 陣幕：白と家の色の横縞の幕を杭に張り、真ん中に家紋
@@ -394,6 +402,7 @@ function battleScene(r, season) {
     ${banner(372, 160, 50, r.defender, true)}
     <g class="army" id="army-a">${armyMarkup('a', na, ca)}</g>
     <g class="army" id="army-d">${armyMarkup('d', nd, cd)}</g>
+    <g id="bf-front" transform="translate(191,0)"><path class="bf-front-line" d="M0,156 L-4,214"/><path class="bf-push a" d="M-6,206 l12,0 l-4,-4 M6,206 l-4,4"/><path class="bf-push d" d="M6,206 l-12,0 l4,-4 M-6,206 l4,4"/></g>
     <g id="bf-arrows"></g>
     <g id="bf-weather">${weatherMarkup(r.weather)}</g>
     <g id="bf-fx"></g>
