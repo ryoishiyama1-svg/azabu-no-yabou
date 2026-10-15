@@ -965,13 +965,14 @@ function drawMap() {
           <path d="M-18,9 A18,18 0 0,1 18,9 M18,9 A18,18 0 0,1 54,9" stroke-opacity="0.3"/>
         </g>
       </pattern>
+      <filter id="inkwash" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="22" xChannelSelector="R" yChannelSelector="G" result="d"/><feGaussianBlur in="d" stdDeviation="4"/></filter>
       <pattern id="kinpaku" width="14" height="14" patternUnits="userSpaceOnUse">
         <rect width="14" height="14" fill="#e3b94e"/><rect width="7" height="7" fill="#ecc660"/><rect x="7" y="7" width="7" height="7" fill="#d9ad3f"/>
       </pattern>
       ${lands ? `<clipPath id="landclip">${lands.map((l) => `<path d="${pathFrom(l.map(([la, lo]) => MAP.geo(la, lo)), true)}"/>`).join('')}</clipPath>` : ''}
     </defs>
     <g>${sceneryMarkup()}</g>
-    <g id="territory" ${lands ? 'clip-path="url(#landclip)"' : ''}>${MAP.nodes.map((n) => `<path class="cell" data-id="${n.id}" d="${CELLS[n.id]}"/>`).join('')}</g>
+    <g id="territory" filter="url(#inkwash)" ${lands ? 'clip-path="url(#landclip)"' : ''}>${MAP.nodes.map((n) => `<path class="cell" data-id="${n.id}" d="${CELLS[n.id]}"/>`).join('')}</g>
     <g id="roads"></g>
     <g id="castles"></g>
     <g id="world-fx"></g>`;
@@ -4327,4 +4328,26 @@ function fusuma() {
   document.querySelectorAll('#title .seal, .ld-seal').forEach((e) => { e.innerHTML = `${sl}<br>之印`; });
   const dis = document.querySelector('.disclaimer');
   if (dis && loadNameEdits().fictional) dis.textContent = '※登場する学校・家・人物はすべて架空のものです。';
+})();
+
+// ---------- 和紙の地：繊維と墨のしみを一度だけ描いて、地図の下に敷く ----------
+(() => {
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = 320;
+    const c = cv.getContext('2d');
+    const r = seeded(20261015);
+    for (let i = 0; i < 26; i++) { // 墨のしみ（ごく薄く）
+      const x = r() * 320, y = r() * 320, rad = 30 + r() * 70;
+      const g = c.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, `rgba(70, 60, 40, ${(0.025 + r() * 0.03).toFixed(3)})`); g.addColorStop(1, 'rgba(70, 60, 40, 0)');
+      c.fillStyle = g; c.fillRect(0, 0, 320, 320);
+    }
+    for (let i = 0; i < 700; i++) { // 和紙の繊維
+      const x = r() * 320, y = r() * 320, a = r() * Math.PI, l = 4 + r() * 16;
+      c.strokeStyle = `rgba(110, 85, 50, ${(0.04 + r() * 0.08).toFixed(3)})`; c.lineWidth = 0.6 + r() * 0.6;
+      c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a) * l * 0.5 + r() * 3, y + Math.sin(a) * l * 0.5 + r() * 3, x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke();
+    }
+    document.documentElement.style.setProperty('--paper-tex', `url(${cv.toDataURL('image/png')})`);
+  } catch (e) {}
 })();

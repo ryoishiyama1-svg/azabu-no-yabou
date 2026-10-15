@@ -535,6 +535,7 @@ function editionScenery(sc) {
   (sc.islands || []).forEach((p) => { s += `<path class="land" d="${poly(p)}"/>`; }); // 海に浮かぶ島（淡路島など）
   (sc.lakes || []).forEach((p) => { s += `<path class="bay lake" d="${poly(p)}"/><path class="bay-waves" d="${poly(p)}"/>`; });
   s += drawRivers(sc.rivers || []);
+  s += inkMountains();
   s += seasonTrees();
   const clouds = [[W * 0.02, H * 0.82, 260], [W * 0.55, H * 0.03, 300], [W * 0.78, H * 0.22, 220], [W * 0.25, H * 0.06, 200]];
   clouds.forEach(([x, y, w]) => {
@@ -590,6 +591,7 @@ function sceneryMarkup() {
     s += `<text class="map-label river-name" transform="translate(${((p.x + q.x) / 2).toFixed(0)},${((p.y + q.y) / 2 - 8).toFixed(0)}) rotate(${a.toFixed(0)})">${r.name}</text>`;
   });
 
+  s += inkMountains();
   s += seasonTrees();
 
   // 金の霞（すやり霞）
@@ -874,4 +876,24 @@ function townMarkup() {
     ${house(-46, 18, 4, 0.8)}${house(46, 18, 4, 0.8)}
     <g class="tk" data-lv="4" transform="translate(-48,4)"><path class="pole" d="M-3,8 L0,-10 L3,8 M-2.2,2 H2.2 M-1.4,-4 H1.4"/><path class="tr" d="M-3.5,-10 L0,-13.5 L3.5,-10Z"/></g>
   </g>`;
+}
+
+// ---------- 墨の山なみ：地図の空いた陸に、筆で掃いたような山を置く ----------
+// 城や水から離れた所に、地図の大きさに応じた数だけ。濃い墨の稜線から下へ薄れていく
+function inkMountains() {
+  const wet = waterTest();
+  const r = seeded(MAP.nodes.length * 31 + 7);
+  const want = Math.max(4, Math.round(MAP.nodes.length / 7));
+  const peaks = [];
+  for (let tries = 0; peaks.length < want && tries < want * 40; tries++) {
+    const x = 60 + r() * (MAP.width - 120), y = 60 + r() * (MAP.height - 120);
+    if (wet(x, y) || wet(x, y + 30)) continue;
+    if (MAP.nodes.some((n) => Math.hypot(n.x - x, n.y - y) < 95)) continue;
+    if (peaks.some((p) => Math.hypot(p.x - x, p.y - y) < 160)) continue;
+    peaks.push({ x, y, s: 0.8 + r() * 0.7, f: r() < 0.5 ? -1 : 1 });
+  }
+  return `<g class="ink-mtn">${peaks.map((p) => `<g transform="translate(${p.x.toFixed(0)},${p.y.toFixed(0)}) scale(${(p.s * p.f).toFixed(2)},${p.s.toFixed(2)})">
+    <path class="m3" d="M-70,28 Q-40,-8 -16,-20 Q2,-10 20,4 Q40,-6 70,28Z"/>
+    <path class="m1" d="M-50,28 Q-30,-14 -8,-46 Q6,-30 18,-12 Q30,-24 52,28Z"/>
+    <path class="m2" d="M-8,-46 Q-14,-30 -26,-12 M-8,-46 Q2,-26 -2,-6 M18,-12 Q14,0 8,10" fill="none"/></g>`).join('')}</g>`;
 }

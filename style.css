@@ -2355,3 +2355,11 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 /* 見出しの小さな札（三・四…）にも金の縁 */
 .setup-h span, .cn-h { text-shadow: none; }
 .setup-h span { box-shadow: 0 0 0 2px var(--gold-line); }
+
+/* ---------- 墨絵の地図：領地は墨のにじみ、和紙の地、墨の山なみ ---------- */
+#mapwrap { background-image: var(--paper-tex, none), var(--fiber), var(--washi); }
+#map .cell { fill-opacity: 0.32; stroke: none; }
+#map .ink-mtn .m1 { fill: url(#mtn); stroke: #2a2a30; stroke-width: 2.5; stroke-linejoin: round; opacity: 0.85; }
+#map .ink-mtn .m3 { fill: #6b6f74; opacity: 0.22; }
+#map .ink-mtn .m2 { stroke: #2a2a30; stroke-width: 1.6; stroke-linecap: round; opacity: 0.55; }
+#mapwrap[data-season="3"] #map .ink-mtn .m1 { fill: #e8ecef; }
