@@ -104,3 +104,15 @@ function checkNemesis(s) {
   addNews(s, `${pName()}、宿敵${CLANS[s.nemesis].name}を討ち果たす`, '長き因縁に決着', 90);
   return s.nemesis;
 }
+
+// 古いセーブ（宿敵のなかった頃）を開いたら、宿敵だけを決める（他家どうしの構図は変えない）
+const _scMigrate = migrate;
+migrate = function (data) {
+  const s = _scMigrate(data);
+  if (s && !s.nemesis && !s.result) {
+    const ai = aiClans().filter((k) => castlesOf(s, k).length);
+    const me = capOf(s, PLAYER);
+    if (ai.length && me) s.nemesis = ai.reduce((a, b) => (nodeDist(me, capOf(s, a)) <= nodeDist(me, capOf(s, b)) ? a : b));
+  }
+  return s;
+};
