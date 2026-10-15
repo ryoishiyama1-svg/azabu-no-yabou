@@ -1,5 +1,5 @@
 // 舌戦：言葉で城に開城を迫る勝負。理・情・利・威の四つの論で、説得のゲージを満たせば無血開城
-const DEBATE = { rounds: 4, needNone: 105, needClan: 125, gainCost: 100 };
+const DEBATE = { rounds: 4, needNone: 95, needClan: 118, gainCost: 100 };
 const DEBATE_ARGS = {
   logic: { name: '理', full: '理を説く', desc: '理屈で説く（知略）', foe: '頑固' },
   heart: { name: '情', full: '情に訴える', desc: '心に訴える（魅力）', foe: '情に厚い' },
@@ -62,14 +62,14 @@ function debateNearTroops(s, id) {
 function debatePower(s, Dt, arg) {
   const g = s.gens[Dt.envoy];
   const c = s.castles[Dt.id];
-  let p = 8;
-  if (arg === 'logic') p += g.int / 4;
-  if (arg === 'heart') p += g.cha / 4;
-  if (arg === 'gain') p += g.pol / 4;
-  if (arg === 'threat') p += clamp((debateNearTroops(s, Dt.id) / Math.max(1, c.troops)) * 12, 0, 25);
+  let p = 14; // 能力の差はなだらかに。勝負を分けるのは、弱点を見抜いて論を選ぶ腕
+  if (arg === 'logic') p += g.int / 6;
+  if (arg === 'heart') p += g.cha / 6;
+  if (arg === 'gain') p += g.pol / 6;
+  if (arg === 'threat') p += clamp((debateNearTroops(s, Dt.id) / Math.max(1, c.troops)) * 6, 0, 16);
   if (arg === Dt.weak) p *= 2;
   else if (DEBATE_OPPOSITE[Dt.weak] === arg) p *= 0.5;
-  if (Dt.used[arg]) p *= 0.7; // 同じ論のくり返しは効き目が落ちる
+  if (Dt.used[arg]) p *= 0.8; // 同じ論のくり返しは効き目が落ちる
   return Math.round(p);
 }
 
@@ -89,14 +89,18 @@ const DEBATE_REPLY = {
 // 一合すすめる。戻り値：{ power, counter, kind: 'weak'|'normal'|'resist' }
 function debateStep(s, Dt, arg) {
   if (arg === 'gain') s.gold[PLAYER] -= DEBATE.gainCost;
-  const power = Math.round(debatePower(s, Dt, arg) * rand(0.85, 1.2)); // その場の空気で効き目が少し揺れる
+  const power = Math.round(debatePower(s, Dt, arg) * rand(0.9, 1.1)); // その場の空気で効き目が少し揺れる
   Dt.used[arg] = true;
   Dt.round++;
   const kind = arg === Dt.weak ? 'weak' : DEBATE_OPPOSITE[Dt.weak] === arg ? 'resist' : 'normal';
   Dt.gauge += power;
+  // 弱点の論が刺されば、相手の弱みが見える（次の一手からは迷わない）
+  if (kind === 'weak') Dt.read = { level: 'clear', weak: Dt.weak };
+  // 相いれない論で反発されたら、少なくともそれは弱点ではないとわかる
+  else if (kind === 'resist' && Dt.read.level === 'guess' && Dt.read.weak === arg) Dt.read = { level: 'none' };
   // 相手の言い返し
   const dg = Dt.dg ? s.gens[Dt.dg] : null;
-  const counter = Dt.gauge >= Dt.need ? 0 : Math.round(rand(4, 8) + (dg ? (dg.int + dg.cha) / 20 : 3));
+  const counter = Dt.gauge >= Dt.need ? 0 : Math.round(rand(3, 5) + (dg ? (dg.int + dg.cha) / 30 : 2));
   Dt.gauge = Math.max(0, Dt.gauge - counter);
   Dt.mood = { me: kind === 'weak' ? 'happy' : kind === 'resist' ? 'think' : null, foe: kind === 'weak' ? 'think' : kind === 'resist' ? 'angry' : null };
   Dt.lines = [

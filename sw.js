@@ -1,6 +1,6 @@
 // オフラインでも遊べるようにファイルを保存しておく
 // ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
-const V = 91;
+const V = 92;
 const VERSION = `v${V}`;
 const FILES = [
   './',
