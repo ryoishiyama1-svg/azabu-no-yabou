@@ -320,6 +320,29 @@ function armyMarkup(side, n, color) {
   return out.join('');
 }
 
+// 合戦屏風の部品：金雲・陣幕・幟
+const bfKinun = (d) => `<path d="${d}" fill="url(#bf-kin)" stroke="#5a3a10" stroke-width="1.4"/>`;
+// 陣幕：白と家の色の横縞の幕を杭に張り、真ん中に家紋
+function bfJinmaku(x, y, w, clan) {
+  const c = CLANS[clan].color, poles = [0, w / 2, w].map((p) => `<line x1="${x + p}" y1="${y - 4}" x2="${x + p}" y2="${y + 20}" stroke="#4a3220" stroke-width="2"/>`).join('');
+  const sag = (yy) => `M${x},${yy} Q${x + w / 4},${yy + 3} ${x + w / 2},${yy} Q${x + w * 0.75},${yy + 3} ${x + w},${yy}`;
+  return `<g class="bf-jinmaku">
+    <path d="${sag(y)} L${x + w},${y + 18} Q${x + w * 0.75},${y + 21} ${x + w / 2},${y + 18} Q${x + w / 4},${y + 21} ${x},${y + 18} Z" fill="#f4efe2" stroke="#1c1a17" stroke-width="1.2"/>
+    <path d="${sag(y + 6)} M${x + w},${y + 12} Q${x + w * 0.75},${y + 15} ${x + w / 2},${y + 12} Q${x + w / 4},${y + 15} ${x},${y + 12}" fill="none" stroke="${c}" stroke-width="5"/>
+    ${[0.25, 0.75].map((f) => `<svg x="${x + w * f - 7}" y="${y + 2}" width="14" height="14" viewBox="-32 -32 64 64"><circle r="30" fill="#f4efe2" stroke="#1c1a17" stroke-width="3"/>${crestInner(CLANS[clan].crest, c)}</svg>`).join('')}
+    ${poles}</g>`;
+}
+// 幟：細い竿に縦長の旗。風にゆれる（delay でずらす）
+function bfNobori(x, y, h, clan, flip, delay) {
+  const c = CLANS[clan].color, fx = flip ? -7 : 0;
+  return `<g class="bf-nobori" style="animation-delay:-${delay}s; transform-origin:${x}px ${y}px">
+    <line x1="${x}" y1="${y}" x2="${x}" y2="${y - h}" stroke="#1c1a17" stroke-width="1.4"/>
+    <line x1="${x}" y1="${y - h + 1}" x2="${x + (flip ? -8 : 8)}" y2="${y - h + 1}" stroke="#1c1a17" stroke-width="1.2"/>
+    <path d="M${x + fx},${y - h + 1} h7 v${h * 0.62} q-3.5,2 -7,0 Z" fill="${c}" stroke="#1c1a17" stroke-width="0.9"/>
+    <rect x="${x + fx}" y="${y - h + 1}" width="7" height="5" fill="#f4efe2" stroke="#1c1a17" stroke-width="0.6"/>
+    <svg x="${x + fx + 0.5}" y="${y - h + 9}" width="6" height="6" viewBox="-32 -32 64 64">${crestInner(CLANS[clan].crest, '#fff')}</svg></g>`;
+}
+
 function battleScene(r, season) {
   const [sky, mount] = BATTLE_SKY[season % 4];
   const ca = CLANS[r.attacker].color, cd = CLANS[r.defender].color;
@@ -341,16 +364,26 @@ function battleScene(r, season) {
       <linearGradient id="bf-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky}"/><stop offset="1" stop-color="${sky}" stop-opacity="0"/></linearGradient>
       <pattern id="bf-kin" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#e3b94e"/><rect width="5" height="5" fill="#ecc660"/><rect x="5" y="5" width="5" height="5" fill="#d9ad3f"/></pattern>
       <clipPath id="bf-clip"><rect width="400" height="220"/></clipPath>
+      <linearGradient id="bf-far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a6470" stop-opacity="0.55"/><stop offset="1" stop-color="#5a6470" stop-opacity="0"/></linearGradient>
+      <linearGradient id="bf-mist" x1="0" y1="0" x2="0" y2="1"><stop offset="0.35" stop-color="#f1e6cc" stop-opacity="0"/><stop offset="1" stop-color="#f1e6cc" stop-opacity="0.75"/></linearGradient>
     </defs>
     <g clip-path="url(#bf-clip)">
     <rect width="400" height="220" fill="#f1e6cc"/>
     <rect width="400" height="110" fill="url(#bf-sky)"/>
     <circle cx="84" cy="56" r="22" fill="#c8372d"/><circle cx="81" cy="53" r="22" fill="none" stroke="#1c1a17" stroke-width="2"/>
     ${snow}${petalsBg}
+    <path d="M0,104 L30,80 L52,92 L96,58 L130,86 L176,64 L214,90 L262,60 L300,84 L346,66 L400,90 L400,140 L0,140 Z" fill="url(#bf-far)" opacity="0.7"/>
     <path d="M0,130 L40,96 L70,112 L110,78 L150,110 L190,90 L230,118 L270,86 L320,114 L360,92 L400,118 L400,160 L0,160 Z" fill="${mount}" stroke="#1c1a17" stroke-width="1.6" stroke-linejoin="round"/>
-    <path d="M150,40 Q146,30 158,29 Q161,20 174,23 Q183,16 194,23 Q208,20 211,30 Q222,31 219,40 Z" fill="url(#bf-kin)" stroke="#1c1a17" stroke-width="1.6"/>
+    <path d="M0,130 L40,96 L70,112 L110,78 L150,110 L190,90 L230,118 L270,86 L320,114 L360,92 L400,118 L400,160 L0,160 Z" fill="url(#bf-mist)"/>
+    ${bfKinun('M-10,34 Q-6,20 12,22 Q20,8 40,14 Q54,2 74,12 Q92,4 104,16 Q126,12 128,26 Q146,26 144,38 Q132,46 112,42 Q94,50 74,42 Q52,50 34,42 Q12,48 -10,42 Z')}
+    ${bfKinun('M150,40 Q146,30 158,29 Q161,20 174,23 Q183,16 194,23 Q208,20 211,30 Q222,31 219,40 Z')}
+    ${bfKinun('M196,122 Q200,110 218,112 Q228,100 248,106 Q262,96 280,106 Q292,104 290,116 Q284,126 262,124 Q244,130 226,124 Q208,130 196,122 Z')}
     <path d="M0,142 Q60,120 120,138 T240,134 T400,130 L400,160 L0,160 Z" fill="#6f8a5a" stroke="#1c1a17" stroke-width="1.6"/>
     <g transform="translate(340,118) scale(2.1)" class="bf-castle" style="--c:${cd}">${castleMarkup(false)}</g>
+    ${bfJinmaku(8, 132, 118, r.attacker)}
+    <g class="bf-nobori-row">${[14, 34, 54, 74, 94, 114].map((x, i) => bfNobori(x, 150 - (i % 2) * 3, 44 + (i % 3) * 5, r.attacker, false, i * 0.23)).join('')}</g>
+    <g class="bf-nobori-row">${[246, 264, 282].map((x, i) => bfNobori(x, 156 - (i % 2) * 3, 40 + (i % 2) * 6, r.defender, true, i * 0.31)).join('')}</g>
+    <g class="bf-smoke"><ellipse cx="170" cy="150" rx="40" ry="9"/><ellipse cx="230" cy="142" rx="30" ry="7"/><ellipse cx="120" cy="146" rx="26" ry="6"/></g>
     <g class="bf-fire" id="bf-fire">
       <path d="M322,96 Q326,80 331,92 Q334,74 340,90 Q345,78 348,95 Z" fill="#ff8a2a"/>
       <path d="M328,98 Q331,88 335,95 Q338,84 342,96 Z" fill="#ffd34a"/>

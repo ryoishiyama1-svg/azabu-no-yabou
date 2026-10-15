@@ -2416,3 +2416,11 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 
 /* ---------- 城の絵を精細に（v87）：鯱は細く ---------- */
 #map .castle .shachi, .conq-castle .shachi { stroke-width: 1.6; }
+
+/* ---------- 合戦を一枚絵に（v89）：幟がはためき、戦の煙がたなびく ---------- */
+.bf .bf-nobori { animation: nobori 2.6s ease-in-out infinite alternate; }
+@keyframes nobori { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+.bf .bf-smoke ellipse { fill: #f1e6cc; opacity: 0.55; animation: bf-smoke 7s ease-in-out infinite alternate; }
+.bf .bf-smoke ellipse:nth-child(2) { animation-delay: -2.5s; } .bf .bf-smoke ellipse:nth-child(3) { animation-delay: -4.5s; }
+@keyframes bf-smoke { from { transform: translateX(-14px); opacity: 0.35; } to { transform: translateX(14px); opacity: 0.65; } }
+@media (prefers-reduced-motion: reduce) { .bf .bf-nobori, .bf .bf-smoke ellipse { animation: none; } }
