@@ -2363,3 +2363,21 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 #map .ink-mtn .m3 { fill: #6b6f74; opacity: 0.22; }
 #map .ink-mtn .m2 { stroke: #2a2a30; stroke-width: 1.6; stroke-linecap: round; opacity: 0.55; }
 #mapwrap[data-season="3"] #map .ink-mtn .m1 { fill: #e8ecef; }
+
+/* ---------- 映画のような場面（v85）：黒い帯、朱の一刷け、金の砂子、ゆっくり寄るカメラ ---------- */
+.kime:not(.hyojo) { padding: calc(min(9vh, 64px) + 10px) 20px; overflow-x: hidden; overflow-y: auto; }
+.kime:not(.hyojo)::before, .kime:not(.hyojo)::after { content: ''; position: fixed; left: 0; right: 0; height: min(9vh, 64px); background: #050404; z-index: 3; pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(201, 162, 39, 0.35); animation: cine-bar 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.kime:not(.hyojo)::before { top: 0; border-bottom: 1px solid rgba(201, 162, 39, 0.55); --from: -100%; }
+.kime:not(.hyojo)::after { bottom: 0; border-top: 1px solid rgba(201, 162, 39, 0.55); --from: 100%; }
+@keyframes cine-bar { from { transform: translateY(var(--from)); } }
+.kime:not(.hyojo) > .kime-card { position: relative; isolation: isolate; animation: cine-push 9s ease-out both; }
+@keyframes cine-push { from { transform: scale(0.97); } to { transform: scale(1.02); } }
+.kime:not(.hyojo) > .kime-card::before { content: ''; position: absolute; left: 50%; top: 46%; width: min(150vw, 980px); height: 300px; z-index: -1; pointer-events: none;
+  background: var(--brush-sweep, none) center / 100% 100% no-repeat; transform: translate(-50%, -50%) rotate(-7deg);
+  animation: cine-sweep 0.75s cubic-bezier(0.6, 0.05, 0.3, 1) 0.1s both; }
+@keyframes cine-sweep { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.kime:not(.hyojo) > .kime-card::after { content: ''; position: absolute; inset: -40px -30px; z-index: -2; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0.55), transparent 70%); }
+.kime-tap { position: relative; z-index: 4; }
+@media (prefers-reduced-motion: reduce) { .kime:not(.hyojo) > .kime-card, .kime:not(.hyojo)::before, .kime:not(.hyojo)::after, .kime:not(.hyojo) > .kime-card::before { animation: none; } }

@@ -4351,3 +4351,39 @@ function fusuma() {
     document.documentElement.style.setProperty('--paper-tex', `url(${cv.toDataURL('image/png')})`);
   } catch (e) {}
 })();
+
+// 決め絵の背に敷く「朱の一刷け」：かすれた筆の跡と金の砂子を、一度だけ描いて使い回す
+(function brushSweep() {
+  try {
+    const W = 900, H = 260, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    const c = cv.getContext('2d'), r = seeded(19801225);
+    // 穂先の一本一本：帯の中を左から右へ。ところどころかすれる
+    for (let i = 0; i < 260; i++) {
+      const y = H * 0.22 + r() * H * 0.56, edge = Math.abs(y - H / 2) / (H * 0.28);
+      const x0 = 30 + r() * 80 + edge * 120, x1 = W - 40 - r() * 120 - edge * 160;
+      c.strokeStyle = `rgba(${170 + Math.floor(r() * 30)}, ${30 + Math.floor(r() * 20)}, 28, ${0.08 + r() * 0.16 * (1 - edge * 0.6)})`;
+      c.lineWidth = 2 + r() * 7;
+      c.lineCap = 'round';
+      let x = x0;
+      c.beginPath(); c.moveTo(x, y);
+      while (x < x1) {
+        const step = 30 + r() * 90, dy = (r() - 0.5) * 4 + (x - x0) * -0.004;
+        if (r() < 0.12) { c.stroke(); c.beginPath(); x += step * 0.5; c.moveTo(x, y + dy); continue; } // かすれ
+        x += step; c.lineTo(Math.min(x, x1), y + dy);
+      }
+      c.stroke();
+    }
+    // 筆の入りの溜まり
+    const g = c.createRadialGradient(110, H / 2, 10, 110, H / 2, 110);
+    g.addColorStop(0, 'rgba(190, 42, 30, 0.55)'); g.addColorStop(1, 'rgba(190, 42, 30, 0)');
+    c.fillStyle = g; c.fillRect(0, 0, 260, H);
+    // 飛び散る墨と金の砂子
+    for (let i = 0; i < 70; i++) {
+      const gold = r() < 0.6, x = r() * W, y = r() * H, rad = gold ? 0.8 + r() * 2.2 : 1 + r() * 4;
+      c.fillStyle = gold ? `rgba(232, 196, 104, ${0.5 + r() * 0.5})` : `rgba(180, 38, 30, ${0.3 + r() * 0.4})`;
+      c.beginPath(); c.arc(x, y, rad, 0, Math.PI * 2); c.fill();
+    }
+    document.documentElement.style.setProperty('--brush-sweep', `url(${cv.toDataURL('image/png')})`);
+  } catch (e) {}
+})();
