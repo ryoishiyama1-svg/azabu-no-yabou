@@ -2294,3 +2294,27 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .map-sky[data-wx="wind"] .sky-wx { background: repeating-linear-gradient(175deg, transparent 0 60px, rgba(255, 255, 255, 0.35) 60px 61.5px, transparent 61.5px 140px); background-size: 400px 140px; animation: skyWind 1.4s linear infinite; }
 @keyframes skyWind { to { background-position: -400px 20px; } }
 @media (prefers-reduced-motion: reduce) { .map-sky .sky-wx, .map-sky .sky-wx2 { animation: none !important; } }
+
+/* ---------- 墨絵の演出：季節がわりの円相・合戦の一閃 ---------- */
+#season.s0, #season.s1, #season.s2, #season.s3 { background: var(--fiber), var(--washi), #f3ead6; }
+#season .enso { position: absolute; width: min(94vw, 470px); height: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+#season .enso-stroke { fill: none; stroke: #1c1a17; stroke-width: 22; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0.88;
+  animation: ensoDraw 0.9s cubic-bezier(0.5, 0, 0.3, 1) 0.1s forwards; filter: drop-shadow(0 0 2px rgba(28, 26, 23, 0.4)); }
+#season .enso-drip { fill: #1c1a17; opacity: 0; animation: kime-bg 0.2s ease-out 0.95s forwards; }
+@keyframes ensoDraw { to { stroke-dashoffset: 0; } }
+#season .season-inner { position: relative; }
+#season .season-kanji { color: #1c1a17; }
+#season .season-word, #season .season-year { color: #3a2e20; }
+.season-seal { display: inline-grid; place-items: center; width: 52px; height: 52px; margin-top: 6px; font-family: var(--brush); font-size: 13px; line-height: 1.05; color: #fff;
+  background: var(--red); box-shadow: inset 0 0 0 3px var(--red), inset 0 0 0 4.5px #fff; transform: rotate(-8deg); animation: kime-seal 0.3s cubic-bezier(0.2, 1.8, 0.4, 1) 0.9s both; writing-mode: vertical-rl; }
+#season.s0 .season-seal { background: #d16a86; box-shadow: inset 0 0 0 3px #d16a86, inset 0 0 0 4.5px #fff; }
+#season.s1 .season-seal { background: #3f7a3a; box-shadow: inset 0 0 0 3px #3f7a3a, inset 0 0 0 4.5px #fff; }
+#season.s3 .season-seal { background: #3c5a82; box-shadow: inset 0 0 0 3px #3c5a82, inset 0 0 0 4.5px #fff; }
+
+.ink-cut { position: fixed; left: 0; right: 0; top: 34%; height: 150px; z-index: 120; pointer-events: none; display: grid; place-items: center; animation: inkFade 1.5s ease-in forwards; }
+.ink-cut svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ink-band { fill: #1c1a17; clip-path: inset(0 100% 0 0); animation: inkSweep 0.45s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
+.ink-cut b { position: relative; font-family: var(--brush); font-weight: 400; font-size: 54px; letter-spacing: 0.3em; color: #f3d27a; text-shadow: 3px 3px 0 #c8372d; animation: kime-bg 0.25s ease-out 0.3s both; }
+.ink-cut small { position: relative; margin-top: -8px; font-family: var(--mincho); font-weight: 800; font-size: 15px; color: var(--paper); animation: kime-bg 0.25s ease-out 0.4s both; }
+@keyframes inkSweep { to { clip-path: inset(0 0 0 0); } }
+@keyframes inkFade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }

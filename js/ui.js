@@ -3044,7 +3044,16 @@ function showSettings() {
 
 // ---------- 合戦（1合ずつ采配する） ----------
 // B = startBattle() で作った合戦。auto = おまかせで進める
+// 墨の一閃：合戦のはじまりに、太い筆の一画が画面を横切り「合戦」と城の名
+function inkCut(title, sub) {
+  const d = document.createElement('div');
+  d.className = 'ink-cut';
+  d.innerHTML = `<svg viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path class="ink-band" d="M-10,70 C60,40 120,52 200,46 C280,40 340,30 410,44 L410,92 C330,78 270,96 200,94 C120,92 60,104 -10,96Z"/></svg><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}`;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1500);
+}
 function runBattle(B, { auto = false, onClose } = {}) {
+  inkCut(B.decisive ? '決　戦' : '合　戦', MAP.byId[B.to] ? MAP.byId[B.to].name : '');
   const box = $('battle');
   const me = B.playerSide, foe = me === 'a' ? 'd' : 'a';
   const fast = getSettings().speed === 'fast';
@@ -3746,9 +3755,21 @@ function showRoster() {
 }
 
 // ---------- ターン終了 ----------
+// 墨の円相（一筆で描く円）と、季節の色の落款
+const ENSO = `<svg class="enso" viewBox="0 0 300 300" aria-hidden="true">
+  <path class="enso-stroke" pathLength="100" d="M214,58 C266,96 274,180 230,230 C186,280 104,282 62,236 C20,190 26,110 76,68 C116,34 172,30 206,52"/>
+  <path class="enso-drip" d="M206,52 q8,6 4,14 q-6,-4 -4,-14Z"/></svg>`;
 function showSeason(turn, then) {
   const box = $('season');
   box.className = `s${turn % 4}`;
+  // 墨絵の季節がわり：円相を一筆で描き、その中に季節の一字
+  if (!box.querySelector('.enso')) box.insertAdjacentHTML('afterbegin', ENSO);
+  const inner = box.querySelector('.season-inner');
+  if (inner && !inner.querySelector('.season-seal')) inner.insertAdjacentHTML('beforeend', '<span class="season-seal"></span>');
+  const seal = box.querySelector('.season-seal');
+  if (seal) seal.textContent = ['春', '夏', '秋', '冬'][turn % 4] + '之印';
+  const enso = box.querySelector('.enso');
+  if (enso) { enso.style.animation = 'none'; void enso.offsetWidth; enso.style.animation = ''; }
   $('season-year').textContent = `${2026 + Math.floor(turn / 4)}年`;
   $('season-kanji').textContent = SEASONS[turn % 4];
   $('season-word').textContent = SEASON_WORDS[turn % 4];
