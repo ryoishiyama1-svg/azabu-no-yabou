@@ -1284,7 +1284,22 @@ function succeed(s, gid) {
 }
 
 // ---------- ターン終了 ----------
+// 勢力図の移り変わり：季ごとに、城の持ち主を家の番号の一文字ずつで残す（終わりの画面で再生する）
+const HIST_CLANS = () => Object.keys(CLANS);
+function histFrame(s) {
+  const keys = HIST_CLANS();
+  return MAP.nodes.map((n) => keys.indexOf(s.castles[n.id].owner).toString(36)).join('');
+}
+function recordHist(s) {
+  s.hist = s.hist || [];
+  const f = histFrame(s);
+  if (s.hist.length && s.hist[s.hist.length - 1].t === s.turn) s.hist.pop(); // 同じ季の撮り直し
+  const prev = [...s.hist].reverse().find((h) => h.f);
+  s.hist.push(prev && prev.f === f ? { t: s.turn } : { t: s.turn, f }); // 変わらない季は中身を省く
+}
+
 function endTurn(s) {
+  recordHist(s);
   const log = [];
   s.moves = [];
   s.pendingDefense = [];

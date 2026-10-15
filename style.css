@@ -2458,3 +2458,44 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .bf .bf-push { stroke: #c8372d; stroke-width: 2.2; fill: none; stroke-linecap: round; opacity: 0; transition: opacity 0.4s; }
 .bf #bf-front[data-push="a"] .bf-push.a, .bf #bf-front[data-push="d"] .bf-push.d { opacity: 0.9; }
 @media (prefers-reduced-motion: reduce) { .bf .army.march .sol { animation: none; } }
+
+/* ---------- 勢力図の移り変わり（v94） ---------- */
+.replay { position: relative; border: 3px solid #120b08; box-shadow: inset 0 0 0 2px var(--gold-line); background: var(--washi), #efe3c4; }
+.rp-map { display: block; width: 100%; height: auto; max-height: 58vh; }
+.rp-cell { fill: #cfc4a8; fill-opacity: 0.55; stroke: rgba(28, 26, 23, 0.25); stroke-width: 1.5; transition: fill 0.35s; }
+.rp-dot { fill: #cfc4a8; stroke: #1c1a17; stroke-width: 2.5; transition: fill 0.35s; transform-box: fill-box; transform-origin: center; }
+.rp-dot.flip { animation: rp-flip 0.6s ease-out; }
+@keyframes rp-flip { 0% { transform: scale(2.4); stroke: #fff3b0; stroke-width: 5; } 100% { transform: scale(1); } }
+.rp-date { position: absolute; left: 8px; top: 8px; padding: 4px 10px; font-family: var(--brush); font-size: 18px; color: #f3d27a; background: var(--lacquer); border: 1.5px solid var(--gold-line); }
+.rp-bar { display: flex; height: 14px; margin: 10px 0 6px; border: 2px solid var(--ink); }
+.rp-bar i { transition: flex 0.35s; }
+.rp-ctl { display: flex; gap: 10px; align-items: center; }
+.rp-ctl .btn { width: auto; margin: 0; padding: 10px 14px; font-size: 15px; white-space: nowrap; }
+.rp-ctl input { flex: 1; accent-color: var(--red); }
+.rp-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; margin: 8px 0 0; }
+.rp-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 3px; border: 1px solid var(--ink); vertical-align: -1px; }
+
+/* 勢力図の移り変わり：本の地図と同じ山河の描き方 */
+.rp-map { --land: #efe3c4; }
+.rp-map .bay { fill: #3c6aa3; stroke: var(--ink); stroke-width: 3; }
+.rp-map .bay-waves { fill: url(#waves); }
+.rp-map .river { fill: none; stroke: var(--ink); stroke-width: 13; stroke-linecap: round; }
+.rp-map .river-hi { fill: none; stroke: #3c6aa3; stroke-width: 8; stroke-linecap: round; }
+.rp-map .mountains path { stroke: var(--ink); stroke-width: 2.5; }
+.rp-map .kasumi path { fill: url(#kinpaku); stroke: var(--ink); stroke-width: 2.5; vector-effect: non-scaling-stroke; opacity: 0.95; }
+.rp-map .map-label { font-family: var(--brush); font-weight: 400; text-anchor: middle; pointer-events: none; }
+.rp-map .map-label.region { font-size: 34px; fill: rgba(28, 26, 23, 0.22); letter-spacing: 0.25em; }
+.rp-map .map-label.sea { font-size: 28px; fill: rgba(241, 230, 204, 0.85); letter-spacing: 0.3em; }
+.rp-map .map-label.river-name { font-size: 13px; fill: var(--ink); paint-order: stroke; stroke: var(--paper); stroke-width: 3px; }
+.rp-map .trees .trunk { stroke: #4a3328; stroke-width: 3; stroke-linecap: round; }
+.rp-map .trees .crown { stroke: var(--ink); stroke-width: 1.2; fill: var(--crown, #6f9e4f); transition: fill 1s; }
+.rp-map .trees .crown.c2 { fill: var(--crown2, #5d8a4a); }
+.rp-map .trees .cap, #map .snowcap, .castle .snow { display: none; }
+.rp-map .land { fill: var(--land); stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; transition: fill 1.2s; }
+.rp-map .lake { stroke: var(--ink); stroke-width: 2; }
+.rp-map .boat .hull { fill: #5a3a22; stroke: var(--ink); stroke-width: 1.4; }
+.rp-map .boat .mast { stroke: var(--ink); stroke-width: 1.6; }
+.rp-map .boat .sail { fill: #f1e6cc; stroke: var(--ink); stroke-width: 1.2; }
+.rp-map .ink-mtn .m1 { fill: url(#mtn); stroke: #2a2a30; stroke-width: 2.5; stroke-linejoin: round; opacity: 0.85; }
+.rp-map .ink-mtn .m3 { fill: #6b6f74; opacity: 0.22; }
+.rp-map .ink-mtn .m2 { stroke: #2a2a30; stroke-width: 1.6; stroke-linecap: round; opacity: 0.55; }

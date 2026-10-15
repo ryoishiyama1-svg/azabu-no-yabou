@@ -4111,6 +4111,73 @@ function showFinale(then) {
   setTimeout(() => { box.onclick = () => { if (closed) return; closed = true; Sound.tap(); box.hidden = true; then(); }; }, 1500);
 }
 
+// ---------- 勢力図の移り変わり ----------
+// 季ごとの城の持ち主（S.hist）を、金屏風の上の地図で再生する。家ごとの城の数の帯も一緒に動く
+function replayFrames(s) {
+  const keys = Object.keys(CLANS);
+  const out = [];
+  let cur = null;
+  (s.hist || []).forEach((h) => {
+    if (h.f) cur = [...h.f].map((ch) => keys[parseInt(ch, 36)] || 'none');
+    if (cur) out.push({ t: h.t, own: cur });
+  });
+  const last = MAP.nodes.map((n) => s.castles[n.id].owner);
+  if (!out.length || out[out.length - 1].t !== s.turn) out.push({ t: s.turn, own: last });
+  return out;
+}
+function showReplay(back) {
+  const frames = replayFrames(S);
+  const scn = SCENARIOS[MAP_SCENARIO].scenery, lands = scn && scn.lands;
+  const clans = [...new Set(frames.flatMap((f) => f.own))].filter((k) => k !== 'none');
+  const col = (k) => (k === 'none' ? '#cfc4a8' : CLANS[k].color);
+  openModal(`<h2>勢力図の移り変わり</h2>
+    <div class="replay">
+      <svg class="rp-map" viewBox="0 0 ${MAP.width} ${MAP.height}" preserveAspectRatio="xMidYMid meet">
+        <g>${sceneryMarkup()}</g>
+        <g ${lands ? 'clip-path="url(#landclip)"' : ''}>${MAP.nodes.map((n) => `<path class="rp-cell" data-i="${MAP.nodes.indexOf(n)}" d="${CELLS[n.id]}"/>`).join('')}</g>
+        <g>${MAP.nodes.map((n, i) => `<circle class="rp-dot" data-i="${i}" cx="${n.x}" cy="${n.y}" r="9"/>`).join('')}</g>
+      </svg>
+      <div class="rp-date" id="rp-date"></div>
+    </div>
+    <div class="rp-bar" id="rp-bar"></div>
+    <div class="rp-ctl"><button class="btn" id="rp-play">▶ 再生</button><input type="range" id="rp-seek" min="0" max="${frames.length - 1}" value="0"></div>
+    <p class="rp-legend">${clans.map((k) => `<span><i style="background:${col(k)}"></i>${CLANS[k].name}</span>`).join('')}</p>
+    <button class="btn plain" id="rp-back">もどる</button>`);
+  const cells = [...modalBody.querySelectorAll('.rp-cell')], dots = [...modalBody.querySelectorAll('.rp-dot')];
+  let i = 0, timer = null;
+  const show = (k) => {
+    i = k;
+    const f = frames[k], prev = frames[k - 1];
+    f.own.forEach((o, n) => {
+      cells[n].style.fill = col(o);
+      dots[n].style.fill = col(o);
+      dots[n].classList.toggle('flip', !!prev && prev.own[n] !== o); // この季に持ち主が変わった城
+    });
+    $('rp-date').textContent = dateLabel(f.t);
+    $('rp-seek').value = k;
+    const count = {};
+    f.own.forEach((o) => { count[o] = (count[o] || 0) + 1; });
+    $('rp-bar').innerHTML = Object.entries(count).sort((a, b) => (a[0] === PLAYER ? -1 : b[0] === PLAYER ? 1 : b[1] - a[1]))
+      .map(([o, c]) => `<i style="flex:${c};background:${col(o)}" title="${o === 'none' ? '独立' : CLANS[o].name} ${c}"></i>`).join('');
+  };
+  const stop = () => { clearInterval(timer); timer = null; $('rp-play').textContent = '▶ 再生'; };
+  const play = () => {
+    if (i >= frames.length - 1) show(0);
+    $('rp-play').textContent = '❚❚ 止める';
+    timer = setInterval(() => {
+      if (!$('rp-seek')) { clearInterval(timer); return; }
+      if (i >= frames.length - 1) { stop(); return; }
+      show(i + 1);
+      if (frames[i].own.some((o, n) => frames[i - 1] && frames[i - 1].own[n] !== o)) Sound.tap();
+    }, frames.length > 60 ? 260 : 420);
+  };
+  $('rp-play').onclick = () => (timer ? stop() : play());
+  $('rp-seek').oninput = (e) => { stop(); show(+e.target.value); };
+  $('rp-back').onclick = () => { stop(); Sound.tap(); back(); };
+  show(0);
+  setTimeout(() => { if ($('rp-seek')) play(); }, 600);
+}
+
 function showEnding() {
   const win = S.result === 'win';
   // 天下統一なら、まず大団円の一枚絵
@@ -4137,12 +4204,14 @@ function showEnding() {
     ${endingNumbers()}
     <h3>歴代当主</h3>
     ${lordsHistory()}
+    ${(S.hist || []).length > 1 ? '<button class="btn red" id="see-replay">勢力図の移り変わりを見る</button>' : ''}
     <button class="btn" id="see-card">絵にして残す</button>
     <button class="btn" id="see-annals">年表を見る</button>
     <button class="btn red" id="again">もう一度</button>
     <button class="btn plain" id="to-title">タイトルへ</button>`);
   $('again').onclick = () => { clearSave(); closeModal(); showSetup(); };
   $('see-annals').onclick = () => { Sound.tap(); showChronicle(chronicleOf(S), showEnding); };
+  if ($('see-replay')) $('see-replay').onclick = () => { Sound.tap(); showReplay(showEnding); };
   $('see-card').onclick = () => { Sound.tap(); showShareCard(showEnding); };
   $('to-title').onclick = () => { clearSave(); closeModal(); showTitle(); };
 }
