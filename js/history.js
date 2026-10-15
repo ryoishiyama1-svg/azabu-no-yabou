@@ -21,10 +21,13 @@ function saikoPlan(s) {
 }
 // 大地震：ある地方のまわりの城が、どの家のものでも被災する
 function jishinPlan(s) {
-  const c = pick(MAP.nodes);
   const R = Math.max(MAP.width, MAP.height) * 0.16;
-  const hit = MAP.nodes.filter((n) => Math.hypot(n.x - c.x, n.y - c.y) < R).map((n) => n.id);
-  return hit.length >= 3 ? { center: c.id, hit } : null;
+  for (let k = 0; k < 8; k++) { // 城の少ない所に当たったら、別の所を選び直す
+    const c = pick(MAP.nodes);
+    const hit = MAP.nodes.filter((n) => Math.hypot(n.x - c.x, n.y - c.y) < R).map((n) => n.id);
+    if (hit.length >= 3) return { center: c.id, hit };
+  }
+  return null;
 }
 
 Object.assign(EVENTS, {
@@ -145,7 +148,8 @@ rollEvents = function (s) {
       const id = pick(pool);
       s.lastEra = s.turn;
       s.eraSeen = [...new Set([...(s.eraSeen || []), id])];
-      list.splice(1, 0, { id, p: EVENTS[id].init ? EVENTS[id].init(s) : {} });
+      const p = EVENTS[id].init ? EVENTS[id].init(s) : {};
+      if (p) list.splice(1, 0, { id, p }); // 作れなかったら、この季は見送る
     }
   }
   return list;
