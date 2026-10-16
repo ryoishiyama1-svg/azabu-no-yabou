@@ -767,6 +767,19 @@ const Sound = (() => {
     });
     bgmSho(c, c.destination, t + 0.3, [50, 57, 62, 69], 2.6);
   }
+  // 鉄砲の一斉射撃：乾いた破裂音がばらばらと
+  function teppo(n = 5) {
+    const c = ensure(); if (!c) return;
+    noise = noise || noiseBuffer(c);
+    for (let i = 0; i < n; i++) {
+      const t = c.currentTime + 0.02 + i * 0.05 + Math.random() * 0.04;
+      const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+      s.buffer = noise; f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 600; f.Q.value = 0.9;
+      env(c, g, t, 0.32, 0.001, 0.12);
+      s.connect(f).connect(g).connect(c.destination);
+      s.start(t, Math.random() * 0.3); s.stop(t + 0.2);
+    }
+  }
   // 鼓をひとつ「ポン」
   function pon() { const c = ensure(); if (c) bgmTsuzumi(c, c.destination, c.currentTime, 'P'); }
   // 地図の天気の音：雨・風・雪をかすかに
@@ -812,6 +825,7 @@ const Sound = (() => {
     setSeason(n) { mapSeason = ((n % 4) + 4) % 4; },
     ambient,
     jindaiko,
+    teppo,
     era,
     pon,
     bgmStart,

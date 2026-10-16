@@ -3261,6 +3261,8 @@ function runBattle(B, { auto = false, onClose } = {}) {
     });
     fall('army-a', B.a.troops / B.a.start);
     fall('army-d', B.d.troops / B.d.start);
+    const crack = document.querySelector('.bf .bf-crack'); // 城兵が減るほど、塀にひびが入る
+    if (crack) crack.setAttribute('opacity', clamp(1 - B.d.troops / Math.max(1, B.d.start), 0, 1).toFixed(2));
   };
   const replay = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
   const report = (lines) => { $('b-report').innerHTML = lines.map((l) => `<p>${esc(l)}</p>`).join(''); };
@@ -3279,6 +3281,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const lossA = Math.max(0, prev.a - B.a.troops), lossD = Math.max(0, prev.d - B.d.troops);
     // 1) 間合いを詰める（足軽が小走りに揺れる）
     [A, D].forEach((x) => x.classList.add('march'));
+    if (kind('a') === 'attack' || kind('d') === 'attack' || kind('d') === 'guard') { [A, D].forEach((x) => { x.classList.remove('volley'); void x.getBoundingClientRect(); x.classList.add('volley'); }); Sound.teppo(); } // 鉄砲の一斉射撃
     place(A, D, da, dd);
     $('bf-arrows').innerHTML = arrowVolley(B.round % 2 === 1);
     // 2) ぶつかる：火花・土煙・討たれた数
@@ -3312,7 +3315,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     if (!A) return;
     A.classList.remove('march');
     A.style.transition = 'transform 1.2s ease-in, opacity 1.2s';
-    if (won) { A.style.transform = `translateX(${front + 110}px)`; D.style.opacity = '0.25'; }
+    if (won) { A.style.transform = `translateX(${front + 110}px)`; D.style.opacity = '0.25'; const gate = $('bf-gate'); if (gate) gate.classList.add('broken'); }
     else { A.style.transform = `translateX(${front - 80}px)`; A.style.opacity = '0.35'; }
   };
   updateBars();

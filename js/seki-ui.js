@@ -10,7 +10,7 @@ function sekiField(B) {
       const n = clamp(Math.round(c.n / 300), 2, 8);
       const color = CLANS[c.clan].color;
       const x0 = side === 'a' ? 110 : 290, dir = side === 'a' ? -1 : 1;
-      const sols = Array.from({ length: n }, (_, k) => `<g transform="translate(${x0 + dir * ((k % 4) * 13 + Math.floor(k / 4) * 6)},${(Math.floor(k / 4) * 9).toFixed(0)})"><g class="sol">${soldier(color, side === 'd')}</g></g>`).join('');
+      const sols = Array.from({ length: n }, (_, k) => `<g transform="translate(${x0 + dir * ((k % 4) * 13 + Math.floor(k / 4) * 6)},${(Math.floor(k / 4) * 9).toFixed(0)})"><g class="sol">${soldier(color, side === 'd', unitOf(k))}</g></g>`).join('');
       const flag = `<g transform="translate(${x0 + dir * 62},-4)"><line y2="-34" stroke="#1c1a17" stroke-width="1.6"/><rect x="${side === 'a' ? 0 : -10}" y="-34" width="10" height="22" fill="${color}" stroke="#1c1a17" stroke-width="1"/></g>`;
       return `<g class="sk-corps ${side} ${c.broken ? 'broken' : ''}" id="sk-${side}${i}">${flag}${sols}</g>`;
     };

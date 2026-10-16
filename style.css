@@ -2672,3 +2672,17 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .tip button { justify-self: end; font: 800 12px var(--gothic); padding: 4px 12px; color: #f3d27a; background: var(--lacquer); border: 1.5px solid var(--gold-line); cursor: pointer; }
 .quick-start { margin-bottom: 4px; font-size: 19px; }
 .quick-start small { font-size: 11px; }
+
+/* ---------- 合戦の絵を豪華に（v106）：鉄砲の白煙、城門、塀のひび ---------- */
+.bf .teppo .smoke circle { fill: #f4f1ea; stroke: rgba(0, 0, 0, 0.25); stroke-width: 0.5; opacity: 0; }
+.bf .army.volley .sol:not(.down) .teppo .smoke circle { animation: bf-smoke-puff 0.9s ease-out; }
+.bf .army.volley .sol:not(.down) .teppo .smoke circle:nth-child(2) { animation-delay: 0.05s; }
+.bf .army.volley .sol:not(.down) .teppo .smoke circle:nth-child(3) { animation-delay: 0.1s; }
+@keyframes bf-smoke-puff { 0% { opacity: 0.95; transform: scale(0.4); } 100% { opacity: 0; transform: scale(1.8) translateY(-4px); } }
+.bf .teppo .smoke circle { transform-box: fill-box; transform-origin: center; }
+.bf #bf-gate .door { transition: transform 0.6s cubic-bezier(0.5, 0, 0.7, 0.4), opacity 0.6s; transform-box: fill-box; }
+.bf #bf-gate .door.l { transform-origin: 0% 100%; }
+.bf #bf-gate .door.r { transform-origin: 100% 100%; }
+.bf #bf-gate.broken .door.l { transform: rotate(-80deg) translate(-4px, 2px); opacity: 0.8; }
+.bf #bf-gate.broken .door.r { transform: rotate(80deg) translate(4px, 2px); opacity: 0.8; }
+.bf .bf-crack { transition: opacity 0.6s; }

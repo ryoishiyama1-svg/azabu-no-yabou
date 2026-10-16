@@ -292,7 +292,40 @@ const BATTLE_SKY = [
 ];
 
 // 足軽1人（右向き）。陣笠に、家の色の旗指物を背負う。flip で左向き
-function soldier(color, flip) {
+// 兵種：i 番目の兵が何か（槍が主、鉄砲・弓・騎馬が混じる。並びが変わっても同じ兵は同じ兵種）
+const UNIT_MIX = ['yari', 'teppo', 'yari', 'yumi', 'yari', 'teppo', 'kiba', 'yari', 'yumi', 'yari', 'teppo', 'yari'];
+const unitOf = (i) => UNIT_MIX[i % UNIT_MIX.length];
+function soldier(color, flip, kind = 'yari') {
+  const K = '#1c1a17';
+  const body = `<path d="M-3,-4 L-4,0 M3,-4 L4,0" stroke="${K}" stroke-width="1.8" stroke-linecap="round"/>
+    <path d="M-4.5,-4 L-4,-12 L4,-12 L4.5,-4 Z" fill="#2b2b36" stroke="${K}" stroke-width="0.8"/>
+    <rect x="-4.2" y="-8.6" width="8.4" height="1.8" fill="${color}"/>
+    <circle cx="0" cy="-14.5" r="2.6" fill="#fbe7cc" stroke="${K}" stroke-width="0.6"/>
+    <path d="M-6,-15 L0,-19.5 L6,-15 Z" fill="${K}"/>`;
+  const flag = `<line x1="-1.5" y1="-12" x2="-1.5" y2="-33" stroke="${K}" stroke-width="1"/><rect x="-1.5" y="-33" width="7" height="10" fill="${color}" stroke="${K}" stroke-width="0.8"/>`;
+  if (kind === 'teppo') {
+    // 鉄砲足軽：筒を前に構え、撃てば筒先に白煙
+    return `<g class="sol-art teppo" transform="scale(${flip ? -1 : 1},1)">${flag}${body}
+      <path d="M-1,-10 L17,-12.5" stroke="#3a2a1a" stroke-width="1.8" stroke-linecap="round"/><path d="M-1,-10 L4,-10.6" stroke="#6b4a2c" stroke-width="2.6"/>
+      <g class="smoke"><circle cx="20" cy="-13" r="3"/><circle cx="25" cy="-15" r="4"/><circle cx="30" cy="-12" r="3.4"/></g></g>`;
+  }
+  if (kind === 'yumi') {
+    // 弓足軽：弦を張った弓
+    return `<g class="sol-art yumi" transform="scale(${flip ? -1 : 1},1)">${flag}${body}
+      <path d="M6,-27 Q14,-16 6,-4" stroke="#6b4a2c" stroke-width="1.4" fill="none"/><path d="M6,-27 L6,-4" stroke="#e8e0cc" stroke-width="0.6"/></g>`;
+  }
+  if (kind === 'kiba') {
+    // 騎馬武者：馬にまたがり、長い槍を斜めに
+    return `<g class="sol-art kiba" transform="scale(${flip ? -1 : 1},1)">
+      <path d="M-14,-10 Q-4,-15 8,-12 L15,-19 L19,-17 L14,-8 Q11,-2 5,-3 L-10,-3 Q-16,-5 -14,-10 Z" fill="#4a3220" stroke="${K}" stroke-width="0.8"/>
+      <g stroke="#4a3220" stroke-width="2" stroke-linecap="round"><path d="M-10,-4 L-13,4"/><path d="M-5,-4 L-3,4"/><path d="M4,-4 L1,4"/><path d="M9,-4 L12,4"/></g>
+      <path d="M-15,-9 Q-20,-6 -19,-1" stroke="${K}" stroke-width="1.4" fill="none"/>
+      <g transform="translate(0,-9)">${flag}
+        <path d="M-4.5,-4 L-4,-12 L4,-12 L4.5,-4 Z" fill="${color}" stroke="${K}" stroke-width="0.8"/>
+        <circle cx="0" cy="-14.5" r="2.6" fill="#fbe7cc" stroke="${K}" stroke-width="0.6"/>
+        <path d="M-6,-15 L0,-20 L6,-15 Z" fill="${K}"/><path d="M-3,-19 L-6,-24 M3,-19 L6,-24" stroke="#e0a526" stroke-width="1.2"/>
+        <line x1="2" y1="-8" x2="22" y2="-30" stroke="#6b5a40" stroke-width="1.2"/><path d="M21,-31 L25,-33 L23,-29 Z" fill="#dfe6ea" stroke="${K}" stroke-width="0.4"/></g></g>`;
+  }
   return `<g class="sol-art" transform="scale(${flip ? -1 : 1},1)">
     <line x1="-1.5" y1="-12" x2="-1.5" y2="-33" stroke="#1c1a17" stroke-width="1"/>
     <rect x="-1.5" y="-33" width="7" height="10" fill="${color}" stroke="#1c1a17" stroke-width="0.8"/>
@@ -314,8 +347,8 @@ function armyMarkup(side, n, color) {
     const row = Math.floor(i / perRow), col = i % perRow;
     const scale = 0.85 + row * 0.12;          // 手前ほど大きく
     const y = 168 + row * 17;
-    const x = side === 'a' ? 150 - col * 17 - row * 6 : 232 + col * 15 + row * 6;
-    out.push(`<g transform="translate(${x},${y}) scale(${scale.toFixed(2)})"><g class="sol" data-i="${i}">${soldier(color, side === 'd')}</g></g>`);
+    const x = side === 'a' ? 150 - col * 17 - row * 6 : 232 + col * 12 + row * 6;
+    out.push(`<g transform="translate(${x},${y}) scale(${scale.toFixed(2)})"><g class="sol" data-i="${i}">${soldier(color, side === 'd', unitOf(i))}</g></g>`);
   }
   return out.join('');
 }
@@ -354,8 +387,8 @@ function bfNobori(x, y, h, clan, flip, delay) {
 function battleScene(r, season) {
   const [sky, mount] = BATTLE_SKY[season % 4];
   const ca = CLANS[r.attacker].color, cd = CLANS[r.defender].color;
-  const na = clamp(Math.round(r.rounds[0].a / 180), 4, 18);
-  const nd = clamp(Math.round(r.rounds[0].d / 180), 3, 15);
+  const na = clamp(Math.round(r.rounds[0].a / 130), 5, 24);
+  const nd = clamp(Math.round(r.rounds[0].d / 130), 4, 20);
   const banner = (x, y, h, clan, flip) => `<g transform="translate(${x},${y})">
       <line x1="0" y1="0" x2="0" y2="${-h}" stroke="#1c1a17" stroke-width="2"/>
       <rect x="${flip ? -12 : 0}" y="${-h}" width="12" height="${h * 0.62}" fill="${CLANS[clan].color}" stroke="#1c1a17" stroke-width="1.2"/>
@@ -388,6 +421,20 @@ function battleScene(r, season) {
     ${bfKinun('M196,122 Q200,110 218,112 Q228,100 248,106 Q262,96 280,106 Q292,104 290,116 Q284,126 262,124 Q244,130 226,124 Q208,130 196,122 Z')}
     <path d="M0,142 Q60,120 120,138 T240,134 T400,130 L400,160 L0,160 Z" fill="#6f8a5a" stroke="#1c1a17" stroke-width="1.6"/>
     <g transform="translate(340,118) scale(2.1)" class="bf-castle" style="--c:${cd}">${castleMarkup(false)}</g>
+    <g class="bf-wall" id="bf-wall">
+      <path d="M292,152 L296,140 L400,140 L400,152 Z" fill="#8a8170" stroke="#1c1a17" stroke-width="1.4"/>
+      <path d="M296,146 H400 M306,140 V146 M322,146 V152 M346,140 V146 M370,146 V152 M388,140 V146" stroke="#5a5348" stroke-width="0.7" fill="none"/>
+      <rect x="296" y="133" width="104" height="7" fill="#f1e6cc" stroke="#1c1a17" stroke-width="1.2"/>
+      ${[304, 336, 360, 384].map((x) => `<rect x="${x}" y="135" width="3" height="3" fill="#1c1a17"/>`).join('')}
+      <path d="M293,134 L403,134 L399,129 L297,129 Z" fill="#3a3f4a" stroke="#1c1a17" stroke-width="1.2"/>
+      <path class="bf-crack" d="M330,140 l3,4 l-2,3 l4,5 M356,133 l-2,4 l3,3 M378,141 l2,5 l-3,4" stroke="#1c1a17" stroke-width="1" fill="none" opacity="0"/>
+      <g id="bf-gate" transform="translate(316,152)">
+        <rect x="-11" y="-22" width="3" height="22" fill="#5a3a22" stroke="#1c1a17" stroke-width="0.8"/><rect x="8" y="-22" width="3" height="22" fill="#5a3a22" stroke="#1c1a17" stroke-width="0.8"/>
+        <path d="M-15,-22 L15,-22 L12,-27 L-12,-27 Z" fill="#3a3f4a" stroke="#1c1a17" stroke-width="1"/>
+        <g class="door l"><rect x="-8" y="-20" width="8" height="20" fill="#7a4a26" stroke="#1c1a17" stroke-width="0.8"/><circle cx="-2" cy="-10" r="0.9" fill="#e0a526"/></g>
+        <g class="door r"><rect x="0" y="-20" width="8" height="20" fill="#7a4a26" stroke="#1c1a17" stroke-width="0.8"/><circle cx="2" cy="-10" r="0.9" fill="#e0a526"/></g>
+      </g>
+    </g>
     ${bfJinmaku(8, 132, 118, r.attacker)}
     <g class="bf-nobori-row">${[14, 34, 54, 74, 94, 114].map((x, i) => bfNobori(x, 150 - (i % 2) * 3, 44 + (i % 3) * 5, r.attacker, false, i * 0.23)).join('')}</g>
     <g class="bf-nobori-row">${[246, 264, 282].map((x, i) => bfNobori(x, 156 - (i % 2) * 3, 40 + (i % 2) * 6, r.defender, true, i * 0.31)).join('')}</g>

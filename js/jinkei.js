@@ -118,7 +118,7 @@ function jinkeiArmy(side, n, color, k) {
   const pts = jinkeiPoints(k, n).map(([fx, fy], i) => ({ i, x: cx + fx * 30 * dir, y: 182 + fy * 21 }));
   return pts.sort((p, q) => p.y - q.y).map((p) => {
     const sc = 0.82 + ((p.y - 161) / 42) * 0.3;
-    return `<g transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) scale(${sc.toFixed(2)})"><g class="sol" data-i="${p.i}">${soldier(color, side === 'd')}</g></g>`;
+    return `<g transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) scale(${sc.toFixed(2)})"><g class="sol" data-i="${p.i}">${soldier(color, side === 'd', unitOf(p.i))}</g></g>`;
   }).join('');
 }
 // 小さな陣形の図（陣立ての札）
