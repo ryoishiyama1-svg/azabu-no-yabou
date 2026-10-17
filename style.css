@@ -2686,3 +2686,19 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .bf #bf-gate.broken .door.l { transform: rotate(-80deg) translate(-4px, 2px); opacity: 0.8; }
 .bf #bf-gate.broken .door.r { transform: rotate(80deg) translate(4px, 2px); opacity: 0.8; }
 .bf .bf-crack { transition: opacity 0.6s; }
+
+/* ---------- 家の物語（v107） ---------- */
+.st-card { max-width: 400px; }
+.st-chap { margin: 0 0 4px; font-family: var(--mincho); font-weight: 800; font-size: 13px; letter-spacing: 0.3em; color: #e0a526; }
+.st-scroll { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: start; margin: 6px 0 0; padding: 16px 14px; text-align: left; color: var(--ink);
+  background: var(--washi), #f1e6cc; border-top: 10px solid #5a3a22; border-bottom: 10px solid #5a3a22; box-shadow: 0 0 0 2px var(--gold-line), 0 10px 24px rgba(0, 0, 0, 0.5);
+  animation: st-unroll 0.9s cubic-bezier(0.3, 0.7, 0.3, 1) both; }
+@keyframes st-unroll { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+.st-crest { grid-row: 1; grid-column: 1; }
+.st-hero { grid-row: 2; grid-column: 1; }
+.st-hero .portrait { border-radius: 50%; border: 3px solid var(--ink); }
+.st-text { grid-row: 1 / span 2; grid-column: 2; }
+.st-text p { margin: 0 0 8px; font-family: var(--mincho); font-weight: 700; font-size: 15px; line-height: 1.8; opacity: 0; animation: st-line 0.8s ease-out both; }
+@keyframes st-line { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.st-reward { min-height: 1.4em; margin: 10px 0 0; font-size: 14px; color: #f3d27a; }
+@media (prefers-reduced-motion: reduce) { .st-scroll, .st-text p { animation: none; opacity: 1; } }

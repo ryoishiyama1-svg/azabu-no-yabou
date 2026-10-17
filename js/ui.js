@@ -4800,3 +4800,55 @@ render = function (...a) {
   fxState = S; fxOwners = now; fxCount = mine;
   return r;
 };
+
+// ---------- 家の物語：絵巻の一話 ----------
+function showStory(st, then) {
+  let box = $('story');
+  if (!box) { box = document.createElement('div'); box.id = 'story'; box.className = 'kime story'; document.body.appendChild(box); }
+  const k = st.clan || PLAYER;
+  box.innerHTML = `<div class="kime-card st-card">
+      <p class="st-chap">${st.chapter ? `${pShort()}物語　第${'一二三四五六七八九十'[st.chapter - 1] || st.chapter}話` : '天下の物語'}</p>
+      <div class="kime-title">${esc(st.title)}</div>
+      <div class="st-scroll">
+        <div class="st-crest">${crestBadge(k, 64)}</div>
+        ${st.hero ? `<div class="st-hero">${portrait(st.hero, 96, 'think')}</div>` : ''}
+        <div class="st-text">${st.text.map((t, i) => `<p style="animation-delay:${(0.5 + i * 0.7).toFixed(1)}s">${esc(t)}</p>`).join('')}</div>
+      </div>
+      <p class="st-reward" id="st-reward"></p>
+      <p class="kime-tap">画面をタップ</p>
+    </div>`;
+  box.hidden = false;
+  Sound.era();
+  let step = 0;
+  box.onclick = () => {
+    if (step === 0 && !st.revealed) { st.revealed = true; box.querySelectorAll('.st-text p').forEach((p) => { p.style.animationDelay = '0s'; }); }
+    step++;
+    if (step === 1) {
+      const msg = storyDone(S, st);
+      save();
+      if (msg) { $('st-reward').textContent = msg; Sound.kira(); return; }
+    }
+    box.hidden = true;
+    render();
+    if (then) then();
+  };
+}
+const _stRender = render;
+render = function (...a) {
+  const r = _stRender.apply(this, a);
+  if (S && !S.result && !$('game').hidden) {
+    const st = storyNext(S);
+    if (st && !(document.getElementById('story') && !$('story').hidden)) {
+      const tryShow = () => {
+        if (!S || (document.getElementById('story') && !$('story').hidden)) return;
+        const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || !$('battle').hidden || (document.getElementById('seki') && !$('seki').hidden) || (S.pending && S.pending.length) || S.tut;
+        if (busy) { setTimeout(tryShow, 1500); return; }
+        const cur = storyNext(S);
+        if (cur) showStory(cur);
+      };
+      clearTimeout(window.__storyT);
+      window.__storyT = setTimeout(tryShow, 1200);
+    }
+  }
+  return r;
+};
