@@ -662,6 +662,7 @@ function editionScenery(sc) {
   (sc.lakes || []).forEach((p) => { s += `<path class="bay lake" d="${poly(p)}"/><path class="bay-waves" d="${poly(p)}"/>`; });
   s += drawRivers(sc.rivers || []);
   s += inkMountains();
+  s += seasonDecor();
   s += seasonTrees();
   const clouds = [[W * 0.02, H * 0.82, 260], [W * 0.55, H * 0.03, 300], [W * 0.78, H * 0.22, 220], [W * 0.25, H * 0.06, 200]];
   clouds.forEach(([x, y, w]) => {
@@ -718,6 +719,7 @@ function sceneryMarkup() {
   });
 
   s += inkMountains();
+  s += seasonDecor();
   s += seasonTrees();
 
   // 金の霞（すやり霞）
@@ -1073,4 +1075,52 @@ function facArt(k, color = '#c8372d') {
     default:
       return '';
   }
+}
+
+// ---------- 季節の野の景色：田・花びら・入道雲・紅葉・雪だまり ----------
+// 形は一度だけ置き、色と出し入れは季節（#mapwrap[data-season]）で CSS が変える
+// 描き直しを軽くするため、同じ種類のものは一本の path にまとめる（要素は十ほど）
+function seasonDecor() {
+  const wet = waterTest();
+  const r = seeded(MAP.nodes.length * 53 + 11);
+  const free = (x, y, d) => !wet(x, y) && !MAP.nodes.some((n) => Math.hypot(n.x - x, n.y - y) < d);
+  const spots = (n, d, gap) => {
+    const out = [];
+    for (let t = 0; out.length < n && t < n * 30; t++) {
+      const x = 30 + r() * (MAP.width - 60), y = 40 + r() * (MAP.height - 80);
+      if (!free(x, y, d) || out.some((p) => Math.hypot(p.x - x, p.y - y) < gap)) continue;
+      out.push({ x, y });
+    }
+    return out;
+  };
+  const f = (v) => v.toFixed(1);
+  const SK = Math.tan((18 * Math.PI) / 180); // 田は少し斜めに
+  const sk = (x, y, px, py) => [px + x - y * SK, py + y];
+  let fd = '', fl = '', fs = '';
+  spots(Math.max(6, Math.round(MAP.nodes.length / 3)), 70, 90).forEach((p) => {
+    const k = 2 + Math.floor(r() * 2), w = 34 + r() * 14, h = 16 + r() * 6;
+    for (let i = 0; i < k; i++) {
+      const x0 = i * (w + 3);
+      const c = [[x0, 0], [x0 + w, 0], [x0 + w, h], [x0, h]].map(([x, y]) => sk(x, y, p.x, p.y));
+      fd += `M${c.map(([x, y]) => `${f(x)},${f(y)}`).join('L')}Z`;
+      [h / 3, (h * 2) / 3].forEach((yy) => { const [a1, b1] = sk(x0 + 4, yy, p.x, p.y), [a2, b2] = sk(x0 + w - 4, yy, p.x, p.y); fl += `M${f(a1)},${f(b1)}L${f(a2)},${f(b2)}`; });
+      for (let j = 0; j < 3; j++) { const [a, b] = sk(x0 + 6 + j * ((w - 12) / 2), h / 2, p.x, p.y); fs += `M${f(a - 1.6)},${f(b)}a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0`; }
+    }
+  });
+  // 花びら・紅葉：小さなひし形を一本の path に
+  const flakes = (n, size) => spots(n, 40, 30).map((p) => {
+    const a = r() * Math.PI, c = Math.cos(a) * size, s = Math.sin(a) * size;
+    return `M${f(p.x - c)},${f(p.y - s)}L${f(p.x - s * 0.5)},${f(p.y + c * 0.5)}L${f(p.x + c)},${f(p.y + s)}L${f(p.x + s * 0.5)},${f(p.y - c * 0.5)}Z`;
+  }).join('');
+  const petals = flakes(Math.round(MAP.nodes.length * 1.4), 3.6);
+  const leavesA = flakes(Math.round(MAP.nodes.length * 0.7), 5), leavesB = flakes(Math.round(MAP.nodes.length * 0.7), 5);
+  const drifts = spots(Math.round(MAP.nodes.length * 0.8), 45, 50).map((p) => `M${f(p.x - 26)},${f(p.y + 4)}Q${f(p.x - 18)},${f(p.y - 8)} ${f(p.x - 6)},${f(p.y - 4)}Q${f(p.x + 4)},${f(p.y - 12)} ${f(p.x + 14)},${f(p.y - 4)}Q${f(p.x + 24)},${f(p.y - 6)} ${f(p.x + 28)},${f(p.y + 4)}Z`).join('');
+  // 入道雲：地図の上のほうに、もくもくと
+  const cumulus = [0.18, 0.5, 0.82].map((fx, i) => {
+    const x = MAP.width * fx, y = 70 + (i % 2) * 30;
+    return `<g class="cu" transform="translate(${x.toFixed(0)},${y})"><path d="M-70,30 Q-74,6 -50,4 Q-48,-24 -20,-22 Q-10,-50 18,-40 Q44,-52 50,-20 Q76,-14 70,30 Z"/><path class="cu2" d="M-40,14 Q-30,4 -16,8 M8,-20 Q20,-28 32,-18 M30,10 Q44,4 54,12" fill="none"/></g>`;
+  }).join('');
+  return `<g class="season-decor"><g class="field"><path class="fd" d="${fd}"/><path class="fl" d="${fl}"/><path class="fs" d="${fs}"/></g>
+    <path class="d-spring pt" d="${petals}"/><path class="d-autumn lf a" d="${leavesA}"/><path class="d-autumn lf b" d="${leavesB}"/>
+    <path class="d-winter dr" d="${drifts}"/><g class="d-summer">${cumulus}</g></g>`;
 }

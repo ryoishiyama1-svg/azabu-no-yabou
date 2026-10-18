@@ -2702,3 +2702,28 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 @keyframes st-line { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .st-reward { min-height: 1.4em; margin: 10px 0 0; font-size: 14px; color: #f3d27a; }
 @media (prefers-reduced-motion: reduce) { .st-scroll, .st-text p { animation: none; opacity: 1; } }
+
+/* ---------- 季節の移ろいを地図全体で（v108） ---------- */
+#map .season-decor { pointer-events: none; }
+#map .d-spring, #map .d-summer, #map .d-autumn, #map .d-winter { display: none; }
+#mapwrap[data-season="0"] #map .d-spring, #mapwrap[data-season="1"] #map .d-summer, #mapwrap[data-season="2"] #map .d-autumn, #mapwrap[data-season="3"] #map .d-winter { display: inline; }
+#map .field .fd { fill: var(--fd, #b9c98e); stroke: #6b5a3a; stroke-width: 1.4; }
+#map .field .fl { stroke: var(--fl, rgba(60, 80, 40, 0.5)); stroke-width: 0.9; fill: none; }
+#map .field .fs { fill: var(--fs, transparent); }
+#mapwrap[data-season="0"] #map .field { --fd: #cfe0e6; --fl: rgba(110, 150, 90, 0.7); --fs: #7fae5a; }   /* 水を張った田に早苗 */
+#mapwrap[data-season="1"] #map .field { --fd: #7fae5a; --fl: rgba(40, 80, 30, 0.6); --fs: transparent; }  /* 青田 */
+#mapwrap[data-season="2"] #map .field { --fd: #e3b94e; --fl: rgba(140, 100, 30, 0.6); --fs: #a8752a; }   /* 黄金の稲穂と稲架 */
+#mapwrap[data-season="3"] #map .field { --fd: #f6f7f5; --fl: rgba(120, 130, 140, 0.45); --fs: transparent; } /* 雪の田 */
+#map .d-summer .cu path:first-child { fill: #fbfaf4; stroke: #1c1a17; stroke-width: 2; opacity: 0.92; }
+#map .d-summer .cu .cu2 { stroke: #c9cfd6; stroke-width: 2; }
+#map .d-winter .dr { fill: #fbfdff; stroke: #9fb0c0; stroke-width: 1.2; }
+#mapwrap[data-season="2"] #map .ink-mtn .m1 { fill: #c8642d; opacity: 0.75; }
+#mapwrap[data-season="2"] #map .ink-mtn .m3 { fill: #d9622b; opacity: 0.25; }
+#mapwrap[data-season="1"] #map .ink-mtn .m1 { fill: #4f7a48; opacity: 0.7; }
+#mapwrap[data-season="0"] #map .ink-mtn .m3 { fill: #e9a3a8; opacity: 0.3; }
+#mapwrap[data-season="3"] #map .river { stroke: #7d8fa3; }
+#mapwrap[data-season="3"] #map .river-hi { stroke: #dbe6ef; }
+#map .d-spring.pt { fill: #f6c9cd; stroke: #e9a3a8; stroke-width: 0.5; }
+#map .d-autumn.lf.a { fill: #c8372d; stroke: #1c1a17; stroke-width: 0.5; }
+#map .d-autumn.lf.b { fill: #e0a526; stroke: #1c1a17; stroke-width: 0.5; }
+#map .d-winter.dr { fill: #fbfdff; stroke: #9fb0c0; stroke-width: 1.2; }
