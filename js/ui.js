@@ -4986,3 +4986,78 @@ function showSekinin(B, g, lost, done) {
     };
   });
 }
+
+// ---------- 一年の纏め：春を迎えたら、前の一年を瓦版で振り返る ----------
+// s.yearMark = 年の始まりの控え（城の数・家ごとの城・武将ごとの落とした城）／s.yearLog = その年の合戦の勝ち負け
+function yearMark(s) {
+  const counts = {};
+  MAP.nodes.forEach((n) => { const o = s.castles[n.id].owner; counts[o] = (counts[o] || 0) + 1; });
+  s.yearMark = { turn: s.turn, counts, caps: Object.fromEntries(gensOf(s, PLAYER).map((g) => [g.id, recOf(g).cap])) };
+  s.yearLog = { won: 0, lost: 0, held: 0, fell: 0 };
+}
+const _ybRecord = recordBattle;
+recordBattle = function (s, r) {
+  _ybRecord(s, r);
+  if (!s.yearLog) return;
+  if (r.attacker === PLAYER) s.yearLog[r.won ? 'won' : 'lost']++;
+  else if (r.defender === PLAYER) s.yearLog[r.won ? 'fell' : 'held']++;
+};
+const _ybEndTurn = endTurn;
+endTurn = function (s, ...a) {
+  if (!s.yearMark) yearMark(s);
+  const res = _ybEndTurn(s, ...a);
+  if (s.turn % 4 === 0 && s.turn > 0 && s.yearMark.turn < s.turn) {
+    s.yearBook = yearBook(s); // 春：前の一年の瓦版をつくり、新しい年の控えをとる
+    yearMark(s);
+  }
+  return res;
+};
+function yearBook(s) {
+  const m = s.yearMark, log = s.yearLog || {};
+  const now = {};
+  MAP.nodes.forEach((n) => { const o = s.castles[n.id].owner; now[o] = (now[o] || 0) + 1; });
+  const ranks = Object.keys(now).filter((k) => k !== 'none' && CLANS[k]).sort((a, b) => now[b] - now[a]).slice(0, 5).map((k) => ({ k, n: now[k], d: now[k] - (m.counts[k] || 0) }));
+  const star = gensOf(s, PLAYER).map((g) => ({ g, d: recOf(g).cap - (m.caps[g.id] || 0) })).filter((x) => x.d > 0).sort((a, b) => b.d - a.d)[0];
+  const news = (s.saga || []).filter((e) => e.turn >= m.turn && e.turn < s.turn).sort((a, b) => b.weight - a.weight);
+  return { year: Math.floor((s.turn - 1) / 4), from: m.counts[PLAYER] || 0, to: now[PLAYER] || 0, log, ranks, star: star ? { gid: star.g.id, d: star.d } : null,
+    head: news[0] || null, news: news.slice(1, 5), shown: false };
+}
+function showYearBook(yb, done) {
+  const yLabel = dateLabel(yb.year * 4).replace(/\s*春.*/, '');
+  const st = yb.star && S.gens[yb.star.gid];
+  const delta = yb.to - yb.from;
+  openModal(`<div class="nenkan" data-lock>
+      <div class="nk-mast"><span>${esc(pShort())}瓦版</span><b>${esc(yLabel)}の纏め</b></div>
+      <h3 class="nk-head">${yb.head ? esc(yb.head.head) : delta > 0 ? `${pName()}、${delta}城を加える` : delta < 0 ? `${pName()}、${-delta}城を失う` : '静かな一年'}</h3>
+      ${yb.head && yb.head.sub ? `<p class="nk-sub">${esc(yb.head.sub)}</p>` : ''}
+      <div class="nk-cols">
+        <div class="nk-box"><span>版図</span><b>${yb.from}<i>→</i>${yb.to}<small>城</small></b><em class="${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}">${delta > 0 ? `＋${delta}` : delta < 0 ? `－${-delta}` : '±0'}</em></div>
+        <div class="nk-box"><span>攻め</span><b>${yb.log.won || 0}<small>勝</small>${yb.log.lost || 0}<small>敗</small></b></div>
+        <div class="nk-box"><span>守り</span><b>${yb.log.held || 0}<small>守</small>${yb.log.fell || 0}<small>落</small></b></div>
+      </div>
+      ${st ? `<div class="nk-star">${portrait(st, 56, 'laugh')}<div><span>一年の殊勲</span><b>${esc(st.name)}</b><small>${yb.star.d}城を攻め落とす</small></div></div>` : ''}
+      <div class="nk-rank"><span>天下の番付</span><ol>${yb.ranks.map((r, i) => `<li class="${r.k === PLAYER ? 'me' : ''}"><em>${'一二三四五'[i]}</em>${clanChip(r.k)}<b>${r.n}城</b><i class="${r.d > 0 ? 'up' : r.d < 0 ? 'down' : ''}">${r.d > 0 ? `▲${r.d}` : r.d < 0 ? `▼${-r.d}` : '―'}</i></li>`).join('')}</ol></div>
+      ${yb.news.length ? `<ul class="nk-news">${yb.news.map((e) => `<li><b>${dateLabel(e.turn).replace(/^\d+年\s*/, '')}</b>${esc(e.head)}</li>`).join('')}</ul>` : ''}
+    </div>
+    <button class="btn red" id="nk-close">新しい年へ</button>`);
+  Sound.hyoshigi(2);
+  $('nk-close').onclick = () => { Sound.tap(); closeModal(); done(); };
+}
+const _ybRender = render;
+render = function (...a) {
+  const r = _ybRender.apply(this, a);
+  if (S && S.yearBook && !S.yearBook.shown && !S.result && !$('game').hidden) {
+    const yb = S.yearBook;
+    const tryShow = () => {
+      if (!S || S.yearBook !== yb || yb.shown) return;
+      const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || !$('battle').hidden || (S.pending && S.pending.length) || (S.pendingDefense && S.pendingDefense.length);
+      if (busy) { setTimeout(tryShow, 1500); return; }
+      yb.shown = true;
+      save();
+      showYearBook(yb, () => render());
+    };
+    clearTimeout(window.__ybT);
+    window.__ybT = setTimeout(tryShow, 1000);
+  }
+  return r;
+};
