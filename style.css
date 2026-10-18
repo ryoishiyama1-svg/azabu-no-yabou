@@ -2727,3 +2727,44 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 #map .d-autumn.lf.a { fill: #c8372d; stroke: #1c1a17; stroke-width: 0.5; }
 #map .d-autumn.lf.b { fill: #e0a526; stroke: #1c1a17; stroke-width: 0.5; }
 #map .d-winter.dr { fill: #fbfdff; stroke: #9fb0c0; stroke-width: 1.2; }
+
+/* ---------- 家臣団：絵札の棚と相関図（v109） ---------- */
+.view-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 8px 0; border: 2px solid var(--ink); }
+.view-tabs button { font: 400 18px var(--brush); padding: 6px; background: var(--paper); border: 0; cursor: pointer; letter-spacing: 0.2em; }
+.view-tabs button.on { color: #f3d27a; background: var(--lacquer); }
+.efuda-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+@media (max-width: 400px) { .efuda-shelf { grid-template-columns: 1fr 1fr; gap: 6px; } }
+.efuda { position: relative; display: grid; justify-items: center; gap: 1px; padding: 8px 6px 6px; text-align: center; font: inherit; color: var(--ink); cursor: pointer;
+  background: linear-gradient(180deg, #fbf4e2, #efe3c4); border: 2px solid var(--ink); box-shadow: inset 0 0 0 3px var(--gc, #8aa0bd), 3px 3px 0 rgba(0, 0, 0, 0.3); }
+.efuda.g1 { --gc: #8fb3d9; } .efuda.g2 { --gc: #8fc28f; } .efuda.g3 { --gc: #e0b54e; }
+.efuda.lord { --gc: #c8372d; background: linear-gradient(180deg, #fff4dc, #f3dca4); }
+.efuda.acted { filter: grayscale(0.55) brightness(0.92); }
+.efuda.kira::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 45%, transparent 60%); background-size: 250% 100%; animation: kira-sweep 3.2s linear infinite; }
+@keyframes kira-sweep { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.ef-grade { position: absolute; left: 4px; top: 4px; font: 800 10px var(--gothic); padding: 0 4px; color: #fff; background: var(--gc); border: 1px solid var(--ink); }
+.ef-lord { position: absolute; right: 4px; top: 4px; font: 400 12px var(--brush); padding: 0 4px; color: #f3d27a; background: var(--lacquer); border: 1px solid var(--gold-line); }
+.ef-pic .portrait { border-radius: 50%; border: 2.5px solid var(--ink); }
+.ef-name { font-family: var(--mincho); font-size: 14px; font-weight: 900; line-height: 1.2; }
+.ef-nick { font-size: 10.5px; color: var(--red); min-height: 1.3em; }
+.ef-st, .ef-loyal { display: grid; grid-template-columns: 14px 1fr 20px; gap: 3px; align-items: center; width: 100%; font-size: 10px; }
+.ef-st i, .ef-loyal i { height: 5px; background: rgba(0, 0, 0, 0.12); }
+.ef-st i b { display: block; height: 100%; background: #3c6aa3; }
+.ef-st em { font-style: normal; font-weight: 800; text-align: right; }
+.ef-loyal { grid-template-columns: 14px 1fr; margin-top: 2px; }
+.ef-loyal i b { display: block; height: 100%; background: #c99a2e; }
+.ef-loyal.bad i b { background: var(--red); } .ef-loyal.good i b { background: #4f8a5a; }
+.ef-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 3px; font-size: 10px; }
+.ef-tags span { padding: 0 4px; border: 1px solid rgba(0, 0, 0, 0.3); background: #fff; }
+.ef-tags .t-shi { color: #fff; background: var(--red); } .ef-tags .t-bond { color: #fff; background: #c99a2e; } .ef-tags .t-sk { color: #fff; background: #3c6aa3; }
+.rc { display: block; width: 100%; height: auto; margin: 4px 0; background: var(--washi), #f1e6cc; border: 2px solid var(--ink); }
+.rc-bond line { stroke: #c99a2e; stroke-width: 3; }
+.rc-bond text { font: 800 9px var(--gothic); text-anchor: middle; fill: #8a6420; paint-order: stroke; stroke: #f1e6cc; stroke-width: 3px; }
+.rc-foe line { stroke: var(--red); stroke-width: 1.6; stroke-dasharray: 4 3; }
+.rc-foe text, .rc-node text { font: 800 9px var(--gothic); text-anchor: middle; fill: #1c1a17; paint-order: stroke; stroke: #f1e6cc; stroke-width: 3px; }
+.rc-ring { fill: none; stroke: #1c1a17; stroke-width: 2.5; }
+.rc-ring.g1 { stroke: #5f8fbf; } .rc-ring.g2 { stroke: #5f9f5f; } .rc-ring.g3 { stroke: #c99a2e; }
+.rc-node { cursor: pointer; }
+.rc-node.lord .rc-ring { stroke: var(--red); stroke-width: 4; }
+.rc-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 11px; margin: 0 0 8px; }
+.rc-legend .l-bond { color: #8a6420; font-weight: 800; } .rc-legend .l-foe { color: var(--red); font-weight: 800; }
+.gd-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

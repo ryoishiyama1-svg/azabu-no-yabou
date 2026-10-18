@@ -3933,42 +3933,100 @@ function lordsHistory() {
 // 家臣団：並べかえの札つき
 let ROSTER_SORT = 'grade';
 const ROSTER_SORTS = { grade: '学年', str: '統率', int: '知略', pol: '政治', cha: '魅力', loyal: '忠誠' };
+// ---------- 家臣団：絵札の棚と、人物相関図 ----------
+let ROSTER_VIEW = 'cards', ROSTER_FILTER = 'all';
+const ROSTER_FILTERS = { all: '全員', idle: '命令できる', senior: '3年', low: '忠誠が低い', shi: '志あり' };
+const rosterPass = (g) => ({ all: true, idle: !S.acted[g.id] && !!g.loc, senior: g.grade >= 3, low: !g.lord && g.loyal < 55, shi: !!(g.shi && !g.shi.done) })[ROSTER_FILTER];
+function eFuda(g) {
+  const bar = (k, label) => `<div class="ef-st"><span>${label}</span><i><b style="width:${g[k]}%"></b></i><em>${g[k]}</em></div>`;
+  const bonds = bondsOf(S, g).length, t = g.treasure && TREASURES[g.treasure];
+  return `<button class="efuda g${g.grade} ${g.lord ? 'lord' : ''} ${S.acted[g.id] ? 'acted' : ''} ${isLegend(g) ? 'kira' : ''}" data-gid="${g.id}">
+    <span class="ef-grade">${g.grade}年</span>${g.lord ? '<span class="ef-lord">当主</span>' : ''}
+    <div class="ef-pic">${portrait(g, 84, g.loyal < 50 && !g.lord ? 'frustrated' : null)}</div>
+    <b class="ef-name">${esc(g.name)}</b>
+    <small class="ef-nick">${nickOf(g) ? `「${esc(nickOf(g))}」` : esc(g.title || '')}</small>
+    ${bar('str', '統')}${bar('int', '知')}${bar('pol', '政')}${bar('cha', '魅')}
+    <div class="ef-loyal ${g.lord ? '' : g.loyal < 50 ? 'bad' : g.loyal >= 80 ? 'good' : ''}"><span>忠</span><i><b style="width:${g.lord ? 100 : g.loyal}%"></b></i></div>
+    <div class="ef-tags">${g.loc ? `<span class="where">${MAP.byId[g.loc].short}</span>` : ''}${t ? `<span title="${esc(t.name)}">${TREASURE_KINDS[t.kind].icon}</span>` : ''}${g.shi && !g.shi.done ? '<span class="t-shi">志</span>' : ''}${bonds ? `<span class="t-bond">絆${bonds > 1 ? bonds : ''}</span>` : ''}${g.skill && SKILLS[g.skill] ? `<span class="t-sk">${esc(SKILLS[g.skill].name)}</span>` : ''}</div>
+  </button>`;
+}
+// 人物相関図：当主を真ん中に、家臣を輪に。絆は金の線、他家の宿敵は外の輪に赤い点線
+function rosterChart(gens) {
+  const W = 360, H = 380, cx = W / 2, cy = H / 2 - 10;
+  const lord = gens.find((g) => g.lord);
+  const ring = gens.filter((g) => !g.lord).slice(0, 18);
+  const pos = {};
+  if (lord) pos[lord.id] = { x: cx, y: cy, r: 36 };
+  ring.forEach((g, i) => { const a = (i / ring.length) * Math.PI * 2 - Math.PI / 2; pos[g.id] = { x: cx + Math.cos(a) * 112, y: cy + Math.sin(a) * 120, r: ring.length > 12 ? 19 : 25 }; });
+  const ids = new Set(Object.keys(pos));
+  const inner = (g, s) => portrait(g, s).replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+  const lines = [];
+  Object.values(S.bonds || {}).forEach((b) => {
+    if (!ids.has(b.a) || !ids.has(b.b)) return;
+    const p = pos[b.a], q = pos[b.b];
+    lines.push(`<g class="rc-bond"><line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}"/><text x="${((p.x + q.x) / 2).toFixed(0)}" y="${((p.y + q.y) / 2 - 3).toFixed(0)}">${BOND_TYPES[b.type] ? BOND_TYPES[b.type].name : '絆'}</text></g>`);
+  });
+  const foes = [];
+  Object.entries(S.rivals || {}).forEach(([k, n]) => {
+    if (n < RIVAL_AT) return;
+    const [a, b] = k.split('|');
+    const mine = ids.has(a) ? a : ids.has(b) ? b : null;
+    const og = mine ? S.gens[mine === a ? b : a] : null;
+    if (og && og.clan !== PLAYER) foes.push({ mine, og });
+  });
+  const foeSvg = foes.slice(0, 8).map(({ mine, og }, i) => {
+    const p = pos[mine], a = Math.atan2(p.y - cy, p.x - cx) + (i % 2 ? 0.18 : -0.18);
+    const x = cx + Math.cos(a) * 168, y = cy + Math.sin(a) * 172;
+    return `<g class="rc-foe"><line x1="${p.x}" y1="${p.y}" x2="${x.toFixed(0)}" y2="${y.toFixed(0)}"/>
+      <clipPath id="rcf-${og.id}"><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="13"/></clipPath><g clip-path="url(#rcf-${og.id})"><svg x="${(x - 13).toFixed(0)}" y="${(y - 13).toFixed(0)}" width="26" height="26" viewBox="0 6 200 200">${inner(og, 26)}</svg></g>
+      <circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="13" class="rc-ring" style="stroke:${CLANS[og.clan] ? CLANS[og.clan].color : '#555'}"/>
+      <text x="${x.toFixed(0)}" y="${(y + 23).toFixed(0)}">${esc(og.name.split(' ')[0])}</text></g>`;
+  }).join('');
+  const node = (g) => {
+    const p = pos[g.id], s = p.r * 2;
+    return `<g class="rc-node ${g.lord ? 'lord' : ''}" data-gid="${g.id}"><clipPath id="rcc-${g.id}"><circle cx="${p.x}" cy="${p.y}" r="${p.r}"/></clipPath><g clip-path="url(#rcc-${g.id})"><svg x="${p.x - p.r}" y="${p.y - p.r}" width="${s}" height="${s}" viewBox="0 6 200 200">${inner(g, s)}</svg></g>
+      <circle cx="${p.x}" cy="${p.y}" r="${p.r}" class="rc-ring g${g.grade}"/><text x="${p.x}" y="${p.y + p.r + 11}">${esc(g.name.split(' ')[1] || g.name)}</text></g>`;
+  };
+  return `<svg class="rc" viewBox="-20 -20 ${W + 40} ${H + 40}">${foeSvg}${lines.join('')}${[...ring, ...(lord ? [lord] : [])].map(node).join('')}</svg>
+    <p class="rc-legend"><span class="l-bond">━ 絆</span><span class="l-foe">┅ 他家の宿敵</span><span>枠の色：1年・2年・3年</span></p>`;
+}
 function showRoster() {
   const by = ROSTER_SORT;
   const key = (g) => (by === 'grade' ? g.grade * 1000 - (g.loc || '').charCodeAt(0) : by === 'loyal' ? -g.loyal : g[by]);
-  const gens = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || key(b) - key(a));
-  const seniors = gens.filter((g) => g.grade >= 3).length;
-  const retainers = gens.filter((g) => !g.lord);
+  const all = gensOf(S, PLAYER).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || key(b) - key(a));
+  const gens = all.filter(rosterPass);
+  const seniors = all.filter((g) => g.grade >= 3).length;
+  const retainers = all.filter((g) => !g.lord);
   const avgLoyal = retainers.length ? Math.round(retainers.reduce((a, g) => a + g.loyal, 0) / retainers.length) : 0;
-  const treasures = gens.filter((g) => g.treasure).length + (S.vault || []).length;
+  const treasures = all.filter((g) => g.treasure).length + (S.vault || []).length;
   openModal(`<h2>家臣団</h2>
-    <div class="stats four"><div class="stat"><span class="n">${gens.length}</span><span class="l">武将</span></div>
+    <div class="stats four"><div class="stat"><span class="n">${all.length}</span><span class="l">武将</span></div>
       <div class="stat"><span class="n">${seniors}</span><span class="l">春に卒業</span></div>
       <div class="stat"><span class="n ${avgLoyal < 50 ? 'bad' : ''}">${avgLoyal}</span><span class="l">平均忠誠</span></div>
       <div class="stat"><span class="n">${treasures}</span><span class="l">家宝</span></div></div>
-    <div class="sort-row">${Object.entries(ROSTER_SORTS).map(([k, t]) => `<button data-sort="${k}" class="${k === by ? 'on' : ''}">${t}</button>`).join('')}</div>
-    <p class="hint" style="text-align:center">タップするとその城へ</p>
-    <div class="glist roster">${gens.map((g) => genCard(g, {
-      acted: !!S.acted[g.id],
-      extra: `<span class="where">${MAP.byId[g.loc].short}</span>`,
-    })).join('')}</div>
+    <div class="view-tabs"><button data-view="cards" class="${ROSTER_VIEW === 'cards' ? 'on' : ''}">絵札</button><button data-view="chart" class="${ROSTER_VIEW === 'chart' ? 'on' : ''}">相関図</button></div>
+    ${ROSTER_VIEW === 'chart' ? rosterChart(all) : `
+      <div class="sort-row">${Object.entries(ROSTER_FILTERS).map(([k, t]) => `<button data-filter="${k}" class="${k === ROSTER_FILTER ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="sort-row">${Object.entries(ROSTER_SORTS).map(([k, t]) => `<button data-sort="${k}" class="${k === by ? 'on' : ''}">${t}順</button>`).join('')}</div>
+      ${gens.length ? `<div class="efuda-shelf">${gens.map(eFuda).join('')}</div>` : '<p class="hint" style="text-align:center">あてはまる武将はいない</p>'}`}
     <button class="btn" id="roster-reward">褒美を与える（忠誠の低い順）</button>
     <h3>歴代当主</h3>
     ${lordsHistory()}
     <button class="btn" id="roster-hall">卒業生の列伝<small class="sub">${(S.hall || []).length}人</small></button>
     <button class="btn plain" data-close>閉じる</button>`);
   modalBody.querySelectorAll('[data-sort]').forEach((b) => { b.onclick = () => { Sound.tap(); ROSTER_SORT = b.dataset.sort; showRoster(); }; });
+  modalBody.querySelectorAll('[data-filter]').forEach((b) => { b.onclick = () => { Sound.tap(); ROSTER_FILTER = b.dataset.filter; showRoster(); }; });
+  modalBody.querySelectorAll('[data-view]').forEach((b) => { b.onclick = () => { Sound.tap(); ROSTER_VIEW = b.dataset.view; showRoster(); }; });
   $('roster-hall').onclick = () => { Sound.tap(); showHall(showRoster); };
   $('roster-reward').onclick = () => { Sound.tap(); showReward(gensOf(S, PLAYER).filter((g) => g.loc), '褒美（忠誠の低い順）', showRoster); };
-  modalBody.querySelectorAll('.gcard').forEach((c) => {
+  modalBody.querySelectorAll('.efuda[data-gid], .rc-node[data-gid]').forEach((c) => {
     c.onclick = () => {
-      Sound.tap();
-      const loc = S.gens[c.dataset.gid].loc;
-      closeModal();
-      selected = loc;
-      mode = null;
-      render();
-      centerOn(loc);
+      const gid = c.dataset.gid, g = S.gens[gid];
+      showGeneral(gid);
+      // 武将の詳しい画面に「家臣団へもどる」「その城へ」を足す
+      modalBody.insertAdjacentHTML('beforeend', `<div class="gd-nav"><button class="btn plain" id="gd-back">家臣団へもどる</button>${g && g.loc ? `<button class="btn" id="gd-go">${MAP.byId[g.loc].short}へ</button>` : ''}</div>`);
+      $('gd-back').onclick = () => { Sound.tap(); showRoster(); };
+      if ($('gd-go')) $('gd-go').onclick = () => { Sound.tap(); closeModal(); selected = g.loc; mode = null; render(); centerOn(g.loc); };
     };
   });
 }
