@@ -2768,3 +2768,16 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .rc-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 11px; margin: 0 0 8px; }
 .rc-legend .l-bond { color: #8a6420; font-weight: 800; } .rc-legend .l-foe { color: var(--red); font-weight: 800; }
 .gd-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* ---------- 論功行賞（v110） ---------- */
+.ronko { text-align: center; padding: 10px 8px; color: #f6ecd2; background: var(--maki-e) left bottom 4px / 36px 8px repeat-x, var(--lacquer); border: 2px solid var(--gold-line); box-shadow: inset 0 0 0 3px #000; margin-bottom: 8px; }
+.ronko.sekinin { background: linear-gradient(180deg, #2a2622, #141210); }
+.rk-tag { margin: 0; font-family: var(--brush); font-size: 26px; letter-spacing: 0.3em; color: #f3d27a; text-shadow: 2px 2px 0 #8a1d15; }
+.rk-stage { display: flex; align-items: flex-end; justify-content: center; gap: 14px; margin: 8px 0; }
+.rk-lord, .rk-hero { display: grid; justify-items: center; }
+.rk-lord small, .rk-hero small { font-size: 11px; opacity: 0.8; }
+.rk-hero b { font-family: var(--mincho); font-size: 16px; }
+.rk-hero .portrait, .rk-lord .portrait { border-radius: 50%; border: 3px solid var(--gold-line); }
+.rk-sup { display: flex; gap: 2px; }
+.rk-sup .portrait { border-radius: 50%; border: 2px solid var(--gold-line); }
+.rk-say { margin: 4px 0 0; font-family: var(--mincho); font-weight: 700; font-size: 15px; }

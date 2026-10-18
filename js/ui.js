@@ -3726,7 +3726,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
       Sound.tap();
       box.hidden = true;
       Sound.bgmStart('map');
-      const next = () => handleCaptives(r.captured || [], () => { if (onClose) onClose(r); });
+      const next = () => handleCaptives(r.captured || [], () => ronkoAfter(B, r, () => { if (onClose) onClose(r); }));
       // 名門校（家の本拠）を落としたら、落城の一枚絵
       if (r.won && !defense && B.attacker === PLAYER && CLANS[B.defender] && B.to === B.defender) showConquest(B, next); else next();
     };
@@ -4910,3 +4910,79 @@ render = function (...a) {
   }
   return r;
 };
+
+// ---------- 論功行賞と、敗戦の責め ----------
+// 他家の城や本拠を落としたら手柄を立てた将に褒美を。兵を多く失って負けたら、責任を問うか許すか
+function ronkoAfter(B, r, done) {
+  if (!S || S.result || B.attacker !== PLAYER) { done(); return; }
+  const g = S.gens[B.gid];
+  if (!g || g.clan !== PLAYER) { done(); return; }
+  const lost = B.a.start - (r.left ?? B.a.troops);
+  if (r.won && (B.defender !== 'none' || B.decisive)) showRonko(B, g, done);
+  else if (!r.won && lost >= Math.max(600, B.a.start * 0.5)) showSekinin(B, g, lost, done);
+  else done();
+}
+function showRonko(B, g, done) {
+  const sup = (B.support || []).map((p) => S.gens[p.gid]).filter((x) => x && x.clan === PLAYER && x.id !== g.id);
+  const lord = lordOf(S);
+  const vault = S.vault || [];
+  const big = B.decisive || B.to === B.defender;
+  const cash = big ? 200 : 100;
+  const where = MAP.byId[B.to];
+  const opts = [
+    { k: 'gold', label: `金子を与える（金${cash}）`, sub: `忠誠+10${sup.length ? '・援軍の将も+5' : ''}`, disabled: S.gold[PLAYER] < cash },
+    { k: 'treasure', label: vault.length ? `家宝「${TREASURES[vault[0]].name}」を授ける` : '授ける家宝がない', sub: '忠誠+20・家宝を持たせる', disabled: !vault.length || !!g.treasure },
+    { k: 'castle', label: `${where.short}を任せる`, sub: '忠誠+12・統率+1・その城の守りにつく', disabled: S.castles[B.to].owner !== PLAYER },
+    { k: 'word', label: 'お言葉だけ', sub: '忠誠+3' },
+  ];
+  openModal(`<div class="ronko" data-lock>
+      <p class="rk-tag">論功行賞</p>
+      <div class="rk-stage">${lord ? `<div class="rk-lord">${portrait(lord, 72, 'laugh')}<small>当主</small></div>` : ''}
+        <div class="rk-hero">${portrait(g, 96, 'smile')}<b>${esc(g.name)}</b><small>${esc(where.name)}攻めの大将</small></div>
+        ${sup.length ? `<div class="rk-sup">${sup.slice(0, 3).map((x) => portrait(x, 44, 'smile')).join('')}</div>` : ''}</div>
+      <p class="rk-say">「${esc(where.short)}、${pick(['見事に落としてまいりました', 'お約束どおり、落としてございます', '殿の御旗のもと、勝ちましてございます'])}」</p>
+    </div>
+    ${opts.map((o, i) => `<button class="btn ${i ? 'plain' : 'red'}" data-rk="${o.k}" ${o.disabled ? 'disabled' : ''}>${o.label}<small class="sub">${o.sub}</small></button>`).join('')}`);
+  Sound.hyoshigi(2);
+  modalBody.querySelectorAll('[data-rk]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      let msg = '';
+      const k = b.dataset.rk;
+      if (k === 'gold') { S.gold[PLAYER] -= cash; changeLoyal(g, 10); sup.forEach((x) => changeLoyal(x, 5)); msg = `${g.name}「ありがたき幸せ。次も必ずや」`; }
+      if (k === 'treasure') { const t = S.vault.shift(); g.treasure = t; changeLoyal(g, 20); msg = `${g.name}は「${TREASURES[t].name}」を押しいただいた。「家の宝、命に代えても」`; Sound.kira(); }
+      if (k === 'castle') { if (g.loc !== B.to) moveGeneral(S, g.id, B.to); changeLoyal(g, 12); g.str = Math.min(100, g.str + 1); msg = `${g.name}「${where.short}の守り、お任せあれ」`; }
+      if (k === 'word') { changeLoyal(g, 3); msg = `${g.name}「……はっ。精進いたします」`; }
+      if (typeof sagaAdd === 'function' && k !== 'word') sagaAdd(S, g, `${where.short}攻めの功で${{ gold: '金子', treasure: '家宝', castle: `${where.short}の城` }[k]}を賜る`);
+      save(); render(); closeModal();
+      toast(`${portrait(g, 30, 'smile')}<span>${esc(msg)}</span>`);
+      done();
+    };
+  });
+}
+function showSekinin(B, g, lost, done) {
+  const where = MAP.byId[B.to];
+  openModal(`<div class="ronko sekinin" data-lock>
+      <p class="rk-tag">敗戦の責め</p>
+      <div class="rk-stage"><div class="rk-hero">${portrait(g, 96, 'frustrated')}<b>${esc(g.name)}</b><small>${esc(where.name)}攻めの大将</small></div></div>
+      <p class="rk-say">「${fmt(lost)}の兵を失い、${esc(where.short)}を落とせず……面目次第もございませぬ」</p>
+    </div>
+    <button class="btn" data-sk="scold">叱責する<small class="sub">忠誠-8・悔しさで統率が伸びることも</small></button>
+    <button class="btn red" data-sk="forgive">不問に付す<small class="sub">忠誠+6</small></button>`);
+  Sound.taiko(0, 0.6);
+  modalBody.querySelectorAll('[data-sk]').forEach((b) => {
+    b.onclick = () => {
+      Sound.tap();
+      let msg;
+      if (b.dataset.sk === 'scold') {
+        changeLoyal(g, -8);
+        const up = Math.random() < 0.5 && g.str < 100;
+        if (up) g.str++;
+        msg = up ? `${g.name}「この悔しさ、次の戦で晴らしまする」（統率+1）` : `${g.name}「……返す言葉もございませぬ」`;
+      } else { changeLoyal(g, 6); msg = `${g.name}「この御恩、決して忘れませぬ」`; }
+      save(); render(); closeModal();
+      toast(`${portrait(g, 30, b.dataset.sk === 'scold' ? 'frustrated' : 'smile')}<span>${esc(msg)}</span>`);
+      done();
+    };
+  });
+}
