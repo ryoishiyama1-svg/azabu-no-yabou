@@ -2806,3 +2806,22 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .nk-rank li i { font-style: normal; font-weight: 800; text-align: right; } .nk-rank li i.up { color: var(--red); } .nk-rank li i.down { color: #3c6aa3; }
 .nk-news { margin: 4px 0 0; padding-left: 16px; font-size: 12px; }
 .nk-news b { margin-right: 6px; color: #8a6420; }
+
+/* ---------- 密命と勢い（v112） ---------- */
+.missions { margin: 10px 0; }
+.ms-head { margin: 0 0 4px; font-family: var(--brush); font-size: 16px; letter-spacing: 0.4em; color: var(--red); }
+.ms-card { position: relative; display: grid; grid-template-columns: 40px 1fr; gap: 8px; align-items: center; margin-bottom: 6px; padding: 6px 8px; background: #fff8e2; border: 2px solid var(--ink); border-left: 6px solid var(--red); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2); }
+.ms-card .portrait { border-radius: 50%; }
+.ms-card b { display: block; font-family: var(--mincho); font-size: 14px; }
+.ms-card small { font-size: 11px; opacity: 0.8; }
+.ms-card i { position: absolute; right: 6px; top: -8px; font: 400 14px var(--brush); font-style: normal; color: #fff; background: var(--red); padding: 0 6px; border: 1.5px solid var(--ink); }
+.ms-card.fresh { animation: tip-in 0.5s ease-out; }
+.ms-card.last { border-left-color: #e0a526; }
+.ms-done { font-family: var(--brush); font-size: 18px; color: #fff3d6; background: var(--red); padding: 2px 8px; margin-right: 6px; }
+.momentum { display: inline-flex; align-items: center; gap: 2px; margin: 4px 0 0 8px; font-size: 12px; }
+.momentum span { font-family: var(--brush); font-size: 13px; color: #fff3d6; background: linear-gradient(180deg, #e0a526, #c8372d); padding: 0 6px; border: 1px solid var(--gold-line); margin-right: 3px; }
+.momentum i { font-style: normal; font-size: 13px; animation: flick 0.9s ease-in-out infinite alternate; }
+.momentum i:nth-child(odd) { animation-delay: -0.4s; }
+@keyframes flick { from { transform: translateY(0) scale(1); } to { transform: translateY(-1px) scale(1.1); } }
+.momentum small { margin-left: 4px; opacity: 0.85; }
+.ms-card, .ms-card b, .ms-card small { color: var(--ink); } .ms-card small { opacity: 0.75; }

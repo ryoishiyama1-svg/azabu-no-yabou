@@ -974,6 +974,8 @@ function helpChapters() {
       ])}
       <h3>家臣の声</h3>
       <p>季ごとに家臣が一人、軍議で話しかけてきます。不満・攻めや町づくりの献策・志・宿敵の話など。返事しだいで忠誠や士気が動き、献策を任せるとその場で動きます。</p>
+      <h3>密命と勢い</h3>
+      <p>家臣が期限つきの<b>密命</b>（城を落とせ・守り抜け・家の城を奪え・町を育てよ・和を結べ・一騎打ちに勝て）を持ってきます。同時に二つまで。果たせば褒美。攻めで勝ち続けると<b>勢い</b>が溜まり（最大${MOMENTUM.max}段）、一段ごとに攻めの力+${Math.round(MOMENTUM.per * 100)}%。攻めで負けると途切れます。</p>
       <h3>時代が動く</h3>
       <p>数年に一度、<b>下剋上</b>（大きな家で謀反）、<b>お家再興</b>（滅んだ家がよみがえる）、<b>共通テスト</b>、<b>大地震</b>などの大きな出来事が起こり、決断を求められます。</p>
       <h3>勢力図の移り変わりと腕比べ</h3>
@@ -5059,5 +5061,42 @@ render = function (...a) {
     clearTimeout(window.__ybT);
     window.__ybT = setTimeout(tryShow, 1000);
   }
+  return r;
+};
+
+// ---------- 密命の札と、勢いの炎（軍議の画面） ----------
+function missionCards() {
+  const ms = (S.missions || []).filter((m) => !m.done);
+  if (!ms.length) return '';
+  return `<div class="missions"><p class="ms-head">密 命</p>${ms.map((m) => {
+    const g = S.gens[m.gid];
+    const left = m.until - S.turn;
+    return `<div class="ms-card ${m.fresh ? 'fresh' : ''} ${left <= 0 ? 'last' : ''}">${g ? portrait(g, 40, 'think') : ''}
+      <div><b>${esc(missionText(S, m))}</b><small>${g ? esc(g.name) + 'の献言・' : ''}${left > 0 ? `あと${left}季` : 'この季まで'}・褒美：${rewardText(m.reward)}</small></div>${m.fresh ? '<i>新</i>' : ''}</div>`;
+  }).join('')}</div>`;
+}
+function momentumChip() {
+  const n = S.momentum || 0;
+  if (!n) return '';
+  return `<p class="momentum" title="攻めで勝ち続けると溜まる。負けると途切れる"><span>勢い</span>${'<i>🔥</i>'.repeat(n)}<small>攻め+${n * 3}%</small></p>`;
+}
+const _msRender = render;
+render = function (...a) {
+  const r = _msRender.apply(this, a);
+  if (!S) return r;
+  const got = missionCheck(S);
+  const head = document.querySelector('.council .cn-who');
+  if (head && !head.querySelector('.momentum')) head.insertAdjacentHTML('beforeend', momentumChip());
+  const tiles = document.querySelector('.council .cn-tiles');
+  if (tiles && !document.querySelector('.council .missions')) {
+    tiles.insertAdjacentHTML('afterend', missionCards());
+    (S.missions || []).forEach((m) => { m.fresh = false; });
+  }
+  got.forEach((m, i) => setTimeout(() => {
+    Sound.kira();
+    toast(`<span class="ms-done">密命達成</span><span>${esc(missionText(S, m))}<br><b>褒美：${rewardText(m.reward)}</b></span>`);
+  }, 400 + i * 1600));
+  if (got.length) { save(); setTimeout(() => render(), 50); }
+  if (S.momentumLost) { const n = S.momentumLost; S.momentumLost = 0; setTimeout(() => toast(`<span>🔥 ${n}連勝の勢いが途切れた……</span>`), 600); }
   return r;
 };
