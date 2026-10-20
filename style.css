@@ -2829,3 +2829,10 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 /* ---------- 勧告と降伏勧告（v113） ---------- */
 .modal.over-battle { z-index: 40; }
 #battle .btn.surrender { --plate: linear-gradient(180deg, #6b3a8a, #3e1f55); grid-column: 1 / -1; }
+
+/* ---------- 戦略：孤立・挟み撃ち・伏兵（v114） ---------- */
+#map .stg-mark circle { fill: #3a3430; stroke: #f1e6cc; stroke-width: 1.5; }
+#map .stg-mark.fuku circle { fill: #2f5d3a; }
+#map .stg-mark text { font-family: var(--brush); font-size: 11px; text-anchor: middle; fill: #f6ecd2; }
+#battle .b-tactic.b-stg { background: rgba(255, 255, 255, 0.08); border-left: 3px solid #e0a526; }
+#battle .b-tactic.b-stg.fuku { border-left-color: #4f8a5a; }

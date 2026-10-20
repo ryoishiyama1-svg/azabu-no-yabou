@@ -919,6 +919,12 @@ function helpChapters() {
       <h3>陣形</h3>
       <p>合戦のはじめに<b>陣立て</b>。六つの陣形は巡りの相性を持ちます：${Object.values(JINKEI).map((J) => J.name).join('→')}→${JINKEI.hoshi.name}（それぞれ次の陣に強い）。大将の知略が高いと、敵の陣形が見えます。</p>
       <div class="help-grid">${Object.values(JINKEI).map((J) => `<div><b>${J.name}</b><span>${J.desc}</span></div>`).join('')}</div>
+      <h3>孤立・挟み撃ち・伏兵</h3>
+      ${li([
+        `味方の城と一つもつながっていない城は<b>孤立</b>（地図に「孤」）。季ごとに兵が${Math.round(ISOLATE.drain * 100)}%減り、攻められると士気-${ISOLATE.morale}。囲んでから落とすと楽に`,
+        `援軍を違う方角の城から出して攻めると<b>挟み撃ち</b>。攻め手の士気+${PINCER.morale}、守り手-${PINCER.foe}`,
+        `自分の城の命令「<b>伏兵</b>」で武将を伏せると、${FUKU.turns}季のあいだ、攻めてきた敵が兵${Math.round(FUKU.loss * 100)}%を失い士気が下がる（地図に「伏」）`,
+      ])}
       <h3>天下分け目の大合戦</h3>
       <p>天下の${Math.round(SEKI.share * 100)}%を握り、最大の他家（${Math.round(SEKI.rivalShare * 100)}%以上）と国境で向き合うと、決戦を迫られます。<b>左翼・中央・右翼</b>の三軍が同時にぶつかり、二つの翼が崩れた側の負け。毎合、命令と<b>本陣の後詰め</b>を送る翼を選び、一度だけ敵の軍勢を<b>寝返らせる調略</b>ができます。勝てば敵の城がまとめて降ります。</p>
       <h3>一騎打ち</h3>
@@ -1325,6 +1331,7 @@ function renderPanel() {
         <button class="btn" id="c-build"><span class="k">町</span>城下町<small>区画に施設を建てる</small></button>
         <button class="btn" id="c-reward" ${gens.some((g) => canReward(S, g)) ? '' : 'disabled'}><span class="k">賞</span>褒美<small>金${LOYAL.rewardCost}・忠誠+</small></button>
         <button class="btn" id="c-scheme" ${dis(S.gold[PLAYER] >= 150)}><span class="k">謀</span>計略<small>流言・引き抜き…</small></button>
+        <button class="btn" id="c-fuku" ${fukuAt(S, selected) ? 'disabled' : dis(idleGensAt(S, selected).length && hostileNeighbors(S, selected).length)}><span class="k">伏</span>伏兵<small>${fukuAt(S, selected) ? `伏せてある（${fukuAt(S, selected).until - S.turn + 1}季）` : `${FUKU.turns}季、攻め手を待ち伏せ`}</small></button>
         <button class="btn plain wide" id="c-close">閉じる</button>
       </div>`;
   } else {
@@ -2578,6 +2585,14 @@ function bindPanel() {
   on('c-fortify', () => act(fortify, 'int', '築城'));
   on('c-reward', () => { Sound.tap(); showReward(gensAt(S, selected), '褒美'); });
   on('c-scheme', () => { Sound.tap(); showSchemeMenu(selected); });
+  on('c-fuku', () => {
+    const g = bestBy(idleGensAt(S, selected), (x) => x.int + x.str);
+    if (!g) return;
+    Sound.taiko(0, 0.5);
+    setFuku(S, selected, g.id);
+    save(); render();
+    toast(`${portrait(g, 30)}<span>${esc(g.name)}：${MAP.byId[selected].short}の森に兵を伏せた（${FUKU.turns}季）<br><b>攻めてきた敵は兵${Math.round(FUKU.loss * 100)}%を失い、士気が下がる</b></span>`);
+  });
   on('c-build', () => { Sound.tap(); showBuild(selected); });
   on('c-strike', () => { Sound.tap(); openAttack(null, selected); });
   on('c-plan', () => { Sound.tap(); const pl = attackPlan(S, selected); if (pl) openAttack(null, selected, pl); });
@@ -5127,4 +5142,34 @@ render = function (...a) {
   if (got.length) { save(); setTimeout(() => render(), 50); }
   if (S.momentumLost) { const n = S.momentumLost; S.momentumLost = 0; setTimeout(() => toast(`<span>🔥 ${n}連勝の勢いが途切れた……</span>`), 600); }
   return r;
+};
+
+// ---------- 戦略の印：地図に「孤」「伏」、合戦の頭に孤立・挟み撃ち・伏兵・動揺 ----------
+const _stgRender = render;
+render = function (...a) {
+  const r = _stgRender.apply(this, a);
+  if (!S || !MAP || !MAP.nodes) return r;
+  document.querySelectorAll('#map .castle').forEach((g) => {
+    const id = g.dataset.id;
+    let m = g.querySelector('.stg-mark');
+    const iso = isolated(S, id), fk = S.castles[id].owner === PLAYER && fukuAt(S, id);
+    const want = iso ? 'iso' : fk ? 'fuku' : '';
+    if (!want) { if (m) m.remove(); return; }
+    if (!m) { m = document.createElementNS('http://www.w3.org/2000/svg', 'g'); m.setAttribute('transform', 'translate(21,4)'); g.appendChild(m); }
+    m.setAttribute('class', `stg-mark ${want}`);
+    m.innerHTML = `<circle r="8"/><text y="4">${want === 'iso' ? '孤' : '伏'}</text>`;
+  });
+  return r;
+};
+const _stgRun = runBattle;
+runBattle = function (B, opts) {
+  const res = _stgRun(B, opts);
+  const head = document.querySelector('#battle .b-head');
+  const add = [];
+  if (B.isolated) add.push(`<div class="b-tactic b-stg">孤立：${MAP.byId[B.to].short}は味方の城とつながらず、兵糧も届かない。守り手の士気-${ISOLATE.morale}</div>`);
+  if (B.pincer) add.push(`<div class="b-tactic b-stg">挟み撃ち：違う方角から攻め寄せる！ 攻め手の士気+${PINCER.morale}・守り手-${PINCER.foe}</div>`);
+  if (B.fukuHit) add.push(`<div class="b-tactic b-stg fuku">伏兵：待ち伏せが攻め手を襲った！ 敵兵-${B.fukuHit}・敵の士気-${FUKU.morale}</div>`);
+  if (B.doyo) add.push(`<div class="b-tactic b-stg">動揺：勧告を受けた城兵は落ち着かない。守り手の士気-${KANKOKU.morale}</div>`);
+  if (head && add.length) head.insertAdjacentHTML('beforeend', add.join(''));
+  return res;
 };
