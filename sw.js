@@ -1,6 +1,6 @@
 // オフラインでも遊べるようにファイルを保存しておく
 // ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
-const V = 120;
+const V = 121;
 const VERSION = `v${V}`;
 const FILES = [
   './',
@@ -25,6 +25,7 @@ const FILES = [
   `js/strategy.js?v=${V}`,
   `js/vassal.js?v=${V}`,
   `js/gakko.js?v=${V}`,
+  `js/variant.js?v=${V}`,
   `js/records.js?v=${V}`,
   `js/saves.js?v=${V}`,
   `js/art.js?v=${V}`,

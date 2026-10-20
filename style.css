@@ -2897,3 +2897,11 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .cr-fin { display: inline-grid; place-items: center; width: 110px; height: 110px; margin: 120px 0 45vh; font-family: var(--brush); font-size: 64px; color: #fff3d6; background: var(--red); border: 4px double #fff3d6; transform: rotate(-6deg); }
 .cr-skip { position: absolute; right: 14px; bottom: 12px; margin: 0; font-size: 12px; opacity: 0.55; }
 @media (prefers-reduced-motion: reduce) { .cr-roll { animation-duration: 1ms !important; } }
+
+/* ---------- 戦いの型（v121） ---------- */
+.vt-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.vt-pick button { display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: center; text-align: left; padding: 8px 10px; border: 2px solid var(--ink); background: var(--paper); font: inherit; cursor: pointer; }
+.vt-pick button.on { background: #2a1d16; color: #f6ecd2; border-color: var(--gold-line); }
+.vt-mark { grid-row: 1 / span 2; display: grid; place-items: center; width: 32px; height: 32px; font-family: var(--brush); font-size: 20px; color: #fff3d6; background: var(--red); border: 1.5px solid var(--ink); }
+.vt-pick b { font-family: var(--mincho); font-weight: 900; }
+.vt-pick small { font-size: 11px; opacity: 0.85; }

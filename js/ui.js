@@ -678,7 +678,7 @@ const scenarioSize = (scKey) => SCHOOL_ROWS.filter(SCENARIOS[scKey].filter).leng
 
 function showSetup() {
   const rec = loadRecords();
-  const st = { diff: 'normal', ed: 'tokyo', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '', ch: new Set() };
+  const st = { diff: 'normal', ed: 'tokyo', scenario: tutDone() ? 'tokyo' : 'toshin', clan: 'azabu', name: '', ch: new Set(), variant: 'std' };
   const pickList = (attr, keys, obj, cur, label) => `<div class="diff-list">${keys.map((k) => { const d = obj[k];
     return `<button data-${attr}="${k}" class="${k === cur ? 'on' : ''}"><b>${d.name}</b>${label(d, k)}<small>${d.desc}</small></button>`; }).join('')}</div>`;
   // 版の札：大きな一文字と、学校・家の数
@@ -711,15 +711,17 @@ function showSetup() {
     <div id="ed-box">${edCards()}</div>
     ${step('二', '戦いを選ぶ')}
     <div id="sc-box">${scList()}</div>
-    ${step('三', '率いる家')}
+    ${step('三', '戦いの型')}
+    <div class="vt-pick">${Object.entries(VARIANTS).map(([k, v]) => `<button data-vt="${k}" class="${k === 'std' ? 'on' : ''}"><span class="vt-mark">${v.mark}</span><b>${v.name}</b><small>${v.desc}</small></button>`).join('')}</div>
+    ${step('四', '率いる家')}
     <div id="clan-box">${clanList()}</div>
-    ${step('四', '当主の名前')}
+    ${step('五', '当主の名前')}
     <input class="name-input" id="lord-name" maxlength="10" value="${defaultName()}" autocomplete="off">
-    ${step('五', '家の志')}
+    ${step('六', '家の志')}
     <div class="ts-pick"><button data-ts="" class="on"><b>家訓にまかせる</b><small>当主の家訓から志が決まる</small></button>${Object.entries(TAISHI).map(([k, t]) => `<button data-ts="${k}"><span class="ts-motto">${t.motto}</span><b>${t.name}</b><small>${t.desc}</small></button>`).join('')}</div>
-    ${step('六', '難易度')}
+    ${step('七', '難易度')}
     ${pickList('diff', Object.keys(DIFFICULTY), DIFFICULTY, st.diff, () => '')}
-    ${step('七', '挑戦状（えらばなくてもよい）')}
+    ${step('八', '挑戦状（えらばなくてもよい）')}
     <div class="ch-pick">${Object.entries(CHALLENGES).map(([k, c]) => `<button data-ch="${k}"><span>${c.mark}</span><b>${c.name}</b><small>${c.desc}</small>${(rec.challenges || {})[k] ? '<i>済</i>' : ''}</button>`).join('')}</div>
     <label class="check-row"><input type="checkbox" id="tut" ${tutDone() ? '' : 'checked'}> 軍師の手ほどき（チュートリアル）を受ける</label>
     <button class="btn red" id="setup-go">出 陣</button>
@@ -763,6 +765,7 @@ function showSetup() {
   bindClans();
   bindPick('diff', (v) => { st.diff = v; });
   bindPick('ts', (v) => { st.taishi = v; });
+  bindPick('vt', (v) => { st.variant = v; });
   $('setup-quick').onclick = () => {
     Sound.tap();
     const sc = fresh ? 'toshin' : 'tokyo';
@@ -779,6 +782,7 @@ function showSetup() {
     S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked, challenges: [...st.ch] });
     if (st.taishi) { S.playerTaishi = st.taishi; S.taishi = {}; }
     if ($('tut').checked) S.gentle = true; // 手ほどきつきは、序盤の猶予を長めに
+    if (st.variant && st.variant !== 'std') applyVariant(S, st.variant);
     save();
     closeModal();
     startGame(true);
