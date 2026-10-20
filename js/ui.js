@@ -5288,3 +5288,75 @@ render = function (...a) {
   }
   return r;
 };
+
+// ---------- 天下統一のエンドロール ----------
+// 大団円の絵のあと、勢力図の移り変わりを背に、歴代当主・天下の出来事・戦った家々・家臣の一言・数字が流れていく
+const CREDIT_WORDS = ['この家で戦えて、よかった', '殿の旗のもとで、夢を見られました', '三年間、悔いはありませぬ', '天下を取ったこの景色、忘れませぬ',
+  '次の代にも、この話を語り継ぎます', '負けた日も、勝った日も、全部宝物です', 'ありがとう。また、どこかで', 'われらの旗、天下にひるがえる'];
+function creditsHtml() {
+  const lordGen = (name) => Object.values(S.gens).find((g) => g.name === name) || (S.hall || []).find((h) => h.name === name);
+  const face = (g, size) => (g ? portrait({ ...g, id: g.id || 'cr', clan: PLAYER, origin: PLAYER, grade: g.grade || 3, title: g.title || '' }, size, 'smile') : crestBadge(PLAYER, size));
+  const lords = (S.lords || []).map((l, i) => {
+    const until = S.lords[i + 1] ? S.lords[i + 1].from : S.turn;
+    return `<div class="cr-lord">${face(lordGen(l.name), 64)}<b>${i + 1}代　${esc(l.name)}</b><small>${dateLabel(l.from)}〜${dateLabel(until)}・家訓「${KAKUN[l.kakun] ? KAKUN[l.kakun].name : ''}」</small></div>`;
+  }).join('');
+  const saga = (S.saga || []).filter((e) => e.weight >= 50).sort((a, b) => a.turn - b.turn).slice(-14)
+    .map((e) => `<li><span>${dateLabel(e.turn)}</span>${esc(e.head)}</li>`).join('');
+  const clans = scenarioClans(S.scenario).filter((k) => k !== PLAYER).map((k) => {
+    const how = S.vassalUnify && S.vassals && S.vassals[k] ? '臣従' : (S.storyGone || []).includes(k) ? '滅亡' : '降る';
+    return `<span class="cr-clan">${crestBadge(k, 26)}<b>${CLANS[k].name}</b><em>${how}</em></span>`;
+  }).join('');
+  const heroes = gensOf(S, PLAYER).sort((a, b) => (recOf(b).cap + recOf(b).w) - (recOf(a).cap + recOf(a).w)).slice(0, 8)
+    .map((g, i) => `<div class="cr-hero">${portrait(g, 56, 'smile')}<div><b>${esc(g.name)}</b><small>${nickOf(g) ? `「${esc(nickOf(g))}」` : esc(g.title || '')}</small><p>「${CREDIT_WORDS[(i + S.turn) % CREDIT_WORDS.length]}」</p></div></div>`).join('');
+  const st = S.stats || {};
+  const nums = [['天下統一まで', `${S.turn}季`], ['合戦の勝利', st.battlesWon || 0], ['一騎打ち', `${st.duelWins || 0}勝`], ['果たした密命', st.missions || 0], ['降伏させた城', st.debateWins || 0], ['当主', `${(S.lords || []).length}代`]]
+    .map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+  return `<div class="cr-roll" id="cr-roll">
+    <p class="cr-title">${esc(gameTitle())}</p><p class="cr-sub">${esc(SCENARIOS[S.scenario].name)}　天下統一</p>
+    <h4>歴 代 当 主</h4><div class="cr-lords">${lords}</div>
+    ${saga ? `<h4>天 下 の 出 来 事</h4><ul class="cr-saga">${saga}</ul>` : ''}
+    <h4>戦 っ た 家 々</h4><div class="cr-clans">${clans}</div>
+    <h4>家 臣 た ち</h4><div class="cr-heroes">${heroes}</div>
+    <h4>数 字 で 見 る 天 下 取 り</h4><div class="cr-nums">${nums}</div>
+    <div class="cr-fin">完</div>
+  </div>`;
+}
+function showCredits(then) {
+  let box = $('credits');
+  if (!box) { box = document.createElement('div'); box.id = 'credits'; document.body.appendChild(box); }
+  const frames = replayFrames(S);
+  const col = (k) => (k === 'none' ? '#3a342c' : CLANS[k].color);
+  box.innerHTML = `<svg class="cr-map" viewBox="0 0 ${MAP.width} ${MAP.height}" preserveAspectRatio="xMidYMid slice">${MAP.nodes.map((n, i) => `<path data-i="${i}" d="${CELLS[n.id]}"/>`).join('')}</svg>
+    <div class="cr-veil"></div>${creditsHtml()}<p class="cr-skip">タップで飛ばす</p>`;
+  box.hidden = false;
+  const cells = [...box.querySelectorAll('.cr-map path')];
+  let f = 0;
+  const paint = () => { const fr = frames[Math.min(f, frames.length - 1)]; fr.own.forEach((o, i) => { if (cells[i]) cells[i].style.fill = col(o); }); f++; };
+  paint();
+  const roll = box.querySelector('#cr-roll');
+  roll.style.animation = 'none';
+  const total = roll.scrollHeight + innerHeight;
+  const speed = clamp(total / 60, 40, 70); // 一秒に40〜70px、一分ほどで流れきる
+  const dur = total / speed;
+  const tick = setInterval(paint, (dur * 1000) / Math.max(1, frames.length));
+  let done = false;
+  const t0 = performance.now();
+  const finish = () => { if (done) return; done = true; clearInterval(tick); clearInterval(mover); box.hidden = true; then(); };
+  // 時計から位置を決める（描画が間引かれても、流れる速さは変わらない）
+  const mover = setInterval(() => {
+    const y = innerHeight - ((performance.now() - t0) / 1000) * speed;
+    roll.style.transform = `translate(-50%, ${y.toFixed(1)}px)`;
+    if (y < innerHeight - total) { clearInterval(mover); setTimeout(finish, 1800); }
+  }, 16);
+  box.onclick = finish;
+}
+const _crEnding = showEnding;
+showEnding = function (...a) {
+  if (S && S.result === 'win' && S.finaleShown && !S.creditsShown) {
+    S.creditsShown = true;
+    save();
+    showCredits(() => showEnding());
+    return;
+  }
+  return _crEnding.apply(this, a);
+};

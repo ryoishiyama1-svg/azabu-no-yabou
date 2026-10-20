@@ -2863,3 +2863,37 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .kachu-head { display: grid; gap: 6px; padding: 8px 10px; margin-bottom: 8px; color: #f6ecd2; background: var(--lacquer); border: 1.5px solid var(--gold-line); }
 .kachu-head .ts-line small { color: #e8d5a6; }
 .kachu-head .momentum { margin-left: 0; }
+
+/* ---------- 天下統一のエンドロール（v120） ---------- */
+#credits { position: fixed; inset: 0; z-index: 110; overflow: hidden; background: #0c0a08; color: #f6ecd2; cursor: pointer; }
+#credits .cr-map { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.28; }
+#credits .cr-map path { fill: #3a342c; stroke: rgba(0, 0, 0, 0.6); stroke-width: 2; transition: fill 0.8s; }
+#credits .cr-veil { position: absolute; inset: 0; background: linear-gradient(180deg, #0c0a08 0%, transparent 18%, transparent 82%, #0c0a08 100%); pointer-events: none; }
+.cr-roll { position: absolute; left: 50%; top: 0; width: min(92vw, 520px); transform: translate(-50%, 100vh); text-align: center; animation: cr-up 60s linear forwards; }
+@keyframes cr-up { from { transform: translate(-50%, 100vh); } to { transform: translate(-50%, calc(100vh - var(--cr-h, 3000px))); } }
+.cr-title { margin: 0; font-family: var(--brush); font-size: 46px; letter-spacing: 0.2em; color: #f3d27a; text-shadow: 3px 3px 0 #8a1d15; }
+.cr-sub { margin: 4px 0 60px; font-family: var(--mincho); font-size: 16px; letter-spacing: 0.4em; }
+.cr-roll h4 { margin: 70px 0 18px; font-family: var(--brush); font-weight: 400; font-size: 22px; letter-spacing: 0.3em; color: #e0a526; }
+.cr-lords { display: grid; gap: 16px; }
+.cr-lord { display: grid; justify-items: center; gap: 4px; }
+.cr-lord .portrait { border-radius: 50%; border: 3px solid var(--gold-line); }
+.cr-lord b { font-family: var(--mincho); font-size: 18px; }
+.cr-lord small { font-size: 12px; opacity: 0.8; }
+.cr-saga { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-family: var(--mincho); font-size: 15px; }
+.cr-saga span { display: block; font-size: 11px; color: #c99a2e; }
+.cr-clans { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 16px; }
+.cr-clan { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.cr-clan em { font-style: normal; font-size: 11px; padding: 0 5px; border: 1px solid #c99a2e; color: #e8d5a6; }
+.cr-heroes { display: grid; gap: 14px; text-align: left; }
+.cr-hero { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: center; }
+.cr-hero .portrait { border-radius: 50%; border: 2px solid var(--gold-line); }
+.cr-hero b { font-family: var(--mincho); font-size: 16px; }
+.cr-hero small { margin-left: 6px; color: #e0a526; font-size: 12px; }
+.cr-hero p { margin: 2px 0 0; font-family: var(--mincho); font-size: 14px; opacity: 0.9; }
+.cr-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cr-nums div { padding: 8px 4px; border: 1px solid rgba(201, 154, 46, 0.6); }
+.cr-nums span { display: block; font-size: 11px; opacity: 0.8; }
+.cr-nums b { font-family: var(--mincho); font-size: 22px; color: #f3d27a; }
+.cr-fin { display: inline-grid; place-items: center; width: 110px; height: 110px; margin: 120px 0 45vh; font-family: var(--brush); font-size: 64px; color: #fff3d6; background: var(--red); border: 4px double #fff3d6; transform: rotate(-6deg); }
+.cr-skip { position: absolute; right: 14px; bottom: 12px; margin: 0; font-size: 12px; opacity: 0.55; }
+@media (prefers-reduced-motion: reduce) { .cr-roll { animation-duration: 1ms !important; } }
