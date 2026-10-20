@@ -963,6 +963,13 @@ function helpChapters() {
         `各家には<b>性格</b>があります（${Object.entries(CLAN_PERSONA).filter(([k]) => k !== PLAYER).map(([k, p]) => `${CLANS[k].name.replace('家', '')}＝${PERSONAS[p].name}`).join('、')}）`,
         `他家どうしも停戦・同盟を結び、ときには裏切ります`,
       ])}
+      <h3>臣従</h3>
+      ${li([
+        `国境に接する、ずっと小さな家には「<b>臣従を迫る</b>」。兵の差・友好度・当主の魅力で決まります`,
+        `臣従した家は攻めてこず、毎季 収入の${Math.round(VASSAL.tribute * 100)}%を献上します`,
+        `<b>忠節</b>は季ごとに下がり、攻めで負けるとさらに下がります。${VASSAL.rebelBelow}を切ると<b>離反</b>のおそれ。「賜物」で上げられます`,
+        `残る家がすべて臣従していれば、諸家は城を明け渡し、そのまま天下統一`,
+      ])}
       <h3>群雄の構図</h3>
       ${li([
         `旗揚げのとき、いちばん近い家が<b>宿敵の家</b>に（武将どうしの「宿敵」とは別）。宿敵との合戦は士気+${NEMESIS.morale}、本拠を落として滅ぼせば金${NEMESIS.gold}と全家臣の忠誠+${NEMESIS.loyal}`,
@@ -1609,11 +1616,18 @@ function showDiplomacy(message) {
       ${S.joint && S.joint.ally === k ? `<p class="persona rel">⚔️ 共同出兵：${CLANS[S.joint.target].name}を攻撃中（残り${S.joint.turns}季）</p>` : ''}
       ${r.trade > 0 ? `<p class="persona rel">💰 通商：毎季 金+${tradeIncome(S, k)}</p>` : ''}
       <div class="friend"><span>友好度</span><i><b style="width:${r.friend}%"></b></i><em>${r.friend}</em></div>
+      ${isVassal(S, k) ? `<div class="vassal-box"><b>臣従</b><span>${pShort()}の旗のもとにある家。攻め合わず、毎季 金${S.vassals[k].paid || '…'}を献上</span>
+        <div class="friend fealty"><span>忠節</span><i><b style="width:${S.vassals[k].fealty}%"></b></i><em>${S.vassals[k].fealty}</em></div></div>
+        <div class="dr-btns">
+          <button class="btn red" data-act="vgift" data-clan="${k}" ${S.gold[PLAYER] < VASSAL.giftCost ? 'disabled' : ''}>賜物<small>金${VASSAL.giftCost}・忠節+${VASSAL.gift}</small></button>
+          <button class="btn plain" data-act="vfree" data-clan="${k}">臣従を解く<small>また攻められる</small></button>
+        </div>` : `
       <div class="dr-btns">
         <button class="btn plain" data-act="gift" data-clan="${k}" ${off || S.gold[PLAYER] < DIPLO.giftCost ? 'disabled' : ''}>贈答<small>金${DIPLO.giftCost}</small></button>
         <button class="btn red" data-act="talk" data-clan="${k}" ${off ? 'disabled' : ''}>会談<small>申し出を選ぶ</small></button>
         ${peace ? `<button class="btn" data-act="break" data-clan="${k}">破棄<small>信用を失う</small></button>` : ''}
-      </div>
+        ${canDemandFealty(S, k) ? `<button class="btn fealty-btn" data-act="vassal" data-clan="${k}" ${off ? 'disabled' : ''}>臣従を迫る<small>見込み ${Math.round(fealtyChance(S, k, envoy) * 100)}%</small></button>` : ''}
+      </div>`}
     </div>`;
   }).join('');
   const logN = (S.diploLog || []).length;
@@ -1637,6 +1651,17 @@ function showDiplomacy(message) {
       } else if (act === 'gift') {
         msg = diploGift(S, k, envoyOf(S));
         Sound.tap();
+      } else if (act === 'vassal') {
+        const r = demandFealty(S, k, envoyOf(S));
+        msg = r.text;
+        if (r.ok) { Sound.horagai(); Sound.stamp(0.3); } else Sound.lose();
+      } else if (act === 'vgift') {
+        giftVassal(S, k); Sound.kira();
+        msg = `${CLANS[k].name}に賜物を贈った（忠節+${VASSAL.gift}）`;
+      } else if (act === 'vfree') {
+        if (!(await askConfirm(`${CLANS[k].name}の臣従を解きますか？\nまた攻め合う間柄に戻ります。`, { ok: '解く' }))) return;
+        releaseVassal(S, k);
+        msg = `${CLANS[k].name}の臣従を解いた`;
       } else {
         Sound.tap();
         showProposals(k);
