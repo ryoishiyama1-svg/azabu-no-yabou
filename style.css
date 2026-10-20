@@ -2836,3 +2836,10 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 #map .stg-mark text { font-family: var(--brush); font-size: 11px; text-anchor: middle; fill: #f6ecd2; }
 #battle .b-tactic.b-stg { background: rgba(255, 255, 255, 0.08); border-left: 3px solid #e0a526; }
 #battle .b-tactic.b-stg.fuku { border-left-color: #4f8a5a; }
+
+/* ---------- 地図の上に生きた人々（v115） ---------- */
+#map #walkers { pointer-events: none; }
+#map .walker > g { transform: scale(1.35); }
+#mapwrap[data-season="3"] #map .walker.shonin { display: none; } /* 冬は行商人が少ない */
+#map .march-col { pointer-events: none; }
+#map .march-col .smoke { display: none; }

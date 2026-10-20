@@ -5173,3 +5173,69 @@ runBattle = function (B, opts) {
   if (head && add.length) head.insertAdjacentHTML('beforeend', add.join(''));
   return res;
 };
+
+// ---------- 地図の上に生きた人々：街道を行き交う人と、出陣の行列 ----------
+function walkerFigure(kind, color) {
+  const K = '#1c1a17';
+  const pack = kind === 'shonin' ? `<rect x="-4.5" y="-11" width="4" height="5" fill="#a87b4f" stroke="${K}" stroke-width="0.5"/>` : kind === 'gakusei' ? `<rect x="2" y="-6" width="3.4" height="3" fill="#3a2a1a"/>` : '';
+  const hat = kind === 'hikyaku' ? `<path d="M-2.6,-10.8 h5.2" stroke="${K}" stroke-width="1"/>` : kind === 'shonin' ? `<path d="M-3.6,-10.5 L0,-13 L3.6,-10.5Z" fill="#c9a86b" stroke="${K}" stroke-width="0.4"/>` : '';
+  return `${pack}<path d="M-1.6,-2 L-2.2,0 M1.6,-2 L2.2,0" stroke="${K}" stroke-width="1"/><path d="M-2.4,-2 L-2,-7 L2,-7 L2.4,-2Z" fill="${color}" stroke="${K}" stroke-width="0.5"/>
+    <circle cy="-8.6" r="1.7" fill="#fbe7cc" stroke="${K}" stroke-width="0.4"/>${hat}`;
+}
+function drawWalkers() {
+  const svgEl = $('map');
+  if (!svgEl) return;
+  let layer = svgEl.querySelector('#walkers');
+  if (layer) layer.remove();
+  layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  layer.id = 'walkers';
+  const castlesLayer = svgEl.querySelector('#castles');
+  svgEl.insertBefore(layer, castlesLayer);
+  const r = seeded(MAP.nodes.length * 17 + 3);
+  const edges = [];
+  MAP.nodes.forEach((n) => MAP.adj[n.id].forEach((m) => { if (n.id < m) edges.push([n, MAP.byId[m]]); }));
+  if (!edges.length) return;
+  const eco = MAP.nodes.reduce((a, n) => a + (S.castles[n.id].eco || 0), 0) / MAP.nodes.length;
+  const count = clamp(Math.round(MAP.nodes.length * 0.35 + eco / 25), 8, 40);
+  const kinds = ['shonin', 'gakusei', 'gakusei', 'hikyaku'];
+  const colors = { shonin: '#6b5a40', gakusei: '#26325c', hikyaku: '#c8372d' };
+  layer.innerHTML = Array.from({ length: count }, (_, i) => {
+    const [a, b] = edges[Math.floor(r() * edges.length)];
+    const k = kinds[i % kinds.length];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const dur = ((len / (k === 'hikyaku' ? 34 : 14)) * (0.8 + r() * 0.4)).toFixed(1);
+    const off = -(r() * dur).toFixed(1);
+    // 城の中心は避けて、道の途中を行き来する
+    const p = (t) => [a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t];
+    const [x1, y1] = p(0.18), [x2, y2] = p(0.82);
+    return `<g class="walker ${k}"><g>${walkerFigure(k, colors[k])}</g>
+      <animateMotion dur="${dur}s" begin="${off}s" repeatCount="indefinite" path="M${x1.toFixed(0)},${(y1 + 6).toFixed(0)} L${x2.toFixed(0)},${(y2 + 6).toFixed(0)}" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear"/></g>`;
+  }).join('');
+}
+const _wkDraw = drawMap;
+drawMap = function (...a) { const r = _wkDraw.apply(this, a); try { drawWalkers(); } catch (e) {} return r; };
+
+// 出陣の行列：攻めると決めたら、地図の上で軍勢が敵の城へ進んでから、合戦の画面へ
+function marchOnMap(from, to, clan, then) {
+  const layer = $('world-fx'), a = MAP.byId[from], b = MAP.byId[to];
+  if (!layer || !a || !b || $('game').hidden) { then(); return; }
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'march-col');
+  const color = CLANS[clan] ? CLANS[clan].color : '#c8372d';
+  const ang = Math.atan2(b.y - a.y, b.x - a.x);
+  const flip = Math.cos(ang) < 0;
+  g.innerHTML = Array.from({ length: 7 }, (_, i) => `<g><g transform="scale(1.6)${flip ? ' scale(-1,1)' : ''}">${soldier(color, false, unitOf(i))}</g>
+    <animateMotion dur="1.3s" begin="0s" fill="freeze" path="M${(a.x - Math.cos(ang) * i * 13).toFixed(0)},${(a.y - Math.sin(ang) * i * 13 + 10).toFixed(0)} L${(a.x + (b.x - a.x) * 0.72 - Math.cos(ang) * i * 13).toFixed(0)},${(a.y + (b.y - a.y) * 0.72 - Math.sin(ang) * i * 13 + 10).toFixed(0)}" calcMode="spline" keySplines="0.4 0 0.6 1" keyTimes="0;1"/></g>`).join('');
+  layer.appendChild(g);
+  Sound.taiko(0, 0.7); Sound.taiko(0.3, 0.7);
+  setTimeout(() => { g.remove(); then(); }, 1500);
+}
+const _wkRun = runBattle;
+runBattle = function (B, opts) {
+  if (B.attacker === PLAYER && !B.marched && !(opts && opts.auto && B.playerSide !== 'a')) {
+    B.marched = true;
+    marchOnMap(B.from, B.to, PLAYER, () => _wkRun(B, opts));
+    return;
+  }
+  return _wkRun(B, opts);
+};
