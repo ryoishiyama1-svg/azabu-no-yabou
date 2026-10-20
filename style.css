@@ -2825,3 +2825,7 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 @keyframes flick { from { transform: translateY(0) scale(1); } to { transform: translateY(-1px) scale(1.1); } }
 .momentum small { margin-left: 4px; opacity: 0.85; }
 .ms-card, .ms-card b, .ms-card small { color: var(--ink); } .ms-card small { opacity: 0.75; }
+
+/* ---------- 勧告と降伏勧告（v113） ---------- */
+.modal.over-battle { z-index: 40; }
+#battle .btn.surrender { --plate: linear-gradient(180deg, #6b3a8a, #3e1f55); grid-column: 1 / -1; }

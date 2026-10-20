@@ -71,7 +71,7 @@ diploTruce = function (s, clan, g) { const r = _tsTruce(s, clan, g); if (r.ok) {
 const _tsAlly = diploAlly;
 diploAlly = function (s, clan, g) { const r = _tsAlly(s, clan, g); if (r.ok) { taishiGain(s, PLAYER, 'peace'); taishiGain(s, clan, 'peace', 0.5); } return r; };
 const _tsEndDebate = endDebate;
-endDebate = function (s, Dt) { const win = Dt.done === 'win'; const r = _tsEndDebate(s, Dt); if (win) taishiGain(s, PLAYER, 'bloodless'); return r; };
+endDebate = function (s, Dt) { const win = Dt.done === 'win'; const r = _tsEndDebate(s, Dt); if (win) taishiGain(s, PLAYER, 'scheme'); return r; }; // 勧告がうまくいけば、謀略の志が高まる
 const _tsRunScheme = runScheme;
 runScheme = function (s, kind, g, to, target) {
   const r = _tsRunScheme(s, kind, g, to, target);

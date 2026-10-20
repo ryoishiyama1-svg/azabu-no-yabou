@@ -645,7 +645,7 @@ const HINTS = {
   jinkei: '陣立てでござる。六つの陣形は巡りの相性。物見が敵の構えを見抜けば「◎有利」の陣を選びなされ。迷えば「魚鱗」が攻めの基本',
   town: '城下町の普請でござる。光る空き地をタップして施設を。「開発」で町が育てば、区画が開いてゆきまする',
   talk: '家臣が話しかけてまいりました。返事しだいで忠誠や士気が動きまする。献策を任せれば、その場で動きまするぞ',
-  debate: '舌戦は読み合い。弱点の論は二倍効き、反対の論は半分。読めぬ相手には、まだ使っておらぬ論を試し、反応を見なされ',
+  debate: '勧告は読み合い。弱点の論は二倍効き、反対の論は半分。読めぬ相手には、まだ使っておらぬ論を試し、反応を見なされ。合戦で敵が弱れば「降伏勧告」で城ごと降せまする',
   seki: '天下分け目の大戦でござる。三つの翼のうち二つが崩れた側の負け。後詰めを送る翼を選び、勝負どころで調略を',
   nemesis: '「宿敵の家」とは、すぐ隣で天下を争う家。宿敵との戦は士気が上がり、本拠を落として滅ぼせば大きな褒美がござる',
   taishi: '家の志でござる。志にかなう行いで三段まで高まり、家ならではの力が増しまする',
@@ -929,7 +929,7 @@ function helpChapters() {
       ])}
       <h3>コツ</h3>
       <p>守る側は「兵力×防御×守将」で戦います。出陣の画面に<b>勝つ見込み</b>が出るので、<b>勝算大</b>（9割以上）と出るまで兵や援軍を集めましょう。敵の構えを読めたら、それに強い作戦を選ぶと見込みが上がります。</p>` },
-    { k: '謀', t: '計略', name: '計略・舌戦', body: `
+    { k: '謀', t: '計略', name: '計略・勧告', body: `
       <h3>計略</h3>
       ${li([
         `城の命令「計略」で、道${SCHEME_RANGE}本先までの城に仕掛けられます`,
@@ -938,14 +938,15 @@ function helpChapters() {
         `<b>調略</b>：独立校を戦わずに味方にする`,
         `他家も計略を仕掛けてきます。忠誠の低い家臣は引き抜かれやすいので注意`,
       ])}
-      <h3>舌戦</h3>
-      <p>敵の城を選んで「舌戦」。となりの城の、知略と魅力のいちばん高い武将が使者になり、<b>${DEBATE.rounds}回の論</b>で説得します。ゲージを満たせば<b>無血開城</b>。</p>
+      <h3>勧告と降伏勧告</h3>
+      <p>敵の城を選んで「<b>勧告</b>」。となりの城の、知略と魅力のいちばん高い武将が使者になり、<b>${DEBATE.rounds}回の論</b>で説得します。ゲージを満たせば城兵の${Math.round(KANKOKU.flee * 100)}%が逃げ、守りが下がり、${KANKOKU.turns}季のあいだ<b>動揺</b>（攻めれば守り手の士気-${KANKOKU.morale}）。城そのものは取れません。</p>
+      <p>合戦の最中、敵の兵が${Math.round(KOUFUKU.troops * 100)}%を切るか士気が${KOUFUKU.morale}を下回ると「<b>降伏勧告</b>」ができます。説き伏せれば<b>その場で城が降り</b>ます。敵が弱っているほど効き、失敗すると味方の士気が下がって敵が奮い立ちます（一つの合戦で一度だけ）。</p>
       <div class="help-grid">${Object.entries(DEBATE_ARGS).map(([k, a]) => `<div><b><i class="hk db-${k}">${a.name}</i>${a.full}</b><span>${a.desc}。「${a.foe}」な相手に効く</span></div>`).join('')}</div>
       ${li([
         `守将の<b>弱点</b>の論は2倍、反対の論は半分、同じ論のくり返しは弱まります`,
         `使者の知略が高いほど、相手の弱点を見抜けます。弱点の論が刺されば、そこで弱点が見えます`,
         `勝負を分けるのは能力より<b>読み</b>。見えない相手には、まだ使っていない論を試して反応を見ましょう`,
-        `本拠と、当主のいる城は開城しません。断られた城には4季のあいだ仕掛けられません`,
+        `本拠と、当主のいる城には降伏勧告できません。勧告を断られた城には4季、成功した城には2季のあいだ仕掛けられません`,
       ])}` },
     { k: '交', t: '外交', name: '外交', body: `
       ${li([
@@ -1361,10 +1362,10 @@ function renderPanel() {
           const envoy = canDebate(S, selected) ? debateEnvoy(S, selected) : null;
           const why2 = isCapital(selected, c.owner) ? '本拠は言葉では落ちない'
             : gensAt(S, selected).some((g) => g.lord) ? '当主のいる城は開城しない'
-            : S.debateCd && S.debateCd[selected] > S.turn ? 'しばらく舌戦には応じない'
+            : S.debateCd && S.debateCd[selected] > S.turn ? 'しばらく勧告には応じない'
             : !envoy ? 'となりに命令できる武将がいない'
             : `使者：${esc(envoy.name)}（知略${envoy.int}・魅力${envoy.cha}）`;
-          return atPeace(S, PLAYER, c.owner) ? '' : `<button class="btn wide debate-btn" id="c-debate" ${envoy ? '' : 'disabled'}><span class="k">舌</span>舌戦で開城を迫る<small>${why2}</small></button>`;
+          return atPeace(S, PLAYER, c.owner) ? '' : `<button class="btn wide debate-btn" id="c-debate" ${envoy ? '' : 'disabled'}><span class="k">勧</span>勧告：降伏を勧める<small>${envoy && why2.startsWith('使者') ? why2 + '・成功で城兵の3割が逃げ、2季動揺' : why2}</small></button>`;
         })()}
         <button class="btn plain wide" id="c-close">閉じる</button>
       </div>`;
@@ -1546,7 +1547,7 @@ function markTip(id) { const t = tipsSeen(); t[id] = 1; try { localStorage.setIt
 const mineGens = () => gensOf(S, PLAYER);
 const TIPS = [
   { id: 'debate', when: () => selected && S.castles[selected].owner !== PLAYER && canDebate(S, selected) && debateEnvoy(S, selected),
-    text: 'この城、<b>舌戦</b>で落とせるやもしれませぬ。知略と魅力の高い者を使者に立て、理・情・利・威の論で開城を迫るのです。守将の<b>弱点の論</b>を見抜くのが肝心ですぞ。' },
+    text: 'この城に<b>勧告</b>を送ってはいかが。知略と魅力の高い者を使者に立て、理・情・利・威の論で説けば、城兵が逃げて守りが崩れまする。攻めて敵が弱ったら、合戦の最中に<b>降伏勧告</b>も。守将の<b>弱点の論</b>を見抜くのが肝心ですぞ。' },
   { id: 'treasure', when: () => S.turn >= 1 && mineGens().some((g) => g.treasure),
     text: 'わが家には<b>家宝</b>がございます。武将をタップして詳しく見ると、持たせ替えができますぞ。名刀は一騎打ちに、軍配は攻めに、兜は守りに効きまする。' },
   { id: 'club', when: () => S.turn >= 2,
@@ -2613,17 +2614,17 @@ function drawDebate(Dt) {
     : Dt.read.level === 'guess' ? `🔍 たぶん「${DEBATE_ARGS[Dt.read.weak].foe}」……「${DEBATE_ARGS[Dt.read.weak].name}」が効きそうだ`
     : '🔍 相手の心は読めない';
   const actions = Dt.done
-    ? `<button class="btn red" id="db-end">${Dt.done === 'win' ? '開城させる' : '引き上げる'}</button>`
+    ? `<button class="btn red" id="db-end">${Dt.battle ? (Dt.done === 'win' ? '城を受け取る' : '合戦に戻る') : Dt.done === 'win' ? '城をあとにする' : '引き上げる'}</button>`
     : `<p class="mt-q">どの論で迫る？<small>あと ${DEBATE.rounds - Dt.round} 回</small></p>
       <div class="mt-choices">${Object.entries(DEBATE_ARGS).map(([k, a]) => `<button class="btn db-arg db-${k}" data-arg="${k}"
         ${k === 'gain' && S.gold[PLAYER] < DEBATE.gainCost ? 'disabled' : ''}><b>${a.name}</b> ${a.full}<small>${a.desc}${Dt.used[k] ? '・二度目は弱い' : ''}</small></button>`).join('')}</div>`;
   openModal(`<div class="meeting debate" data-lock>
-      <p class="mt-place">${esc(MAP.byId[Dt.id].name)} 門前 ・ 舌戦</p>
+      <p class="mt-place">${esc(MAP.byId[Dt.id].name)} ${Dt.battle ? '陣前 ・ 降伏勧告' : '門前 ・ 勧告'}</p>
       <div class="mt-stage">
         ${meetingRoom(Dt.owner === 'none' ? PLAYER : Dt.owner)}
         <div class="mt-p left">${portrait(g, 84, Dt.done === 'win' ? 'happy' : Dt.mood.me, 'R')}<span>${esc(g.name)}<small>${pName()}の使者</small></span></div>
         ${dg ? `<div class="mt-p right">${portrait(dg, 84, Dt.done === 'win' ? 'frustrated' : Dt.mood.foe)}<span>${esc(dg.name)}<small>${MAP.byId[Dt.id].short}の守将</small></span></div>` : ''}
-        ${Dt.done ? `<div class="mt-stamp ${Dt.done === 'win' ? 'deal' : 'fail'}">${Dt.done === 'win' ? '開 城' : '決 裂'}</div>` : ''}
+        ${Dt.done ? `<div class="mt-stamp ${Dt.done === 'win' ? 'deal' : 'fail'}">${Dt.done === 'win' ? (Dt.battle ? '降 伏' : '動 揺') : '決 裂'}</div>` : ''}
       </div>
       <div class="mt-say">${say}</div>
       <div class="mt-gauge db-gauge"><span>説得</span><i><b style="width:${pct}%"></b></i><em>${pct}%</em></div>
@@ -2641,19 +2642,18 @@ function drawDebate(Dt) {
       drawDebate(Dt);
     };
   });
+  if (Dt.battle) $('modal').classList.add('over-battle'); // 合戦の画面の上に出す
   const end = $('db-end');
   if (end) end.onclick = () => {
     Sound.tap();
+    if (Dt.onEnd) { $('modal').classList.remove('over-battle'); closeModal(); Dt.onEnd(Dt.done === 'win'); return; }
     const msg = endDebate(S, Dt);
     save();
     Sound.bgmStart('map');
     closeModal();
     selected = Dt.id;
     render();
-    if (Dt.done === 'win') {
-      showKime(g, '無血開城', pick(['言葉は刃より強し', '一兵も失わずに済んだな', 'これぞ知の戦よ']), () => toast(esc(msg)), 'smile');
-      achievementToast(checkAchievements(S));
-    } else toast(esc(msg));
+    toast(esc(msg));
   };
 }
 
@@ -3397,10 +3397,38 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const arts = B[me].arts.filter((id) => !B[me].used[id]);
     el.innerHTML = `<div class="cmd-grid">${cmds.map((c) =>
       `<button class="btn ${c === 'retreat' ? 'plain' : ''}" data-cmd="${c}"><b>${COMMANDS[c].name}</b><small>${COMMANDS[c].desc}</small></button>`).join('')}
-      ${arts.map((id) => `<button class="btn red art" data-cmd="art:${id}"><b>戦法「${ARTS[S.gens[id].skill].name}」</b><small>${esc(S.gens[id].name)}：${ARTS[S.gens[id].skill].desc}</small></button>`).join('')}</div>`;
+      ${arts.map((id) => `<button class="btn red art" data-cmd="art:${id}"><b>戦法「${ARTS[S.gens[id].skill].name}」</b><small>${esc(S.gens[id].name)}：${ARTS[S.gens[id].skill].desc}</small></button>`).join('')}
+      ${canSurrender(S, B) ? '<button class="btn surrender" data-cmd="surrender"><b>降伏勧告</b><small>弱った敵に降伏を迫る（一度だけ）</small></button>' : ''}</div>`;
     el.querySelectorAll('[data-cmd]').forEach((b) => {
-      b.onclick = () => { if (!busy) { Sound.tap(); doRound(b.dataset.cmd); } };
+      b.onclick = () => { if (!busy) { Sound.tap(); if (b.dataset.cmd === 'surrender') openSurrender(); else doRound(b.dataset.cmd); } };
     });
+  }
+
+  // 降伏勧告：合戦の最中に、弱った敵へ。理・情・利・威で説き伏せれば、その場で城が降る
+  function openSurrender() {
+    B.surrenderTried = true;
+    const cands = [B.gid, ...(B.support || []).map((p) => p.gid)].map((id) => S.gens[id]).filter(Boolean);
+    const envoy = bestBy(cands, (x) => x.int + x.cha) || S.gens[B.gid];
+    const Dt = startDebate(S, B.to, envoy);
+    Dt.battle = { ratio: B.a.troops / Math.max(1, B.d.troops), morale: B.d.morale };
+    Dt.need = B.defender === 'none' ? KOUFUKU.needNone : KOUFUKU.needClan;
+    Dt.onEnd = (win) => {
+      if (win) {
+        B.over = 'win';
+        B.surrender = true;
+        S.stats.debateWins = (S.stats.debateWins || 0) + 1;
+        if (typeof taishiGain === 'function') taishiGain(S, PLAYER, 'bloodless');
+        carry = [`${MAP.byId[B.to].short}の城兵は、${envoy.name}の勧告を受け入れて降伏した！`];
+        finish();
+      } else {
+        B.a.morale = clamp(B.a.morale - KOUFUKU.fail, 0, 100);
+        B.d.morale = clamp(B.d.morale + KOUFUKU.fail, 0, 100);
+        updateBars();
+        report([`勧告ははねつけられた。敵は「降るものか！」と奮い立った（味方の士気-${KOUFUKU.fail}・敵の士気+${KOUFUKU.fail}）`]);
+        renderCmds();
+      }
+    };
+    drawDebate(Dt);
   }
 
   function afterRound() {

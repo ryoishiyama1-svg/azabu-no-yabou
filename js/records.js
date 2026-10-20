@@ -21,7 +21,7 @@ const ACHIEVEMENTS = [
   { id: 'battle50', icon: '戦', name: '百戦錬磨', desc: '合戦で50回勝つ', play: (s) => s.stats.battlesWon >= 50 },
   { id: 'tactic10', icon: '読', name: '読み合いの達人', desc: '作戦の読み合いで10回勝つ', play: (s) => s.stats.tacticWins >= 10 },
   { id: 'duel5', icon: '騎', name: '一騎当千', desc: '一騎打ちで5回勝つ', play: (s) => (s.stats.duelWins || 0) >= 5 },
-  { id: 'debate3', icon: '舌', name: '弁舌の士', desc: '舌戦で3つの城を無血開城させる', play: (s) => (s.stats.debateWins || 0) >= 3 },
+  { id: 'debate3', icon: '舌', name: '弁舌の士', desc: '降伏勧告で3つの城を降伏させる', play: (s) => (s.stats.debateWins || 0) >= 3 },
   { id: 'treasure5', icon: '宝', name: '蔵の主', desc: '家宝を5つ持つ', play: (s) => (s.vault || []).length + gensOf(s, PLAYER).filter((g) => g.treasure).length >= 5 },
   { id: 'rival', icon: '宿', name: '宿命の好敵手', desc: '宿敵が生まれる', play: (s) => Object.values(s.rivals || {}).some((n) => n >= RIVAL_AT) },
   { id: 'legend', icon: '伝', name: '語り継がれる者', desc: '名を上げた武将が列伝に名を残す', play: (s) => (s.hall || []).some((h) => h.rec.w + h.rec.cap + h.rec.dw * 2 + h.rec.def >= 10) },

@@ -58,11 +58,31 @@ function debateNearTroops(s, id) {
   return MAP.adj[id].filter((n) => s.castles[n].owner === PLAYER).reduce((a, n) => a + s.castles[n].troops, 0);
 }
 
+// 勧告（城の命令）の効き目と、合戦中の降伏勧告
+const KANKOKU = { flee: 0.3, def: 0.2, turns: 2, morale: 15 };
+const KOUFUKU = { troops: 0.6, morale: 45, needNone: 125, needClan: 145, fail: 10 };
+// 合戦の最中、敵が弱っていれば降伏を勧められる（本拠と、当主のいる城は降らない）
+function canSurrender(s, B) {
+  if (B.attacker !== PLAYER || B.over || B.surrenderTried || B.decisive || B.round < 1) return false;
+  if (isCapital(B.to, B.defender) || gensAt(s, B.to).some((g) => g.lord)) return false;
+  return B.d.troops <= B.d.start * KOUFUKU.troops || B.d.morale <= KOUFUKU.morale;
+}
 // 一つの論の強さ（弱点なら2倍、相いれない論なら半分）
 function debatePower(s, Dt, arg) {
   const g = s.gens[Dt.envoy];
   const c = s.castles[Dt.id];
   let p = 14; // 能力の差はなだらかに。勝負を分けるのは、弱点を見抜いて論を選ぶ腕
+  if (Dt.battle) {
+    // 合戦中：威は目の前の兵の差で、どの論も敵の士気が低いほど効く
+    if (arg === 'logic') p += g.int / 6;
+    if (arg === 'heart') p += g.cha / 6;
+    if (arg === 'gain') p += g.pol / 6;
+    if (arg === 'threat') p += clamp(Dt.battle.ratio * 8, 0, 22);
+    p *= clamp(1 + (60 - Dt.battle.morale) / 100, 0.9, 1.5);
+    if (arg === Dt.weak) p *= 2; else if (DEBATE_OPPOSITE[Dt.weak] === arg) p *= 0.5;
+    if (Dt.used[arg]) p *= 0.8;
+    return Math.round(p);
+  }
   if (arg === 'logic') p += g.int / 6;
   if (arg === 'heart') p += g.cha / 6;
   if (arg === 'gain') p += g.pol / 6;
@@ -119,25 +139,30 @@ function endDebate(s, Dt) {
   const g = s.gens[Dt.envoy];
   const name = MAP.byId[Dt.id].name;
   if (Dt.done === 'win') {
-    const loser = c.owner;
-    c.owner = PLAYER;
-    c.troops = Math.round(c.troops * 0.5); // 城兵の半分がそのまま加わる
-    // 城の武将は降って家臣になる
-    Object.values(s.gens).filter((x) => x.loc === Dt.id && x.clan === loser).forEach((x) => {
-      x.clan = PLAYER;
-      x.loyal = randInt(42, 58);
-    });
-    if (s.rel[loser]) changeFriend(s, loser, -10);
+    // 勧告：城は取れないが、城兵が逃げ、守りが下がり、しばらく動揺する（攻めたとき守り手の士気が下がる）
+    const fled = Math.round((c.troops * KANKOKU.flee) / 10) * 10;
+    c.troops -= fled;
+    c.def = Math.max(1, Math.round((c.def - KANKOKU.def) * 10) / 10);
+    s.doyo = s.doyo || {};
+    s.doyo[Dt.id] = s.turn + KANKOKU.turns;
+    if (s.rel[c.owner]) changeFriend(s, c.owner, -5);
     grow(g, 'cha'); grow(g, 'int');
-    recOf(g).cap++;
-    shiHit(s, g, 'debate'); shiHit(s, g, 'cap', Dt.id);
-    if (loser !== 'none') s.stats.clanCaps = (s.stats.clanCaps || 0) + 1;
-    s.stats.debateWins = (s.stats.debateWins || 0) + 1;
-    addNews(s, `${g.name}、舌戦で${name}を無血開城`, '一兵も失わずに城を得る', 50);
-    return `${name}は開城した！ 一兵も失わずに城を手に入れた`;
+    s.stats.kankokuWins = (s.stats.kankokuWins || 0) + 1;
+    s.debateCd = s.debateCd || {};
+    s.debateCd[Dt.id] = s.turn + 2; // 同じ城には、続けて勧告できない
+    addNews(s, `${g.name}の勧告に、${name}の城兵が動揺`, `${fled}の兵が城を去る`, 35);
+    return `${name}の城兵は動揺した！ ${fled}の兵が逃げ、守りが下がった（${KANKOKU.turns}季のあいだ、攻めれば守り手の士気が下がる）`;
   }
   if (s.rel[c.owner]) changeFriend(s, c.owner, -5);
   s.debateCd = s.debateCd || {};
   s.debateCd[Dt.id] = s.turn + 4;
   return `${name}は開城を拒んだ……（4季のあいだ、舌戦には応じない）`;
 }
+
+// 勧告で動揺した城を攻めると、守り手の士気が下がる
+const _dbStart = startBattle;
+startBattle = function (s, o) {
+  const B = _dbStart(s, o);
+  if (s.doyo && s.doyo[B.to] >= s.turn && B.attacker === PLAYER) { B.d.morale = clamp(B.d.morale - KANKOKU.morale, 15, 100); B.doyo = true; }
+  return B;
+};
