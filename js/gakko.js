@@ -1,6 +1,6 @@
 // ---------- 学校の行事：体育祭・部活の全国大会・修学旅行・生徒会選挙 ----------
 // 季節の行事のあとに、ときどき一つ。選び方で家臣の育ちや絆、他家の評判が変わる
-const GAKKO = { chance: 0.55 };
+const GAKKO = { chance: 0.4, maxEvents: 4 };
 const g2 = (s) => gensOf(s, PLAYER).filter((g) => g.grade === 2 && g.loc);
 const growStat = (g, k, n) => { g[k] = Math.min(100, g[k] + n); };
 // 全国大会に出す三人：統率・知略・魅力それぞれのいちばん
@@ -95,9 +95,20 @@ rollEvents = function (s) {
   const list = _gkRoll(s);
   const id = GAKKO_BY_SEASON[s.turn % 4];
   const e = EVENTS[id];
-  if (s.turn >= 1 && Math.random() < GAKKO.chance && (!e.cond || e.cond(s))) {
+  if (s.turn >= 1 && !list.some((x) => x.id === 'matsuri') && Math.random() < GAKKO.chance && (!e.cond || e.cond(s))) { // 祭りの季は行事を重ねない
     const at = list.findIndex((x) => ['spring', 'summer', 'autumn', 'winter'].includes(x.id));
     list.splice(at >= 0 ? at + 1 : 0, 0, { id, p: e.init ? e.init(s) : {} });
   }
   return list;
+};
+
+// 一つの季に出る窓は四つまで。大事なものから残す
+const EVENT_PRIORITY = ['succession', 'tenkawakeme', 'hasha', 'sankyo', 'gekokujo', 'saiko', 'jishin', 'kyotsu', 'spring', 'summer', 'autumn', 'winter', 'envoy', 'defect', 'genius'];
+const _gkCap = rollEvents;
+rollEvents = function (s) {
+  const list = _gkCap(s);
+  if (list.length <= GAKKO.maxEvents) return list;
+  const rank = (e) => { const i = EVENT_PRIORITY.indexOf(e.id); return i < 0 ? 99 : i; };
+  const keep = new Set(list.slice().sort((a, b) => rank(a) - rank(b)).slice(0, GAKKO.maxEvents));
+  return list.filter((e) => keep.has(e)); // 並びはもとのまま
 };

@@ -2,7 +2,7 @@
 // 終盤、天下の四割を握ったとき、最大の他家と国境で向き合えば、天下分け目の決断を迫られる
 // 両家が国境の城から三つの軍勢（左翼・中央・右翼）を出してぶつかる。二つの翼が崩れた側の負け
 // 毎合、全軍への命令と、本陣の後詰めを送る翼を選ぶ。一度だけ、敵の軍勢を寝返らせる調略ができる
-const SEKI = { share: 0.4, rivalShare: 0.2, from: 20, cooldown: 4, rounds: 7, rate: 0.12, take: 0.6, focus: 1.35, surrender: 0.3 };
+const SEKI = { share: 0.4, rivalShare: 0.2, from: 20, cooldown: 8, maxOffers: 3, rounds: 7, rate: 0.12, take: 0.6, focus: 1.35, surrender: 0.3 };
 const SEKI_LANES = ['左翼', '中央', '右翼'];
 const SEKI_CMDS = {
   sougakari: { name: '総攻め', desc: '全軍で押し寄せる。損害も大きい', out: 1.3, in: 1.2, morale: 0 },
@@ -23,7 +23,7 @@ function sekiCorps(s, clan, foe) {
   });
 }
 function sekiPlan(s) {
-  if (s.sekiDone || s.turn < SEKI.from || (s.sekiCool || 0) > s.turn) return null;
+  if (s.sekiDone || s.turn < SEKI.from || (s.sekiCool || 0) > s.turn || (s.sekiOffers || 0) >= SEKI.maxOffers) return null;
   const rival = sekiRival(s);
   if (!rival) return null;
   const all = MAP.nodes.length;
@@ -170,6 +170,6 @@ const _sekiRoll = rollEvents;
 rollEvents = function (s) {
   const list = _sekiRoll(s);
   const plan = sekiPlan(s);
-  if (plan) list.splice(1, 0, { id: 'tenkawakeme', p: plan });
+  if (plan) { s.sekiOffers = (s.sekiOffers || 0) + 1; list.splice(1, 0, { id: 'tenkawakeme', p: plan }); }
   return list;
 };

@@ -2,7 +2,7 @@
 // 密命：家臣が期限つきの小さな目標を持ってくる（同時に二つまで）。果たせば褒美。期限が過ぎれば消える
 // 勢い：攻めで勝ち続けると溜まり（最大5）、一段ごとに攻めの力+3%。攻めで負けると途切れる
 const MISSION = { max: 2, every: 2 };
-const MOMENTUM = { max: 5, per: 0.03 };
+const MOMENTUM = { max: 5, per: 0.02 };
 
 function missionCands(s) {
   const out = [];
@@ -99,3 +99,16 @@ recordBattle = function (s, r) {
   if (!r.won && before >= 2) s.momentumLost = before;
 };
 const momentumMult = (s, clan) => (clan === PLAYER ? 1 + (s.momentum || 0) * MOMENTUM.per : 1);
+
+// 勢いは、攻めて勝たない季が続くと冷める（一季に一段）
+const _msMomEnd = endTurn;
+endTurn = function (s, ...a) {
+  const won = (s.momWins || 0) > 0; // この季（ターン終了までの自分の番）に攻めて勝ったか
+  s.momWins = 0;
+  const r = _msMomEnd(s, ...a);
+  if (!won && s.momentum) s.momentum = Math.max(0, s.momentum - 1);
+  s.momWins = 0;
+  return r;
+};
+const _msMomRec = recordBattle;
+recordBattle = function (s, r) { _msMomRec(s, r); if (r.attacker === PLAYER && r.won) s.momWins = (s.momWins || 0) + 1; };

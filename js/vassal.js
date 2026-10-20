@@ -1,7 +1,7 @@
 // ---------- 臣従：滅ぼさずに子分にする ----------
 // s.vassals[k] = { since, fealty }。臣従した家はこちらを攻めず、毎季収入の一部を献上する
 // 忠節（fealty）は季ごとに少し下がり、こちらが攻めで負けるとさらに下がる。低くなると離反することがある
-const VASSAL = { tribute: 0.25, decay: 2, rebelBelow: 30, rebelChance: 0.25, giftCost: 150, gift: 15, lossHit: 5, start: 70 };
+const VASSAL = { tribute: 0.25, decay: 2, rebelBelow: 30, rebelChance: 0.25, giftCost: 150, gift: 15, lossHit: 5, start: 70, unify: 0.6 };
 
 const isVassal = (s, k) => !!(s.vassals && s.vassals[k]);
 const vassalsOf = (s) => Object.keys(s.vassals || {}).filter((k) => castlesOf(s, k).length);
@@ -15,7 +15,7 @@ function fealtyChance(s, k, g) {
   const troops = (c) => castlesOf(s, c).reduce((a, id) => a + s.castles[id].troops, 0);
   const ratio = troops(PLAYER) / Math.max(1, troops(k));
   const lord = lordOf(s);
-  return clamp(0.05 + (ratio - 2) * 0.12 + (s.rel[k].friend - 40) / 150 + ((lord ? lord.cha : 50) - 50) / 200 + (g ? g.cha / 500 : 0), 0.03, 0.85);
+  return clamp(-0.02 + (ratio - 2) * 0.11 + (s.rel[k].friend - 40) / 150 + ((lord ? lord.cha : 50) - 50) / 200 + (g ? g.cha / 500 : 0), 0.03, 0.85);
 }
 function demandFealty(s, k, g) {
   if (g) s.acted[g.id] = true;
@@ -77,7 +77,7 @@ const _vsWin = checkWin;
 checkWin = function (s) {
   if (!s.result && vassalsOf(s).length) {
     const rest = MAP.nodes.filter((n) => s.castles[n.id].owner !== PLAYER);
-    if (rest.length && rest.every((n) => isVassal(s, s.castles[n.id].owner))) {
+    if (rest.length && castlesOf(s, PLAYER).length / MAP.nodes.length >= VASSAL.unify && rest.every((n) => isVassal(s, s.castles[n.id].owner))) { // 自分で天下の6割を握っていること
       rest.forEach((n) => { const c = s.castles[n.id]; gensAt(s, n.id).forEach((g) => { if (g.clan === c.owner) { g.clan = PLAYER; g.loyal = Math.max(g.loyal || 60, 60); } }); c.owner = PLAYER; });
       s.vassalUnify = true;
       addNews(s, '臣従の諸家、城を明け渡す', `${pName()}のもと、天下はひとつに`, 100);

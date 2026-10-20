@@ -968,7 +968,7 @@ function helpChapters() {
         `国境に接する、ずっと小さな家には「<b>臣従を迫る</b>」。兵の差・友好度・当主の魅力で決まります`,
         `臣従した家は攻めてこず、毎季 収入の${Math.round(VASSAL.tribute * 100)}%を献上します`,
         `<b>忠節</b>は季ごとに下がり、攻めで負けるとさらに下がります。${VASSAL.rebelBelow}を切ると<b>離反</b>のおそれ。「賜物」で上げられます`,
-        `残る家がすべて臣従していれば、諸家は城を明け渡し、そのまま天下統一`,
+        `自分で天下の${Math.round(VASSAL.unify * 100)}%を握り、残る家がすべて臣従していれば、諸家は城を明け渡してそのまま天下統一`,
       ])}
       <h3>群雄の構図</h3>
       ${li([
@@ -5156,7 +5156,7 @@ function missionCards() {
 function momentumChip() {
   const n = S.momentum || 0;
   if (!n) return '';
-  return `<p class="momentum" title="攻めで勝ち続けると溜まる。負けると途切れる"><span>勢い</span>${'<i>🔥</i>'.repeat(n)}<small>攻め+${n * 3}%</small></p>`;
+  return `<p class="momentum" title="攻めで勝ち続けると溜まる。負けると途切れる"><span>勢い</span>${'<i>🔥</i>'.repeat(n)}<small>攻め+${Math.round(n * MOMENTUM.per * 100)}%</small></p>`;
 }
 const _msRender = render;
 render = function (...a) {
