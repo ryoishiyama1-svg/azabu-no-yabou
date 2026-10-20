@@ -1443,7 +1443,6 @@ function renderCouncil() {
       ${lord ? portrait(lord, 48) : crestBadge(PLAYER, 48)}
       <div class="cn-who"><h2>軍議<small>${dateLabel(S.turn)}</small></h2>
         <p class="kakun">${S.lords.length}代目 ${esc((lord || {}).name || '（当主不在）')}・家訓「${KAKUN[S.kakun].name}」<small>${KAKUN[S.kakun].desc}</small></p>
-        ${taishiLine(S, PLAYER)}${nemesisChip(S)}${S.turn >= 1 && S.nemesis ? tipBox('nemesis') : ''}
         ${(S.challenges || []).length ? `<p class="cn-ch">${S.challenges.map((c) => `<span title="${CHALLENGES[c].desc}">${CHALLENGES[c].mark}</span>`).join("")}<small>挑戦状${hasCh(S, "speed") ? `・天下の期限まで あと${Math.max(0, CHALLENGES.speed.limit - S.turn)}季` : ""}</small></p>` : ""}</div>
       ${S.debug ? '<b class="dbg">DEBUG</b>' : ''}
     </div>
@@ -1453,6 +1452,8 @@ function renderCouncil() {
       ${tile('令', `${idleGens}<i>/${gens.length}</i>`, delegCount ? `委任 ${delegCount}城` : '命令できる武将')}
       ${tile('城', `${mine.length}<i>/${all}</i>`, SCENARIOS[S.scenario].name)}
     </div>
+    <div class="cn-tabs"><button data-cntab="senkyo" class="${CN_TAB === 'senkyo' ? 'on' : ''}">戦 況</button><button data-cntab="kachu" class="${CN_TAB === 'kachu' ? 'on' : ''}">家 中<i class="cn-badge" id="cn-badge"></i></button></div>
+    <div class="cn-pane ${CN_TAB === 'senkyo' ? 'on' : ''}" data-pane="senkyo">
     ${alarm}
     <div class="tenka"><span>天下</span><div class="tk-bar"><i style="width:${(mine.length / all * 100).toFixed(1)}%"></i>${FINALE.marks.map((m) => `<em style="left:${m * 100}%" class="${mine.length / all >= m ? 'on' : ''}"></em>`).join('')}</div><b>あと${all - mine.length}校</b></div>
     <button class="cn-power" id="cn-power" aria-label="勢力図（タップで外交）">
@@ -1475,9 +1476,17 @@ function renderCouncil() {
       <button class="btn" id="bulk-develop" ${S.gold[PLAYER] >= RULES.developCost && idleGens ? '' : 'disabled'}>全城で開発</button>
       <button class="btn" id="btn-diplo">外 交</button>
     </div>
-    <div class="cn-duo"><button class="btn tea-btn" id="btn-hyojo">📜 評定<small>家臣の献策を聞く</small></button>
-    <button class="btn tea-btn" id="btn-tea" ${canTea(S) ? "" : "disabled"}>🍵 茶の湯<small>${S.teaTurn === S.turn ? "この季の茶会は済んだ" : `家臣を招いて本音を聞く・金${TEA.cost}`}</small></button></div>
+    </div>
+    <div class="cn-pane ${CN_TAB === 'kachu' ? 'on' : ''}" data-pane="kachu">
+      <div class="kachu-head">${taishiLine(S, PLAYER)}${nemesisChip(S)}</div>
+      ${S.turn >= 1 && S.nemesis ? tipBox('nemesis') : ''}
+      <div class="kachu-slot"></div>
+      <div class="cn-duo"><button class="btn tea-btn" id="btn-hyojo">📜 評定<small>家臣の献策を聞く</small></button>
+      <button class="btn tea-btn" id="btn-tea" ${canTea(S) ? "" : "disabled"}>🍵 茶の湯<small>${S.teaTurn === S.turn ? "この季の茶会は済んだ" : `家臣を招いて本音を聞く・金${TEA.cost}`}</small></button></div>
+    </div>
     <button class="btn red end-btn" id="btn-end">ターン終了</button></div>`;
+
+  panel.querySelectorAll('[data-cntab]').forEach((b) => { b.onclick = () => { Sound.tap(); CN_TAB = b.dataset.cntab; render(); }; });
   $('btn-end').onclick = onEndTurn;
   $('btn-tea').onclick = () => { Sound.tap(); showTea(); };
   $('btn-hyojo').onclick = () => { Sound.tap(); showHyojo(true); };
@@ -4002,6 +4011,7 @@ function lordsHistory() {
 
 // 家臣団：並べかえの札つき
 let ROSTER_SORT = 'grade';
+let CN_TAB = 'senkyo'; // 軍議のタブ：戦況／家中
 const ROSTER_SORTS = { grade: '学年', str: '統率', int: '知略', pol: '政治', cha: '魅力', loyal: '忠誠' };
 // ---------- 家臣団：絵札の棚と、人物相関図 ----------
 let ROSTER_VIEW = 'cards', ROSTER_FILTER = 'all';
@@ -4852,9 +4862,9 @@ function talkCard() {
 const _tkRender = render;
 render = function (...a) {
   const r = _tkRender.apply(this, a);
-  const tiles = document.querySelector('.council .cn-tiles');
+  const tiles = document.querySelector('.council .kachu-slot');
   if (tiles && !document.querySelector('.council .talk')) {
-    tiles.insertAdjacentHTML('afterend', talkCard());
+    tiles.insertAdjacentHTML('beforeend', talkCard());
     document.querySelectorAll('.council [data-talk]').forEach((b) => {
       b.onclick = () => {
         Sound.tap();
@@ -5153,11 +5163,11 @@ render = function (...a) {
   const r = _msRender.apply(this, a);
   if (!S) return r;
   const got = missionCheck(S);
-  const head = document.querySelector('.council .cn-who');
+  const head = document.querySelector('.council .kachu-head');
   if (head && !head.querySelector('.momentum')) head.insertAdjacentHTML('beforeend', momentumChip());
-  const tiles = document.querySelector('.council .cn-tiles');
+  const tiles = document.querySelector('.council .kachu-slot');
   if (tiles && !document.querySelector('.council .missions')) {
-    tiles.insertAdjacentHTML('afterend', missionCards());
+    tiles.insertAdjacentHTML('afterbegin', missionCards());
     (S.missions || []).forEach((m) => { m.fresh = false; });
   }
   got.forEach((m, i) => setTimeout(() => {
@@ -5263,4 +5273,18 @@ runBattle = function (B, opts) {
     return;
   }
   return _wkRun(B, opts);
+};
+
+// 軍議の「家中」タブに、見てほしいものの数を出す（答えていない家臣の声・密命）
+const _cnRender = render;
+render = function (...a) {
+  const r = _cnRender.apply(this, a);
+  const badge = document.getElementById('cn-badge');
+  if (badge && S) {
+    const t = S.talk && S.talk.turn === S.turn && !S.talk.done && !S.talk.none ? 1 : 0;
+    const n = t + (S.missions || []).filter((m) => !m.done).length;
+    badge.textContent = n ? String(n) : '';
+    badge.classList.toggle('hot', !!t);
+  }
+  return r;
 };

@@ -2850,3 +2850,16 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .vassal-box > span { font-size: 12px; }
 .friend.fealty i b { background: #c99a2e; }
 .btn.fealty-btn { --plate: linear-gradient(180deg, #5a3a8a, #2e1c4a); }
+
+/* ---------- 軍議の整理：戦況／家中のタブ（v118） ---------- */
+.cn-tabs { display: grid; grid-template-columns: 1fr 1fr; margin: 10px 0 8px; border: 2px solid var(--ink); }
+.cn-tabs button { position: relative; font: 400 18px var(--brush); letter-spacing: 0.3em; padding: 6px; background: var(--paper); border: 0; cursor: pointer; color: var(--ink); }
+.cn-tabs button.on { color: #f3d27a; background: var(--lacquer); }
+.cn-badge { position: absolute; top: 3px; right: 10px; min-width: 18px; padding: 0 4px; font: 900 11px/18px var(--gothic); font-style: normal; letter-spacing: 0; color: #fff; background: var(--red); border-radius: 9px; }
+.cn-badge:empty { display: none; }
+.cn-badge.hot { animation: tk-glow 1.4s ease-out infinite; }
+.cn-pane { display: none; }
+.cn-pane.on { display: block; }
+.kachu-head { display: grid; gap: 6px; padding: 8px 10px; margin-bottom: 8px; color: #f6ecd2; background: var(--lacquer); border: 1.5px solid var(--gold-line); }
+.kachu-head .ts-line small { color: #e8d5a6; }
+.kachu-head .momentum { margin-left: 0; }
