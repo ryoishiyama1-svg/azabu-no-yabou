@@ -17,9 +17,11 @@ function applyVariant(s, v) {
     });
   }
   if (v === 'appei') {
-    // 大大名：いちばん城の多い（同じなら兵の多い）他家
-    const troops = (k) => castlesOf(s, k).reduce((a, id) => a + s.castles[id].troops, 0);
-    const big = ai.sort((a, b) => castlesOf(s, b).length - castlesOf(s, a).length || troops(b) - troops(a))[0];
+    // 大大名：地図の真ん中にいちばん近い本拠の他家（天下の中央に構える）
+    const cx = MAP.nodes.reduce((a, n) => a + n.x, 0) / MAP.nodes.length, cy = MAP.nodes.reduce((a, n) => a + n.y, 0) / MAP.nodes.length;
+    const home = (k) => MAP.byId[k] || MAP.byId[castlesOf(s, k)[0]];
+    const far = (k) => { const n = home(k); return n ? Math.hypot(n.x - cx, n.y - cy) : 1e9; };
+    const big = ai.slice().sort((a, b) => far(a) - far(b))[0];
     if (big) {
       // まわりの独立校を、道のりの近い順に天下の四分の一ほどまで従える
       const want = Math.round(MAP.nodes.length * 0.25);
