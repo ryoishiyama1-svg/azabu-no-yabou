@@ -3066,3 +3066,13 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 #battle .foe-lord p { margin: 0; font-family: var(--mincho); font-weight: 700; font-size: 14px; }
 #battle .foe-lord small { display: block; font-size: 10px; opacity: 0.8; font-weight: 400; }
 #battle .foe-lord b { margin-right: 6px; color: #f3d27a; }
+
+/* ---------- 城の札の絵と目盛り（v134） ---------- */
+.castle-banner { position: relative; margin: 0 0 8px; border: 2px solid var(--ink); box-shadow: inset 0 0 0 2px var(--gold-line); overflow: hidden; }
+.castle-banner svg { display: block; width: 100%; height: auto; }
+.cb-tags { position: absolute; left: 6px; top: 6px; margin: 0; display: flex; gap: 4px; }
+.cb-tags span { font-family: var(--brush); font-size: 13px; color: #fff3d6; background: var(--lacquer); padding: 0 6px; border: 1px solid var(--gold-line); }
+.stat .sbar { display: block; width: 80%; height: 4px; margin: 3px auto 0; background: rgba(0, 0, 0, 0.12); }
+.stat .sbar u { display: block; height: 100%; background: var(--red); text-decoration: none; }
+.stat .sbar.def u { background: #3c6aa3; }
+.stat .sbar.eco u { background: #c99a2e; }

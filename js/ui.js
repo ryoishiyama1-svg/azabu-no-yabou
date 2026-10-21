@@ -1301,10 +1301,11 @@ function renderPanel() {
   const gens = gensAt(S, selected).sort((a, b) => (b.lord ? 1 : 0) - (a.lord ? 1 : 0) || b.str - a.str);
   const head = `<div class="p-head">${crestBadge(c.owner, 30)}<h2>${n.name}</h2>
       ${own ? `<label class="switch"><input type="checkbox" id="c-deleg" ${S.delegate[selected] ? 'checked' : ''}><span>委任</span></label>` : `<span class="p-sub">${n.ward}</span>`}</div>
+    ${castleBanner(selected)}
     <div class="stats">
-      <div class="stat"><span class="n">${fmt(c.troops)}</span><span class="l">兵 力</span></div>
-      <div class="stat"><span class="n">${c.def.toFixed(1)}</span><span class="l">防 御</span></div>
-      <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span><small class="town-name">${TOWN_LEVELS[townLevel(c.eco)].name}${townLevel(c.eco) < TOWN_LEVELS.length - 1 ? `・次は${TOWN_LEVELS[townLevel(c.eco) + 1].eco}` : ''}</small></div>
+      <div class="stat"><span class="n">${fmt(c.troops)}</span><span class="l">兵 力</span><i class="sbar"><u style="width:${Math.min(100, c.troops / 50).toFixed(0)}%"></u></i></div>
+      <div class="stat"><span class="n">${c.def.toFixed(1)}</span><span class="l">防 御</span><i class="sbar def"><u style="width:${clamp(((c.def - 0.8) / (RULES.defCap - 0.8)) * 100, 0, 100).toFixed(0)}%"></u></i></div>
+      <div class="stat"><span class="n">${c.eco}</span><span class="l">経 済</span><i class="sbar eco"><u style="width:${Math.min(100, (c.eco / RULES.ecoCap) * 100).toFixed(0)}%"></u></i><small class="town-name">${TOWN_LEVELS[townLevel(c.eco)].name}${townLevel(c.eco) < TOWN_LEVELS.length - 1 ? `・次は${TOWN_LEVELS[townLevel(c.eco) + 1].eco}` : ''}</small></div>
     </div>
     ${(() => {
       if (!own) return '';
@@ -5623,3 +5624,33 @@ const _swSeason = showSeason;
 showSeason = function (turn, then) {
   return _swSeason(turn, () => { seasonWipe(turn); then(); });
 };
+
+// ---------- 城の札の絵：季節の空、持ち主の色の天守、町並み、建てた施設、家の旗、城の様子の印 ----------
+function castleBanner(id) {
+  const c = S.castles[id], o = c.owner;
+  const color = CLANS[o] ? CLANS[o].color : '#8a8170';
+  const season = S.turn % 4;
+  const sky = [['#fbe3e6', '#f3c6cb'], ['#cfe6f6', '#9fc8e8'], ['#fbe0c4', '#f0b27a'], ['#e3e9ef', '#c6d1dc']][season];
+  const lv = townLevel(c.eco);
+  const houses = Array.from({ length: 2 + lv * 2 }, (_, i) => {
+    const x = i % 2 ? 250 + (i >> 1) * 22 : 110 - (i >> 1) * 22, y = 96 - ((i >> 1) % 2) * 6;
+    return `<g transform="translate(${x},${y})"><rect x="-8" y="-8" width="16" height="9" fill="#f1e6cc" stroke="#1c1a17" stroke-width="1"/><path d="M-10,-8 L0,-15 L10,-8Z" fill="${season === 3 ? '#fffaf0' : '#5a4a3a'}" stroke="#1c1a17" stroke-width="1"/></g>`;
+  }).join('');
+  const fac = (c.fac || []).slice(0, 4).map((f, i) => `<g transform="translate(${36 + i * 46},112) scale(0.55)">${facArt(f, color)}</g>`).join('');
+  const tags = [];
+  if (typeof isolated === 'function' && isolated(S, id)) tags.push('孤立');
+  if (o === PLAYER && typeof fukuAt === 'function' && fukuAt(S, id)) tags.push('伏兵');
+  if (S.doyo && S.doyo[id] >= S.turn) tags.push('動揺');
+  if (typeof siegeOf === 'function' && siegeOf(S, id)) tags.push('包囲');
+  if (isCapital(id, o)) tags.unshift('本拠');
+  return `<div class="castle-banner"><svg viewBox="0 0 360 120" aria-hidden="true">
+      <defs><linearGradient id="cb-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky[1]}"/><stop offset="1" stop-color="${sky[0]}"/></linearGradient></defs>
+      <rect width="360" height="120" fill="url(#cb-sky)"/>
+      <path d="M0,80 Q60,56 120,74 Q180,50 240,72 Q300,54 360,76 L360,120 L0,120Z" fill="${['#c9d9a8', '#8fb36a', '#d9a35a', '#eef2f5'][season]}" opacity="0.8"/>
+      <rect y="100" width="360" height="20" fill="${season === 3 ? '#f4f7fa' : '#d9c79c'}"/>
+      ${houses}
+      <g transform="translate(180,86) scale(1.85)" class="zk-castle" style="--c:${color}">${castleMarkup(isCapital(id, o))}</g>
+      <g transform="translate(214,36)"><line y2="-26" stroke="#1c1a17" stroke-width="1.6"/><path d="M0,-26 h18 q-3,5 0,10 q-3,5 0,10 h-18Z" fill="${color}" stroke="#1c1a17" stroke-width="1"/></g>
+      ${fac}
+    </svg>${tags.length ? `<p class="cb-tags">${tags.map((t) => `<span>${t}</span>`).join('')}</p>` : ''}</div>`;
+}
