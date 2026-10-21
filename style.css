@@ -2953,3 +2953,21 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .modal.setup-mode .sheet-body::before, .modal.setup-mode .sheet-body::after { display: none; }
 .modal.setup-mode .hint { color: #3a2408; text-shadow: 0 1px 0 rgba(255, 246, 210, 0.7); }
 .vt-pick { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); } .vt-pick button { align-items: start; } .vt-pick small { grid-column: 2; }
+
+/* ---------- 今日の一局と段位（v126） ---------- */
+.daily-card { padding: 12px; text-align: center; background: var(--washi), #fbf4e2; border: 3px double var(--ink); }
+.dl-date { margin: 0; font-family: var(--brush); font-size: 26px; color: var(--red); letter-spacing: 0.1em; }
+.dl-plan { display: inline-flex; align-items: center; gap: 10px; margin: 6px 0; text-align: left; }
+.dl-plan b { font-family: var(--mincho); font-size: 20px; display: block; }
+.dl-plan small { font-size: 12px; }
+.dl-best b { color: var(--red); font-family: var(--mincho); }
+.dl-week { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 4px; }
+.dl-week li { display: flex; justify-content: space-between; padding: 4px 8px; background: rgba(0, 0, 0, 0.05); font-size: 13px; }
+#rank-plate { display: flex; justify-content: center; margin: 0 0 8px; }
+.rank-plate { display: grid; grid-template-columns: auto auto 1fr; grid-template-rows: auto auto; gap: 2px 8px; align-items: center; padding: 6px 12px; min-width: 240px;
+  color: #f6ecd2; background: var(--maki-e) left bottom 3px / 36px 8px repeat-x, var(--lacquer); border: 1.5px solid var(--gold-line); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); }
+.rank-plate span { font-size: 11px; opacity: 0.8; }
+.rank-plate b { font-family: var(--brush); font-weight: 400; font-size: 22px; color: #f3d27a; letter-spacing: 0.1em; }
+.rank-plate i { height: 6px; background: rgba(255, 255, 255, 0.15); }
+.rank-plate i u { display: block; height: 100%; background: linear-gradient(90deg, #c99a2e, #f3d27a); text-decoration: none; }
+.rank-plate small { grid-column: 1 / -1; font-size: 11px; opacity: 0.85; text-align: center; }

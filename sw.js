@@ -1,6 +1,6 @@
 // オフラインでも遊べるようにファイルを保存しておく
 // ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
-const V = 125;
+const V = 126;
 const VERSION = `v${V}`;
 const FILES = [
   './',
@@ -38,6 +38,7 @@ const FILES = [
   `js/ui.js?v=${V}`,
   `js/ude.js?v=${V}`,
   `js/seki-ui.js?v=${V}`,
+  `js/daily.js?v=${V}`,
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
