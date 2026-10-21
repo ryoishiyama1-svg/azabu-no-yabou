@@ -1,6 +1,6 @@
 // オフラインでも遊べるようにファイルを保存しておく
 // ファイルを更新したら、ここの V と index.html の「?v=」の数字を両方上げる
-const V = 140;
+const V = 141;
 const VERSION = `v${V}`;
 const FILES = [
   './',
@@ -45,6 +45,7 @@ const FILES = [
   `js/hyaku.js?v=${V}`,
   `js/gacho.js?v=${V}`,
   `js/shochi.js?v=${V}`,
+  `js/sen.js?v=${V}`,
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
