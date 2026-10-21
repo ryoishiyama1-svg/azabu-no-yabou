@@ -3563,7 +3563,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
     const rep = stepBattle(S, B, cmds);
     $('round').textContent = `第 ${'一二三四五六七八'[B.round - 1] || B.round} 合`;
     const lead = playBattleFx(rep.act || {});
-    setTimeout(() => { report(rep.lines); animate(prev, rep.act || cmds); }, lead);
+    setTimeout(() => { report(rep.lines); animate(prev, rep.act || cmds); battleBanter(B, prev, rep.act || cmds); }, lead);
     timer = setTimeout(afterRound, wait(1100) + lead);
   }
 
@@ -5653,4 +5653,63 @@ function castleBanner(id) {
       <g transform="translate(214,36)"><line y2="-26" stroke="#1c1a17" stroke-width="1.6"/><path d="M0,-26 h18 q-3,5 0,10 q-3,5 0,10 h-18Z" fill="${color}" stroke="#1c1a17" stroke-width="1"/></g>
       ${fac}
     </svg>${tags.length ? `<p class="cb-tags">${tags.map((t) => `<span>${t}</span>`).join('')}</p>` : ''}</div>`;
+}
+
+// ---------- 合戦中の武将の掛け合い：一合ごとに、両軍の大将が吹き出しで叫ぶ ----------
+const BANTER = {
+  attack: ['かかれ、かかれぇ！', '押せ、押し込め！', '一歩も退くな！', '前へ、前へ！', 'ここが正念場だ！'],
+  charge: ['全軍、突撃ぃ！', '蹴散らせぇ！', 'わしに続けぇ！', '道をこじ開けろ！'],
+  guard: ['守りを固めよ！', '持ちこたえろ！', '焦るな、機を待て', '盾を並べよ！'],
+  scheme: ['ふふ、かかったな', '手は打ってある', '敵の裏をかけ！', '囁け、惑わせ'],
+  art: ['見よ、わが戦法を！', '今だ、あれを使え！', 'これが奥の手よ！'],
+  winning: ['いける、いけるぞ！', '敵は崩れかけておる！', '勝ち戦じゃ！', 'もう一押しだ！'],
+  losing: ['くっ、ここで退けるか！', 'まだだ、まだ終わらん！', '踏みとどまれ！', '立て直せ！'],
+  lowMorale: ['皆、もう少しだ……', '旗を……旗を降ろすな！', 'ここで倒れては……'],
+  first: ['いざ、尋常に勝負！', '名乗れ、相手になってやる！', '天下に名を轟かす時ぞ！'],
+  last: ['これが最後の一合だ！', '日が暮れる前に決めるぞ！', '最後まで、気を抜くな！'],
+  rival: ['また貴様か！', '今日こそ決着をつける！', 'この因縁、ここで断つ！'],
+  foeHit: ['ぐっ……やるな！', 'なんの、まだまだ！', '小癪な！', 'その程度か！'],
+  foeWin: ['ははは、その程度か！', '弱い、弱すぎる！', '帰って出直してこい！'],
+};
+function banterLine(B, side, prev, act) {
+  const me = B[side], foe = B[side === 'a' ? 'd' : 'a'];
+  const lostMe = (prev[side] - me.troops) / Math.max(1, prev[side]);
+  const lostFoe = (prev[side === 'a' ? 'd' : 'a'] - foe.troops) / Math.max(1, prev[side === 'a' ? 'd' : 'a']);
+  const ga = S.gens[B.gid], gd = B.dgid ? S.gens[B.dgid] : null;
+  const c = (act && act[side]) || '';
+  const r = Math.random();
+  if (B.round === 1 && r < 0.6) return pick(BANTER.first);
+  if (ga && gd && typeof areRivals === 'function' && areRivals(S, ga, gd) && r < 0.35) return pick(BANTER.rival);
+  if (me.morale < 25) return pick(BANTER.lowMorale);
+  if (B.round >= BATTLE.maxRounds - 1 && r < 0.5) return pick(BANTER.last);
+  if (lostFoe > lostMe * 1.5 && r < 0.6) return pick(BANTER.winning);
+  if (lostMe > lostFoe * 1.5 && r < 0.6) return pick(BANTER.losing);
+  if (c.startsWith('art:')) return pick(BANTER.art);
+  return pick(BANTER[c] || BANTER.attack);
+}
+function battleBanter(B, prev, act) {
+  const field = document.querySelector('#battle .b-field');
+  if (!field || B.over) return;
+  const say = (side, text, delay) => setTimeout(() => {
+    if (!field.isConnected) return;
+    const g = side === 'a' ? S.gens[B.gid] : B.dgid ? S.gens[B.dgid] : null;
+    if (!g) return;
+    const el = document.createElement('div');
+    el.className = `banter ${side === 'a' ? 'left' : 'right'}`;
+    el.innerHTML = `${portrait(g, 30, side === 'a' ? 'angry' : 'angry', side === 'a' ? 'R' : 'L')}<p>${esc(text)}</p>`;
+    // 戦場の絵の端にそろえる
+    const pic = field.querySelector(svg.bf);
+    if (pic) { const L = pic.offsetLeft + 6, R = field.clientWidth - (pic.offsetLeft + pic.offsetWidth) + 6; if (side === a) el.style.left = L + px; else el.style.right = R + px; el.style.maxWidth = Math.round(pic.offsetWidth * 0.48) + px; }
+    field.appendChild(el);
+    setTimeout(() => el.remove(), 1700);
+  }, delay);
+  const first = Math.random() < 0.5 ? 'a' : 'd';
+  const line1 = banterLine(B, first, prev, act);
+  say(first, line1, 150);
+  const other = first === 'a' ? 'd' : 'a';
+  const lostFirst = (prev[other] - B[other].troops) / Math.max(1, prev[other]);
+  let line2 = lostFirst > 0.18 ? pick(BANTER.foeHit) : B[first].troops < B[other].troops * 0.6 ? pick(BANTER.foeWin) : banterLine(B, other, prev, act);
+  for (let i = 0; i < 5 && line2 === line1; i++) line2 = banterLine(B, other, prev, act); // 同じ台詞を言い合わない
+  if (line2 === line1) line2 = pick(BANTER.foeHit);
+  say(other, line2, 750);
 }

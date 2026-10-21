@@ -3099,3 +3099,12 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .gc-falls span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #fbf4e2; border: 1.5px solid var(--ink); font-size: 13px; }
 .gc-big { text-align: center; }
 .gc-big svg { width: 100%; max-width: 480px; height: auto; border: 3px solid var(--ink); }
+
+/* ---------- 合戦中の掛け合い（v138） ---------- */
+.banter { position: absolute; top: 8%; z-index: 5; display: flex; align-items: center; gap: 4px; max-width: 46%; pointer-events: none; animation: banter-in 1.7s ease-out forwards; }
+.banter.left { left: 3%; }
+.banter.right { right: 3%; flex-direction: row-reverse; }
+.banter .portrait { flex: none; border-radius: 50%; border: 2px solid var(--ink); background: #fff; }
+.banter p { margin: 0; padding: 4px 9px; font-family: var(--mincho); font-weight: 800; font-size: 13px; line-height: 1.35; color: var(--ink); background: #fffaf0; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35); }
+.banter.right p { background: #fdeceb; }
+@keyframes banter-in { 0% { opacity: 0; transform: translateY(6px) scale(0.9); } 12% { opacity: 1; transform: translateY(0) scale(1.04); } 20% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
