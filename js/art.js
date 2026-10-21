@@ -1124,3 +1124,24 @@ function seasonDecor() {
     <path class="d-spring pt" d="${petals}"/><path class="d-autumn lf a" d="${leavesA}"/><path class="d-autumn lf b" d="${leavesB}"/>
     <path class="d-winter dr" d="${drifts}"/><g class="d-summer">${cumulus}</g></g>`;
 }
+
+// ---------- 策の札の場面（合戦の舞台 400×220 の座標）。side：札を使った側 ----------
+function sakuFx(k, side) {
+  const me = side === 'a' ? 105 : 280, foe = side === 'a' ? 290 : 100, dir = side === 'a' ? 1 : -1;
+  const K = '#1c1a17';
+  if (k === 'hiya') {
+    return `<g class="sf-hiya">${Array.from({ length: 14 }, (_, i) => {
+      const x = foe - 40 + (i % 7) * 13 + (i > 6 ? 6 : 0), d = (i * 0.07).toFixed(2);
+      return `<g class="sf-arrow" style="animation-delay:${d}s"><path d="M${x - 40 * dir},40 L${x},${170 + (i % 3) * 8}" stroke="#5a3a22" stroke-width="1.4"/><circle cx="${x}" cy="${170 + (i % 3) * 8}" r="4" fill="#ff8a2a"/><circle cx="${x}" cy="${170 + (i % 3) * 8}" r="2" fill="#ffd34a"/></g>`;
+    }).join('')}</g>`;
+  }
+  if (k === 'yashu') return '<g class="sf-night"><rect width="400" height="220" fill="#0b1430" opacity="0.55"/><circle cx="330" cy="40" r="16" fill="#f6f1d8"/><circle cx="337" cy="36" r="14" fill="#0b1430" opacity="0.6"/></g>';
+  if (k === 'hyoro') return `<g class="sf-hyoro"><path d="M${foe + 30 * dir},150 Q${foe + 20 * dir},110 ${foe + 36 * dir},80 Q${foe + 50 * dir},50 ${foe + 30 * dir},20" stroke="#2a2622" stroke-width="18" fill="none" stroke-linecap="round" opacity="0.6"/>
+    <path d="M${foe + 18 * dir},152 Q${foe + 26 * dir},128 ${foe + 34 * dir},140 Q${foe + 40 * dir},118 ${foe + 46 * dir},152Z" fill="#ff8a2a"/><path d="M${foe + 26 * dir},152 Q${foe + 32 * dir},138 ${foe + 38 * dir},152Z" fill="#ffd34a"/></g>`;
+  if (k === 'yodo') return `<g class="sf-yodo">${[0, 1, 2].map((i) => `<path class="sf-swirl" style="animation-delay:${i * 0.15}s" transform="translate(${foe - 24 + i * 24},${150 + (i % 2) * 10})" d="M0,0 m-9,0 a9,9 0 1,1 18,0 a6,6 0 1,1 -12,0 a3,3 0 1,1 6,0" stroke="#7a4fd0" stroke-width="2.4" fill="none"/>`).join('')}</g>`;
+  if (k === 'toki') return `<g class="sf-toki">${[0, 1, 2].map((i) => `<path class="sf-wave" style="animation-delay:${i * 0.18}s" d="M${me + 20 * dir},120 q${30 * dir},40 0,80" stroke="#e0a526" stroke-width="3" fill="none" stroke-linecap="round"/>`).join('')}<text x="${me}" y="110" class="sf-shout">えい、えい、おう！</text></g>`;
+  if (k === 'sandan') return `<g class="sf-sandan">${[0, 1, 2].map((row) => Array.from({ length: 5 }, (_, i) => `<g class="sf-flash" style="animation-delay:${(row * 0.22 + i * 0.03).toFixed(2)}s"><circle cx="${me + (40 + row * 8) * dir}" cy="${160 + i * 9}" r="5" fill="#fff3b0"/><circle cx="${me + (52 + row * 8) * dir}" cy="${158 + i * 9}" r="7" fill="#f4f1ea" opacity="0.8"/></g>`).join('')).join('')}</g>`;
+  if (k === 'haya') return `<g class="sf-haya">${[0, 1, 2].map((i) => `<g class="sf-rider" style="animation-delay:${i * 0.12}s; --dx:${130 * dir}px"><g transform="translate(${side === 'a' ? -10 : 410},${165 + i * 12}) scale(${1.4 * dir},1.4)">${soldier(CLANS[PLAYER] ? '#c8372d' : '#c8372d', false, 'kiba')}</g></g>`).join('')}</g>`;
+  if (k === 'rojo') return `<g class="sf-rojo">${Array.from({ length: 6 }, (_, i) => `<path d="M${me + (34 + i * 7) * dir},${150 + i * 9} l0,-18 M${me + (30 + i * 7) * dir},${144 + i * 9} l8,0" stroke="#5a3a22" stroke-width="3" stroke-linecap="round"/>`).join('')}</g>`;
+  return '';
+}

@@ -3468,6 +3468,29 @@ function runBattle(B, { auto = false, onClose } = {}) {
           if (i >= 0) {
             const k = useSaku(S, B, me, i);
             Sound.kiai();
+            // 大きな札を戦場に叩きつけ、札ごとの場面を出す
+            const field = document.querySelector('#battle .b-field');
+            if (field) {
+              const slam = document.createElement('div');
+              slam.className = 'saku-slam';
+              slam.innerHTML = `<span class="sk-k">${SAKU[k].k}</span><b>${SAKU[k].name}</b>`;
+              field.appendChild(slam);
+              setTimeout(() => slam.remove(), 1400);
+            }
+            setTimeout(() => {
+              const svg = document.querySelector('#battle svg.bf');
+              if (!svg) return;
+              const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+              g.setAttribute('class', `sf-layer ${k === 'yashu' ? 'stay' : ''}`);
+              g.innerHTML = sakuFx(k, me);
+              const ref = svg.querySelector('#bf-arrows');
+              if (k === 'yashu') svg.querySelector('g[clip-path]').insertBefore(g, svg.querySelector('#bf-front')); else (ref ? ref.parentNode.insertBefore(g, ref) : svg.appendChild(g));
+              if (k === 'hiya' || k === 'hyoro') Sound.fire();
+              if (k === 'sandan') Sound.teppo(8);
+              if (k === 'haya') Sound.hooves();
+              if (k === 'toki') { Sound.taiko(0, 1); Sound.taiko(0.25, 1); }
+              if (k !== 'yashu') setTimeout(() => g.remove(), 2600);
+            }, 450);
             const cut = $('b-cut'); cut.textContent = `策「${SAKU[k].name}」`; cut.className = 'b-cut go me';
             report([`策「${SAKU[k].name}」を使った！ ${SAKU[k].desc}`]);
             updateBars();
