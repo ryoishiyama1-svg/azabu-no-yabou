@@ -3020,3 +3020,10 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 @keyframes bf-cheer { from { translate: 0 0; } to { translate: 0 -5px; } }
 .bf.bf-defeat .bf-nobori { transform: rotate(-70deg) !important; transition: transform 1.2s ease-in; animation: none; }
 @media (prefers-reduced-motion: reduce) { .bf .cf, .bf .rn, .bf .bf-bigflag, .bf .bf-bigflag .cloth { animation: none; } }
+
+/* ---------- 地図の家紋と境界（v130） ---------- */
+#map #realm { pointer-events: none; }
+#map .realm-crest { opacity: 0.24; }
+#map .realm-border-shadow { fill: none; stroke: rgba(28, 26, 23, 0.55); stroke-width: 5; stroke-linecap: round; }
+#map .realm-border { fill: none; stroke: #e0b54e; stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: none; }
+#mapwrap[data-season="3"] #map .realm-border { stroke: #c99a2e; }

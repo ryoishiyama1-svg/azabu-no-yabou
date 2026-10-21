@@ -770,7 +770,9 @@ function clipHalf(poly, px, py, nx, ny) {
   return out;
 }
 
+let CELL_POLYS = {};
 function buildCells() {
+  CELL_POLYS = {};
   const R = 105;
   const cells = {};
   MAP.nodes.forEach((n) => {
@@ -783,6 +785,7 @@ function buildCells() {
       poly = clipHalf(poly, (n.x + o.x) / 2, (n.y + o.y) / 2, o.x - n.x, o.y - n.y);
     });
     cells[n.id] = pathFrom(poly, true);
+    CELL_POLYS[n.id] = poly; // 境界の金の縁を引くために、形も残す
   });
   return cells;
 }

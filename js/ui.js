@@ -5511,3 +5511,65 @@ const B_lastAttacker = () => (window.__lastB ? window.__lastB.attacker : PLAYER)
 const B_lastDefender = () => (window.__lastB ? window.__lastB.defender : 'none');
 const _bfRun2 = runBattle;
 runBattle = function (B, opts) { window.__lastB = B; return _bfRun2(B, opts); };
+
+// ---------- 地図の家紋と境界：領地の真ん中に大きな家紋、家どうしの境目に金の縁 ----------
+// 城の持ち主が変わったときだけ描き直す（ふだんの描画は重くしない）
+let realmSig = '';
+function realmLayer() {
+  const svgEl = $('map');
+  if (!svgEl) return null;
+  let g = svgEl.querySelector('#realm');
+  if (!g) {
+    g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.id = 'realm';
+    const terr = svgEl.querySelector('#territory');
+    if (terr && terr.getAttribute('clip-path')) g.setAttribute('clip-path', terr.getAttribute('clip-path'));
+    svgEl.insertBefore(g, svgEl.querySelector('#roads'));
+  }
+  return g;
+}
+function drawRealm(force) {
+  if (!S || !MAP || !MAP.nodes || !CELL_POLYS) return;
+  const owner = (id) => S.castles[id].owner;
+  const sig = MAP_SCENARIO + MAP.nodes.map((n) => owner(n.id)).join(',');
+  if (!force && sig === realmSig && document.querySelector('#map #realm')) return;
+  realmSig = sig;
+  const layer = realmLayer();
+  if (!layer) return;
+  // 境界：各城の領地の辺ごとに、すぐ外側がどの城の領地かを調べ、持ち主が違えば金の線
+  const R = 105;
+  const nearest = (x, y) => {
+    let best = null, bd = Infinity;
+    MAP.nodes.forEach((n) => { const d = (n.x - x) ** 2 + (n.y - y) ** 2; if (d < bd) { bd = d; best = n; } });
+    return bd <= R * R ? best : null;
+  };
+  let border = '';
+  MAP.nodes.forEach((n) => {
+    const o = owner(n.id);
+    if (o === 'none') return;
+    const poly = CELL_POLYS[n.id];
+    if (!poly) return;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      let nx = (b.y - a.y) / len, ny = -(b.x - a.x) / len;
+      if ((mx - n.x) * nx + (my - n.y) * ny < 0) { nx = -nx; ny = -ny; } // 外向きに
+      const out = nearest(mx + nx * 4, my + ny * 4);
+      if (!out || owner(out.id) !== o) border += `M${a.x.toFixed(1)},${a.y.toFixed(1)}L${b.x.toFixed(1)},${b.y.toFixed(1)}`;
+    }
+  });
+  // 家紋：二城以上を持つ家の、城の重心に
+  const crests = scenarioClans(S.scenario).map((k) => {
+    const ids = castlesOf(S, k);
+    if (ids.length < 2) return '';
+    const cx = ids.reduce((a, id) => a + MAP.byId[id].x, 0) / ids.length, cy = ids.reduce((a, id) => a + MAP.byId[id].y, 0) / ids.length;
+    const size = Math.min(260, 70 + Math.sqrt(ids.length) * 34);
+    return `<svg class="realm-crest" x="${(cx - size / 2).toFixed(0)}" y="${(cy - size / 2).toFixed(0)}" width="${size.toFixed(0)}" height="${size.toFixed(0)}" viewBox="-32 -32 64 64"><circle r="30" fill="none" stroke="${CLANS[k].color}" stroke-width="2.5"/>${crestInner(CLANS[k].crest, CLANS[k].color)}</svg>`;
+  }).join('');
+  layer.innerHTML = `<g class="realm-crests">${crests}</g><path class="realm-border-shadow" d="${border}"/><path class="realm-border" d="${border}"/>`;
+}
+const _rmRender = render;
+render = function (...a) { const r = _rmRender.apply(this, a); try { drawRealm(); } catch (e) {} return r; };
+const _rmDraw = drawMap;
+drawMap = function (...a) { const r = _rmDraw.apply(this, a); realmSig = ''; return r; };
