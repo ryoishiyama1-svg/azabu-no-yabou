@@ -923,6 +923,9 @@ function helpChapters() {
       <h3>陣形</h3>
       <p>合戦のはじめに<b>陣立て</b>。六つの陣形は巡りの相性を持ちます：${Object.values(JINKEI).map((J) => J.name).join('→')}→${JINKEI.hoshi.name}（それぞれ次の陣に強い）。大将の知略が高いと、敵の陣形が見えます。</p>
       <div class="help-grid">${Object.values(JINKEI).map((J) => `<div><b>${J.name}</b><span>${J.desc}</span></div>`).join('')}</div>
+      <h3>策の札</h3>
+      <p>策の札は最大${HAND_MAX}枚。季ごとにときどき一枚引き、家の志が上がったときや他家の本拠を落としたときにも手に入ります。合戦では陣立てのあとに一枚だけ使えます。</p>
+      <div class="help-grid">${Object.values(SAKU).map((c) => `<div><b>${c.name}</b><span>${c.desc}</span></div>`).join('')}</div>
       <h3>孤立・挟み撃ち・伏兵</h3>
       ${li([
         `味方の城と一つもつながっていない城は<b>孤立</b>（地図に「孤」）。季ごとに兵が${Math.round(ISOLATE.drain * 100)}%減り、攻められると士気-${ISOLATE.morale}。囲んでから落とすと楽に`,
@@ -3446,6 +3449,29 @@ function runBattle(B, { auto = false, onClose } = {}) {
       $('b-manual').onclick = () => { Sound.tap(); auto = false; clearTimeout(timer); renderCmds(); };
       return;
     }
+    // 策の札：陣立てのあと、一枚だけ使える
+    if (!auto && !B.sakuAsked && B.round === 0 && typeof usableSaku === 'function' && usableSaku(S, B, me).length) {
+      const hand = usableSaku(S, B, me);
+      el.innerHTML = `<div class="saku-pick"><p class="jk-head"><b>策</b><span>手札から一枚だけ使える（使わなくてもよい）</span></p>
+        <div class="saku-hand">${hand.map(({ k, i }) => `<button class="saku-card" data-saku="${i}"><span class="sk-k">${SAKU[k].k}</span><b>${SAKU[k].name}</b><small>${SAKU[k].desc}</small></button>`).join('')}</div>
+        <button class="btn plain" data-saku="-1">使わずに戦う</button></div>`;
+      el.querySelectorAll('[data-saku]').forEach((b) => {
+        b.onclick = () => {
+          B.sakuAsked = true;
+          const i = +b.dataset.saku;
+          if (i >= 0) {
+            const k = useSaku(S, B, me, i);
+            Sound.kiai();
+            const cut = $('b-cut'); cut.textContent = `策「${SAKU[k].name}」`; cut.className = 'b-cut go me';
+            report([`策「${SAKU[k].name}」を使った！ ${SAKU[k].desc}`]);
+            updateBars();
+            save();
+          } else Sound.tap();
+          renderCmds();
+        };
+      });
+      return;
+    }
     const cmds = ['attack', 'charge', 'guard', 'scheme'].concat(defense ? [] : ['retreat']);
     const arts = B[me].arts.filter((id) => !B[me].used[id]);
     el.innerHTML = `<div class="cmd-grid">${cmds.map((c) =>
@@ -5159,8 +5185,9 @@ function missionCards() {
 }
 function momentumChip() {
   const n = S.momentum || 0;
-  if (!n) return '';
-  return `<p class="momentum" title="攻めで勝ち続けると溜まる。負けると途切れる"><span>勢い</span>${'<i>🔥</i>'.repeat(n)}<small>攻め+${Math.round(n * MOMENTUM.per * 100)}%</small></p>`;
+  const hand = (S.hand || []).length ? `<p class="hand-chip momentum"><span>策の手札</span>${S.hand.map((k) => `<i title="${SAKU[k].name}：${SAKU[k].desc}">${SAKU[k].k}</i>`).join('')}<small>${S.hand.length}/${HAND_MAX}・合戦の前に使える</small></p>` : '';
+  if (!n) return hand;
+  return `<p class="momentum" title="攻めで勝ち続けると溜まる。負けると途切れる"><span>勢い</span>${'<i>🔥</i>'.repeat(n)}<small>攻め+${Math.round(n * MOMENTUM.per * 100)}%</small></p>${hand}`;
 }
 const _msRender = render;
 render = function (...a) {

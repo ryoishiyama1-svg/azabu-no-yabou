@@ -2905,3 +2905,17 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .vt-mark { grid-row: 1 / span 2; display: grid; place-items: center; width: 32px; height: 32px; font-family: var(--brush); font-size: 20px; color: #fff3d6; background: var(--red); border: 1.5px solid var(--ink); }
 .vt-pick b { font-family: var(--mincho); font-weight: 900; }
 .vt-pick small { font-size: 11px; opacity: 0.85; }
+
+/* ---------- 策の札（v123） ---------- */
+.saku-pick { color: var(--paper); }
+.saku-hand { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-bottom: 4px; }
+.saku-card { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 6px; font: inherit; color: var(--ink); cursor: pointer;
+  background: linear-gradient(180deg, #fbf4e2, #ead9b0); border: 2px solid var(--ink); box-shadow: inset 0 0 0 3px #c99a2e, 3px 3px 0 rgba(0, 0, 0, 0.4); transform: rotate(-1deg); }
+.saku-card:nth-child(even) { transform: rotate(1.2deg); }
+.saku-card:hover { transform: translateY(-3px); }
+.sk-k { display: grid; place-items: center; width: 38px; height: 38px; font-family: var(--brush); font-size: 24px; color: #fff3d6; background: var(--red); border: 2px solid var(--ink); border-radius: 50%; }
+.saku-card b { font-family: var(--mincho); font-size: 14px; }
+.saku-card small { font-size: 10.5px; line-height: 1.35; opacity: 0.85; text-align: center; }
+.hand-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; }
+.hand-chip > span { font-family: var(--brush); font-size: 13px; color: #fff3d6; background: linear-gradient(180deg, #c99a2e, #8a6420); padding: 0 6px; border: 1px solid var(--gold-line); }
+.hand-chip i { font-style: normal; display: inline-grid; place-items: center; width: 22px; height: 22px; font-family: var(--brush); color: #fff3d6; background: var(--red); border-radius: 50%; border: 1px solid #000; }
