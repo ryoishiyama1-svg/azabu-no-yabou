@@ -3849,6 +3849,7 @@ function runBattle(B, { auto = false, onClose } = {}) {
       document.querySelector('.bf-castle').style.setProperty('--c', CLANS[B.attacker].color);
     }
     settle(r.won);
+    battleFinale(good, r.won);
     $('round').textContent = defense
       ? (r.won ? `${MAP.byId[B.to].short}は落城した…` : `${MAP.byId[B.to].short}を守り抜いた！`)
       : (r.won ? `${MAP.byId[B.to].short}、落城！` : '攻略ならず…');
@@ -5484,3 +5485,29 @@ openModal = function (html) { $('modal').classList.remove('setup-mode'); return 
   box.innerHTML = Array.from({ length: 18 }, (_, i) => `<i style="left:${(5 + Math.random() * 90).toFixed(1)}%;top:${(5 + Math.random() * 55).toFixed(1)}%;animation-delay:-${(Math.random() * 4).toFixed(1)}s;animation-duration:${(3 + Math.random() * 3).toFixed(1)}s"></i>`).join('');
   t.insertBefore(box, t.querySelector('.title-inner'));
 })();
+
+// ---------- 合戦の決着の場面：勝てば城に大旗と勝ち鬨と紙吹雪、負ければ旗が倒れ雨が降る ----------
+function battleFinale(good, attackerWon) {
+  const svg = document.querySelector('#battle svg.bf');
+  if (!svg) return;
+  const root = svg.querySelector('g[clip-path]') || svg;
+  const flagClan = attackerWon ? B_lastAttacker() : B_lastDefender();
+  const color = CLANS[flagClan] ? CLANS[flagClan].color : '#8a8170';
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', `bf-finale ${good ? 'good' : 'bad'}`);
+  // 城の天守に立つ大旗（落ちれば攻め手の旗、守れば守り手の旗）
+  const flag = `<g class="bf-bigflag"><line x1="352" y1="72" x2="352" y2="18" stroke="#1c1a17" stroke-width="2"/><path class="cloth" d="M352,18 h26 q-4,7 0,14 q-4,7 0,14 h-26 Z" fill="${color}" stroke="#1c1a17" stroke-width="1.2"/>
+    <svg x="356" y="24" width="18" height="18" viewBox="-32 -32 64 64">${crestInner(CLANS[flagClan] ? CLANS[flagClan].crest : 'maru', '#fff')}</svg></g>`;
+  const confetti = good ? Array.from({ length: 40 }, (_, i) => `<rect class="cf" x="${(i * 37) % 400}" y="-10" width="4" height="7" fill="${['#e0a526', '#f3d27a', '#c8372d', '#fff3d6'][i % 4]}" style="animation-delay:${(i % 10) * 0.12}s; animation-duration:${(2.2 + (i % 5) * 0.3).toFixed(1)}s"/>`).join('') : '';
+  const rain = good ? '' : Array.from({ length: 50 }, (_, i) => `<line class="rn" x1="${(i * 29) % 420}" y1="-20" x2="${(i * 29) % 420 - 8}" y2="0" style="animation-delay:${((i % 10) * 0.09).toFixed(2)}s"/>`).join('');
+  const glow = good && !attackerWon ? '<rect class="bf-glow" width="400" height="220" fill="url(#bf-kin)" opacity="0"/>' : '';
+  g.innerHTML = `${glow}${flag}${confetti}${rain}`;
+  root.appendChild(g);
+  svg.classList.add(good ? 'bf-victory' : 'bf-defeat');
+  if (good) { Sound.taiko(0.2, 1.1); Sound.taiko(0.45, 1.1); Sound.taiko(0.7, 1.3); setTimeout(() => Sound.horagai(), 900); }
+  else { Sound.taiko(0.3, 0.5); Sound.taiko(1.1, 0.4); }
+}
+const B_lastAttacker = () => (window.__lastB ? window.__lastB.attacker : PLAYER);
+const B_lastDefender = () => (window.__lastB ? window.__lastB.defender : 'none');
+const _bfRun2 = runBattle;
+runBattle = function (B, opts) { window.__lastB = B; return _bfRun2(B, opts); };
