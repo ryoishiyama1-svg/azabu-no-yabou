@@ -2924,3 +2924,32 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .ef-tags .t-hh { color: #fff; background: #6b3a8a; }
 .ef-tags .t-path { color: #1c1a17; background: #e0a526; }
 .gd-heiho h3 small { margin-left: 8px; font-size: 12px; color: var(--red); }
+
+/* ---------- 旗揚げの金屏風（v125） ---------- */
+.modal.setup-mode { padding: 0; background: #120b08; }
+.modal.setup-mode .sheet { width: 100%; max-width: 720px; height: 100%; max-height: none; border-radius: 0; border: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 246, 210, 0.55), transparent 60%), repeating-linear-gradient(90deg, rgba(122, 84, 24, 0.12) 0 2px, transparent 2px 25%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Crect width='24' height='24' fill='%23e2b64c'/%3E%3Crect width='12' height='12' fill='%23e9c25e'/%3E%3Crect x='12' y='12' width='12' height='12' fill='%23d8aa40'/%3E%3C/svg%3E");
+  box-shadow: inset 0 0 0 6px #120b08, inset 0 0 0 8px var(--gold-line); }
+.modal.setup-mode .sheet-body { padding: 18px 18px 30px; }
+.modal.setup-mode h2 { font-size: 34px; }
+.modal.setup-mode .setup-h { background: rgba(255, 250, 235, 0.75); padding: 4px 8px; border-left: 5px solid var(--red); }
+.ed-pick button { position: relative; overflow: hidden; }
+.ed-pick button .ed-map { position: absolute; right: 4px; bottom: 4px; width: 90px; height: 56px; opacity: 0.55; pointer-events: none; }
+.ed-pick button.on .ed-map { opacity: 0.9; }
+.modal.setup-mode .ed-pick button, .modal.setup-mode .clan-pick button, .modal.setup-mode .diff-list button, .modal.setup-mode .ts-pick button, .modal.setup-mode .vt-pick button { box-shadow: 3px 3px 0 rgba(58, 36, 8, 0.45); }
+.modal.setup-mode .ed-pick button.on, .modal.setup-mode .clan-pick button.on, .modal.setup-mode .diff-list button.on { box-shadow: 0 0 0 3px #f3d27a, 0 0 14px rgba(243, 210, 122, 0.9); }
+.modal.setup-mode .clan-pick button { padding: 10px 4px; background: linear-gradient(180deg, #fffaf0, #f1e6cc); }
+.modal.setup-mode .clan-pick button .crest-badge, .modal.setup-mode .clan-pick button svg { width: 48px; height: 48px; }
+
+/* タイトル：金雲が流れ、金箔の砂子がきらめく */
+#title-art .byobu { animation: tb-pan 40s ease-in-out infinite alternate; transform-origin: 50% 50%; }
+@keyframes tb-pan { from { transform: scale(1.03) translateX(-6px); } to { transform: scale(1.06) translateX(6px); } }
+.title-shimmer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.title-shimmer i { position: absolute; width: 4px; height: 4px; background: #fff6d0; transform: rotate(45deg); opacity: 0; box-shadow: 0 0 6px 2px rgba(255, 230, 150, 0.8); animation: tb-twinkle 4s ease-in-out infinite; }
+@keyframes tb-twinkle { 0%, 100% { opacity: 0; transform: rotate(45deg) scale(0.4); } 50% { opacity: 0.95; transform: rotate(45deg) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) { #title-art .byobu, .title-shimmer i { animation: none; } }
+.modal.setup-mode .sheet { padding: 0; }
+.modal.setup-mode .sheet-body { max-height: 100%; height: 100%; border: 0; background: transparent; box-shadow: none; }
+.modal.setup-mode .sheet-body::before, .modal.setup-mode .sheet-body::after { display: none; }
+.modal.setup-mode .hint { color: #3a2408; text-shadow: 0 1px 0 rgba(255, 246, 210, 0.7); }
+.vt-pick { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); } .vt-pick button { align-items: start; } .vt-pick small { grid-column: 2; }

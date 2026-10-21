@@ -687,7 +687,7 @@ function showSetup() {
     const big = scs.reduce((a, s) => (scenarioSize(s) > scenarioSize(a) ? s : a), scs[0]);
     const lead = CLANS[e.lead];
     return `<button data-ed="${k}" class="${k === st.ed ? 'on' : ''}" style="--c:${e.color || lead.color}">
-      <span class="ed-mark">${e.mark}</span><b>${e.name}</b><small>${e.desc}</small>
+      <span class="ed-mark">${e.mark}</span><b>${e.name}</b><small>${e.desc}</small>${edMiniMap(big)}
       <em>最大${scenarioSize(big)}校・${scenarioClans(big).length}家${scs.length > 1 ? `・${scs.length}つの戦い` : ''}</em></button>`;
   }).join('')}</div>`;
   const scList = () => pickList('sc', scenariosOf(st.ed), SCENARIOS, st.scenario, (d, k) => `<span class="lv">${d.level}</span><span class="sc-size">${scenarioSize(k)}校・${scenarioClans(k).length}家</span>`);
@@ -777,6 +777,7 @@ function showSetup() {
   };
   // 挑戦状：いくつでも重ねられる（押すたびに付け外し）
   modalBody.querySelectorAll('[data-ch]').forEach((b) => { b.onclick = () => { Sound.tap(); const k = b.dataset.ch; if (st.ch.has(k)) st.ch.delete(k); else st.ch.add(k); b.classList.toggle('on', st.ch.has(k)); }; });
+  $('modal').classList.add('setup-mode'); // 旗揚げは金屏風の全画面
   $('setup-go').onclick = () => {
     const name = $('lord-name').value.trim() || defaultName();
     S = newGame({ lordName: name, diff: st.diff, scenario: st.scenario, clan: st.clan, tutorial: $('tut').checked, challenges: [...st.ch] });
@@ -5418,3 +5419,31 @@ render = function (...a) {
   }
   return r;
 };
+
+// ---------- 旗揚げの金屏風：版の札に、学校の並びの小さな地図 ----------
+function edMiniMap(sc) {
+  const S0 = SCENARIOS[sc];
+  if (!S0) return '';
+  const rows = SCHOOL_ROWS.filter((r) => S0.filter(r));
+  if (!rows.length) return '';
+  const lats = rows.map((r) => r[4]), lons = rows.map((r) => r[5]);
+  const [la0, la1, lo0, lo1] = [Math.min(...lats), Math.max(...lats), Math.min(...lons), Math.max(...lons)];
+  const W = 90, H = 56, k = Math.min(W / Math.max(0.01, lo1 - lo0), H / Math.max(0.01, (la1 - la0) * 1.2));
+  const dots = rows.map((r) => {
+    const x = (W - (lo1 - lo0) * k) / 2 + (r[5] - lo0) * k, y = (H - (la1 - la0) * 1.2 * k) / 2 + (la1 - r[4]) * 1.2 * k;
+    const cap = r[0] === r[6] && CLANS[r[6]];
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${cap ? 2.8 : 1.4}" fill="${cap ? CLANS[r[6]].color : '#5a4a32'}" ${cap ? 'stroke="#1c1a17" stroke-width="0.6"' : 'opacity="0.55"'}/>`;
+  }).join('');
+  return `<svg class="ed-map" viewBox="0 0 ${W} ${H}" aria-hidden="true">${dots}</svg>`;
+}
+const _smOpen = openModal;
+openModal = function (html) { $('modal').classList.remove('setup-mode'); return _smOpen(html); };
+// タイトルの金箔のきらめき
+(function titleShimmer() {
+  const t = $('title');
+  if (!t || t.querySelector('.title-shimmer')) return;
+  const box = document.createElement('div');
+  box.className = 'title-shimmer';
+  box.innerHTML = Array.from({ length: 18 }, (_, i) => `<i style="left:${(5 + Math.random() * 90).toFixed(1)}%;top:${(5 + Math.random() * 55).toFixed(1)}%;animation-delay:-${(Math.random() * 4).toFixed(1)}s;animation-duration:${(3 + Math.random() * 3).toFixed(1)}s"></i>`).join('');
+  t.insertBefore(box, t.querySelector('.title-inner'));
+})();
