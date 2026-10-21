@@ -3059,3 +3059,10 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 @keyframes sw-fall { 0% { transform: translate(0, 0) rotate(0) scale(var(--s)); opacity: 0; } 10% { opacity: 1; } 100% { transform: translate(-60px, 110vh) rotate(540deg) scale(var(--s)); opacity: 0.7; } }
 @keyframes sw-float { 0% { transform: translate(0, 0) scale(var(--s)); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(30px, -70vh) scale(var(--s)); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .season-wipe { display: none; } }
+
+/* ---------- 他家の当主の名乗り（v133） ---------- */
+#battle .foe-lord { display: flex; align-items: center; gap: 8px; margin: 6px auto 0; max-width: 520px; padding: 4px 10px; text-align: left; background: rgba(138, 29, 21, 0.35); border: 1px solid rgba(243, 210, 122, 0.5); animation: tip-in 0.5s ease-out; }
+#battle .foe-lord .portrait { border-radius: 50%; border: 2px solid #f3d27a; flex: none; }
+#battle .foe-lord p { margin: 0; font-family: var(--mincho); font-weight: 700; font-size: 14px; }
+#battle .foe-lord small { display: block; font-size: 10px; opacity: 0.8; font-weight: 400; }
+#battle .foe-lord b { margin-right: 6px; color: #f3d27a; }

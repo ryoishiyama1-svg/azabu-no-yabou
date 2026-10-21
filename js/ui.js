@@ -1627,7 +1627,7 @@ function showDiplomacy(message) {
     const off = !envoy || (S.encircle && !r.sister);
     return `<div class="diplo-row ${r.sister ? 'sister' : ''}">
       <div class="dr-head">${clanChip(k)}${k === S.nemesis ? '<b class="nemesis-tag">宿敵の家</b>' : ''}<span>${relLabel(S, k)}</span><span class="p-sub">城 ${castlesOf(S, k).length}</span></div>
-      ${(() => { const lo = aiLordOf(S, k); return lo ? `<div class="dr-lord">${portrait(lo, 48, r.friend >= 60 ? "smile" : r.friend < 30 ? "angry" : null)}<div><small>当主</small><b>${esc(lo.name)}</b>${lordVoice(k).catch ? `<i>「${lordVoice(k).catch}」</i>` : ""}</div></div>` : ""; })()}
+      ${(() => { const lo = aiLordOf(S, k); return lo ? `<div class="dr-lord">${portrait(lo, 48, r.friend >= 60 ? "smile" : r.friend < 30 ? "angry" : null)}<div><small>当主</small><b>${esc(lo.name)}</b><i>「${esc(typeof lordSay === "function" ? lordSay(k, relMood(k)) : lordVoice(k).catch || "")}」</i></div></div>` : ""; })()}
       ${taishiLine(S, k)}
       <p class="persona"><b>性格「${personaOf(k).name}」</b>${personaOf(k).desc}</p>
       ${(() => {
