@@ -898,6 +898,9 @@ function helpChapters() {
         `<b>褒美</b>（金${LOYAL.rewardCost}）や合戦の勝利、合宿・文化祭で上がります`,
         `忠誠${LOYAL.leaveBelow}未満で<b>出奔</b>、${LOYAL.rebelBelow}未満で城ごと<b>謀反</b>のおそれ`,
       ])}
+      <h3>兵法と進路</h3>
+      <p>武将は合戦を重ねると経験がたまり、${HEIHO_AT.join("戦・")}戦で<b>兵法</b>を覚えます（一人${HEIHO_AT.length}つまで。得意な能力で決まる）。毎年春には、二年生に上がった家臣の<b>進路</b>（${Object.values(SHINRO).map((P) => P.name).join("・")}）を面談で決めます。</p>
+      <div class="help-grid">${Object.values(HEIHO).map((h) => `<div><b>${h.name}</b><span>${h.desc}</span></div>`).join("")}</div>
       <h3>部活</h3>
       <p>武将はみな部活に入っていて、合戦で効き目があります。</p>
       <div class="help-grid">${Object.values(CLUBS).map((c) => `<div><b>${c.name}</b><span>${c.desc}</span></div>`).join('')}</div>
@@ -4057,7 +4060,7 @@ function eFuda(g) {
     <small class="ef-nick">${nickOf(g) ? `「${esc(nickOf(g))}」` : esc(g.title || '')}</small>
     ${bar('str', '統')}${bar('int', '知')}${bar('pol', '政')}${bar('cha', '魅')}
     <div class="ef-loyal ${g.lord ? '' : g.loyal < 50 ? 'bad' : g.loyal >= 80 ? 'good' : ''}"><span>忠</span><i><b style="width:${g.lord ? 100 : g.loyal}%"></b></i></div>
-    <div class="ef-tags">${g.loc ? `<span class="where">${MAP.byId[g.loc].short}</span>` : ''}${t ? `<span title="${esc(t.name)}">${TREASURE_KINDS[t.kind].icon}</span>` : ''}${g.shi && !g.shi.done ? '<span class="t-shi">志</span>' : ''}${bonds ? `<span class="t-bond">絆${bonds > 1 ? bonds : ''}</span>` : ''}${g.skill && SKILLS[g.skill] ? `<span class="t-sk">${esc(SKILLS[g.skill].name)}</span>` : ''}</div>
+    <div class="ef-tags">${g.loc ? `<span class="where">${MAP.byId[g.loc].short}</span>` : ''}${t ? `<span title="${esc(t.name)}">${TREASURE_KINDS[t.kind].icon}</span>` : ''}${g.shi && !g.shi.done ? '<span class="t-shi">志</span>' : ''}${bonds ? `<span class="t-bond">絆${bonds > 1 ? bonds : ''}</span>` : ''}${g.skill && SKILLS[g.skill] ? `<span class="t-sk">${esc(SKILLS[g.skill].name)}</span>` : ''}${(g.heiho || []).map((k) => `<span class="t-hh" title="${HEIHO[k].desc}">${HEIHO[k].name}</span>`).join('')}${g.path ? `<span class="t-path">${SHINRO[g.path].name}</span>` : ''}</div>
   </button>`;
 }
 // 人物相関図：当主を真ん中に、家臣を輪に。絆は金の線、他家の宿敵は外の輪に赤い点線
@@ -5390,4 +5393,28 @@ showEnding = function (...a) {
     return;
   }
   return _crEnding.apply(this, a);
+};
+
+// ---------- 兵法を覚えたら知らせ、武将の詳しい画面に兵法と進路を ----------
+const _grShowGen = showGeneral;
+showGeneral = function (gid) {
+  _grShowGen(gid);
+  const g = S.gens[gid];
+  if (!g) return;
+  const hh = (g.heiho || []).map((k) => `<div><b>${HEIHO[k].name}</b><span>${HEIHO[k].desc}</span></div>`).join('');
+  const next = HEIHO_AT.find((n) => (g.exp || 0) < n);
+  const html = `<div class="gd-heiho"><h3>兵法${g.path ? `<small>進路：${SHINRO[g.path].name}</small>` : ''}</h3>
+    ${hh ? `<div class="help-grid">${hh}</div>` : '<p class="hint">まだ兵法は覚えていない</p>'}
+    <p class="hint">合戦の経験 ${g.exp || 0}${next ? `（${next}戦で次の兵法）` : '（兵法は極めた）'}</p></div>`;
+  const chron = modalBody.querySelector('.chron');
+  if (chron) chron.insertAdjacentHTML('beforebegin', html); else modalBody.insertAdjacentHTML('beforeend', html);
+};
+const _grRender = render;
+render = function (...a) {
+  const r = _grRender.apply(this, a);
+  if (S && S.learned && S.learned.length) {
+    const L = S.learned.splice(0);
+    L.forEach((x, i) => setTimeout(() => { const g = S.gens[x.gid]; if (g) { Sound.kira(); toast(`${portrait(g, 30, 'laugh')}<span>${esc(g.name)}が兵法「<b>${HEIHO[x.k].name}</b>」を会得した！<br><small>${HEIHO[x.k].desc}</small></span>`); } }, 600 + i * 1800));
+  }
+  return r;
 };
