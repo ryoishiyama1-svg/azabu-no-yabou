@@ -1145,3 +1145,28 @@ function sakuFx(k, side) {
   if (k === 'rojo') return `<g class="sf-rojo">${Array.from({ length: 6 }, (_, i) => `<path d="M${me + (34 + i * 7) * dir},${150 + i * 9} l0,-18 M${me + (30 + i * 7) * dir},${144 + i * 9} l8,0" stroke="#5a3a22" stroke-width="3" stroke-linecap="round"/>`).join('')}</g>`;
   return '';
 }
+
+// 面談室の一枚絵（進路面談）：夕日の差す教室、黒板と机と二つの椅子
+const _mdSeasonArt = seasonArt;
+seasonArt = function (kind) {
+  if (kind !== 'mendan') return _mdSeasonArt(kind);
+  const K = '#1c1a17';
+  return `<svg viewBox="0 0 340 150" class="season-art" aria-hidden="true">
+    <defs><linearGradient id="md-sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6c27a"/><stop offset="1" stop-color="#e98a4a"/></linearGradient></defs>
+    <rect width="340" height="150" fill="#efe1c4"/>
+    <rect x="20" y="16" width="120" height="62" fill="#2f4a3a" stroke="#6b4a2c" stroke-width="5"/>
+    <text x="80" y="44" font-family="sans-serif" font-size="11" fill="#e8f0e8" text-anchor="middle">進路希望調査</text>
+    <path d="M40,58 h80 M40,66 h56" stroke="#e8f0e8" stroke-width="1.4" opacity="0.7"/>
+    <rect x="200" y="12" width="120" height="78" fill="url(#md-sun)" stroke="${K}" stroke-width="3"/>
+    <path d="M260,12 V90 M200,51 H320" stroke="${K}" stroke-width="2.5"/>
+    <circle cx="290" cy="70" r="14" fill="#fff0c8" opacity="0.8"/>
+    <path d="M200,90 L80,150 L340,150 L320,90 Z" fill="#f6c27a" opacity="0.25"/>
+    <rect y="112" width="340" height="38" fill="#c9a26a"/>
+    <path d="M0,124 H340 M0,138 H340" stroke="#a88050" stroke-width="1"/>
+    <rect x="120" y="88" width="100" height="10" fill="#8a5a32" stroke="${K}" stroke-width="2"/>
+    <path d="M128,98 V122 M212,98 V122" stroke="${K}" stroke-width="3"/>
+    <rect x="150" y="82" width="22" height="6" fill="#f6f1d8" stroke="${K}" stroke-width="1"/>
+    <g fill="#6b4a2c" stroke="${K}" stroke-width="2"><rect x="88" y="96" width="22" height="6"/><path d="M90,102 V122 M108,102 V122 M90,96 V78" fill="none"/><rect x="230" y="96" width="22" height="6"/><path d="M232,102 V122 M250,102 V122 M250,96 V78" fill="none"/></g>
+    <rect x="2" y="2" width="336" height="146" fill="none" stroke="${K}" stroke-width="4"/>
+  </svg>`;
+};

@@ -98,7 +98,7 @@ function shinroCand(s) {
   return bestBy(gensOf(s, PLAYER).filter((g) => g.grade === 2 && !g.path && g.loc && !g.lord), (g) => g.str + g.int + g.pol + g.cha);
 }
 EVENTS.shinro = {
-  icon: '進', title: '進路面談',
+  icon: '進', title: '進路面談', art: 'mendan',
   cond: (s) => !!shinroCand(s),
   init: (s) => ({ gid: shinroCand(s).id }),
   text: (s, p) => { const g = s.gens[p.gid]; return `二年生になった${g.name}が、進路の相談にやってきた。\n「この家で、どんな役目を果たせばよいでしょうか」\n得意は${STAT_NAMES[['str', 'int', 'pol', 'cha'].sort((a, b) => g[b] - g[a])[0]]}。どの道を勧める？`; },

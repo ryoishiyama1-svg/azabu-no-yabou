@@ -5438,9 +5438,21 @@ showGeneral = function (gid) {
 const _grRender = render;
 render = function (...a) {
   const r = _grRender.apply(this, a);
-  if (S && S.learned && S.learned.length) {
-    const L = S.learned.splice(0);
-    L.forEach((x, i) => setTimeout(() => { const g = S.gens[x.gid]; if (g) { Sound.kira(); toast(`${portrait(g, 30, 'laugh')}<span>${esc(g.name)}が兵法「<b>${HEIHO[x.k].name}</b>」を会得した！<br><small>${HEIHO[x.k].desc}</small></span>`); } }, 600 + i * 1800));
+  // 兵法を会得：画面が落ち着いたら、武将の決め絵と、ほどける巻物に兵法の名
+  if (S && S.learned && S.learned.length && !window.__heihoWait) {
+    window.__heihoWait = true;
+    const next = () => {
+      const busy = !modal.hidden || document.querySelector('.kime:not([hidden])') || !$('battle').hidden || (document.getElementById('seki') && !$('seki').hidden);
+      if (busy) { setTimeout(next, 1200); return; }
+      const x = S.learned.shift();
+      const g = x && S.gens[x.gid];
+      if (!x) { window.__heihoWait = false; return; }
+      if (!g) { next(); return; }
+      Sound.kira(); Sound.hyoshigi(2);
+      showKime(g, '兵法会得', pick(['この技、いまこそわがものに', '幾たびの戦いが、教えてくれた', '次の戦で、見せてやろう']), () => { if (S.learned.length) setTimeout(next, 400); else window.__heihoWait = false; }, 'laugh',
+        `<div class="heiho-scroll"><span class="hs-rod"></span><div class="hs-paper"><b>${HEIHO[x.k].name}</b><small>${HEIHO[x.k].desc}</small></div><span class="hs-rod"></span></div>`);
+    };
+    setTimeout(next, 800);
   }
   return r;
 };
