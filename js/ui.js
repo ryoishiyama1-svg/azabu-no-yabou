@@ -999,6 +999,9 @@ function helpChapters() {
       ])}
       <h3>家臣の声</h3>
       <p>季ごとに家臣が一人、軍議で話しかけてきます。不満・攻めや町づくりの献策・志・宿敵の話など。返事しだいで忠誠や士気が動き、献策を任せるとその場で動きます。</p>
+      <h3>今季の方針</h3>
+      <p>軍議の「戦況」の一番上に、季ごとに方針の札が三枚。一つ選ぶとその季のあいだ効きます（選び直しはできません）。</p>
+      <div class="help-grid">${Object.values(POLICIES).map((P) => `<div><b>${P.name}</b><span>${P.desc}</span></div>`).join("")}</div>
       <h3>密命と勢い</h3>
       <p>家臣が期限つきの<b>密命</b>（城を落とせ・守り抜け・家の城を奪え・町を育てよ・和を結べ・一騎打ちに勝て）を持ってきます。同時に二つまで。果たせば褒美。攻めで勝ち続けると<b>勢い</b>が溜まり（最大${MOMENTUM.max}段）、一段ごとに攻めの力+${Math.round(MOMENTUM.per * 100)}%。攻めで負けると途切れます。</p>
       <h3>時代が動く</h3>
@@ -5573,3 +5576,23 @@ const _rmRender = render;
 render = function (...a) { const r = _rmRender.apply(this, a); try { drawRealm(); } catch (e) {} return r; };
 const _rmDraw = drawMap;
 drawMap = function (...a) { const r = _rmDraw.apply(this, a); realmSig = ''; return r; };
+
+// ---------- 今季の方針：軍議の「戦況」の一番上に三枚の札 ----------
+function policyCards() {
+  if (!S || S.result) return '';
+  const cur = S.policy && S.policy.turn === S.turn ? S.policy.k : null;
+  return `<div class="policy-row"><p class="pl-head"><b>今季の方針</b><small>${cur ? `「${POLICIES[cur].name}」で臨む（この季は変えられない）` : '一つ選ぶと、この季のあいだ効く（選び直しはできない）'}</small></p>
+    <div class="pl-cards">${policyChoices(S).map((k) => `<button class="pl-card ${cur === k ? 'on' : ''} ${cur && cur !== k ? 'off' : ''}" data-policy="${k}"><span>${POLICIES[k].k}</span><b>${POLICIES[k].name}</b><small>${POLICIES[k].desc}</small></button>`).join('')}</div></div>`;
+}
+const _plRender = render;
+render = function (...a) {
+  const r = _plRender.apply(this, a);
+  const pane = document.querySelector('.council .cn-pane[data-pane="senkyo"]');
+  if (pane && !pane.querySelector('.policy-row')) {
+    pane.insertAdjacentHTML('afterbegin', policyCards());
+    pane.querySelectorAll('[data-policy]').forEach((b) => {
+      b.onclick = () => { if (S.policy && S.policy.turn === S.turn) { toast('<span>この季の方針はもう決めた（季が変われば選び直せる）</span>'); return; } Sound.taiko(0, 0.6); choosePolicy(S, b.dataset.policy); save(); render(); toast(`<span>今季は「<b>${POLICIES[b.dataset.policy].name}</b>」で臨む：${POLICIES[b.dataset.policy].desc}</span>`); };
+    });
+  }
+  return r;
+};
