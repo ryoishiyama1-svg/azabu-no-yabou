@@ -3108,3 +3108,54 @@ p, li, .hint, small { word-break: auto-phrase; text-wrap: pretty; }
 .banter p { margin: 0; padding: 4px 9px; font-family: var(--mincho); font-weight: 800; font-size: 13px; line-height: 1.35; color: var(--ink); background: #fffaf0; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35); }
 .banter.right p { background: #fdeceb; }
 @keyframes banter-in { 0% { opacity: 0; transform: translateY(6px) scale(0.9); } 12% { opacity: 1; transform: translateY(0) scale(1.04); } 20% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-6px); } }
+
+/* ---------- v139 天下の動き（映画のように） ---------- */
+.world-cover.cine { background: none; }
+.cine-bar { position: absolute; left: 0; right: 0; background: #0f0d0b; color: #efe6d2; display: flex; align-items: center; gap: 10px; padding: 0 12px; z-index: 2; }
+.cine-bar.top { top: 0; height: 36px; animation: cineTop 0.5s ease-out both; }
+.cine-bar.bot { bottom: 0; min-height: 44px; justify-content: center; animation: cineBot 0.5s ease-out both; }
+.cine-bar.top b { font-family: var(--brush); font-weight: 400; font-size: 19px; color: #f3d27a; letter-spacing: 0.1em; }
+.cine-bar.top span { font-family: var(--gothic); font-weight: 900; font-size: 12px; opacity: 0.8; }
+.cine-bar.top button { margin-left: auto; padding: 3px 10px; border: 0; background: var(--paper); color: var(--ink); font-weight: 900; cursor: pointer; }
+@keyframes cineTop { from { transform: translateY(-100%); } }
+@keyframes cineBot { from { transform: translateY(100%); } }
+#cine-cap { margin: 0; padding: 5px 0; text-align: center; font-size: 14px; line-height: 1.5; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px; animation: capIn 0.35s ease-out both; }
+#cine-cap b { color: #f3d27a; font-weight: 900; }
+#cine-cap .crest-badge, #cine-cap svg { flex: none; }
+#cine-cap em { font-style: normal; font-family: var(--brush); font-size: 18px; animation: capIn 0.3s ease-out both; }
+#cine-cap em.fell { color: #ff8a6a; }
+#cine-cap em.held { color: #b9d6a8; }
+#cine-cap.mine { color: #fff; }
+#cine-cap.mine.bad em.fell { color: #ff5a40; text-shadow: 0 0 8px rgba(255, 60, 30, 0.6); }
+@keyframes capIn { from { opacity: 0; transform: translateY(6px); } }
+.cine-title { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; background: radial-gradient(circle, rgba(15, 13, 11, 0.55), rgba(15, 13, 11, 0.2) 70%); transition: opacity 0.5s; }
+.cine-title b { font-family: var(--brush); font-weight: 400; font-size: clamp(40px, 11vw, 76px); color: #fff8e6; letter-spacing: 0.25em; text-shadow: 0 2px 0 #000, 0 0 24px rgba(0, 0, 0, 0.6); animation: cineTitle 1s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+.cine-title small { color: #f3d27a; font-weight: 900; letter-spacing: 0.3em; animation: capIn 0.6s 0.2s both; }
+.cine-title.gone { opacity: 0; }
+@keyframes cineTitle { from { opacity: 0; letter-spacing: 0.7em; filter: blur(6px); } }
+.world-cover.flash::after { content: ''; position: absolute; inset: 0; background: rgba(200, 30, 20, 0.35); animation: cineFlash 0.7s ease-out both; pointer-events: none; }
+@keyframes cineFlash { to { opacity: 0; } }
+.cine-sum { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); min-width: 240px; max-width: calc(100% - 32px); padding: 14px 18px; background: rgba(15, 13, 11, 0.88); border: 2px solid #c9a13b; color: #efe6d2; text-align: center; animation: sumIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; z-index: 3; }
+.cine-sum small { color: #f3d27a; font-weight: 900; letter-spacing: 0.2em; }
+.cine-sum > b { display: block; font-family: var(--brush); font-weight: 400; font-size: 22px; margin: 4px 0 8px; }
+.cine-sum ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.cine-sum li { display: flex; align-items: center; gap: 8px; font-weight: 900; font-size: 14px; animation: capIn 0.3s both; }
+.cine-sum li:nth-child(2) { animation-delay: 0.1s; } .cine-sum li:nth-child(3) { animation-delay: 0.2s; } .cine-sum li:nth-child(4) { animation-delay: 0.3s; } .cine-sum li:nth-child(5) { animation-delay: 0.4s; }
+.cine-sum li em { margin-left: auto; font-style: normal; font-family: var(--brush); font-size: 18px; }
+.cine-sum li.up em { color: #f3d27a; } .cine-sum li.down em { color: #ff8a6a; }
+.cine-sum li.mine span { text-decoration: underline 2px #f3d27a; }
+@keyframes sumIn { from { opacity: 0; transform: translate(-50%, -40%) scale(0.9); } }
+.wf-spot { fill: rgba(15, 13, 11, 0.32); pointer-events: none; }
+.wf-dust circle { fill: #d9c9a8; opacity: 0; animation: wfDust 0.8s ease-out both; animation-delay: inherit; }
+.wf-dust { animation: none; }
+@keyframes wfDust { 0% { opacity: 0.9; r: 3; } 100% { opacity: 0; transform: translateY(-8px); } }
+.wf-fire path { fill: #e8562a; animation: wfFlame 0.35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: bottom; }
+.wf-fire path.in { fill: #ffd25a; animation-duration: 0.25s; }
+.wf-fire .sm { fill: #3b3530; opacity: 0.5; animation: wfSmoke 1.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes wfFlame { from { transform: scaleY(0.85) skewX(-4deg); } to { transform: scaleY(1.1) skewX(4deg); } }
+@keyframes wfSmoke { from { opacity: 0.55; transform: translateY(6px) scale(0.6); } to { opacity: 0; transform: translateY(-14px) scale(1.4); } }
+.wf-flag { animation: wfFlag 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) both; transform-box: fill-box; }
+.wf-flag line { stroke: #2a241e; stroke-width: 2; }
+.wf-flag path { fill: var(--c); stroke: #2a241e; stroke-width: 1; }
+.wf-flag circle { fill: #fff8e6; }
+@keyframes wfFlag { from { opacity: 0; transform: translateY(-14px); } }

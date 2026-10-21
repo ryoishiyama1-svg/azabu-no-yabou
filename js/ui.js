@@ -4203,8 +4203,9 @@ function showSeason(turn, then) {
   setTimeout(() => { box.hidden = true; then(); }, 1900);
 }
 
-// ---------- 世界が動く地図：ターン終了のあいだの合戦を、地図の上で順に見せる ----------
-// owners0 = ターン前の城の持ち主。矢が伸びて、落ちた城は攻め手の色に塗り替わる。タップで飛ばせる
+// ---------- 天下の動き：ターン終了のあいだの合戦を、映画のように地図の上で見せる ----------
+// owners0 = ターン前の城の持ち主。上下に黒い帯、題字、合戦ごとにカメラが寄って字幕が流れる。
+// 落ちた城には火の手と攻め手の旗。最後に引きの画で今季の総まくり。タップで飛ばせる
 function playWorld(owners0, moves, done) {
   const fx = $('world-fx');
   const list = (moves || []).filter((m) => MAP.byId[m.to] && (!m.from || MAP.byId[m.from]));
@@ -4217,21 +4218,43 @@ function playWorld(owners0, moves, done) {
     if (g) g.style.setProperty('--c', CLANS[owner].color);
   };
   Object.entries(owners0).forEach(([id, o]) => { if (S.castles[id] && S.castles[id].owner !== o) paint(id, o); });
-  // カメラ：動きのあった城がすべて入るように引く（終わったら元に戻す）
+  const nameOf = (k) => (k === 'none' || !CLANS[k] ? '国衆' : CLANS[k].name);
+  const colOf = (k) => (CLANS[k] && k !== 'none' ? CLANS[k].color : '#857b6c');
+  // カメラ：すべてが入る引きの画と、一つの合戦に寄った画
   const view = { scale, left: mapwrap.scrollLeft, top: mapwrap.scrollTop };
   const pts = list.flatMap((m) => [m.to, m.from].filter(Boolean)).map((id) => MAP.byId[id]);
   const x0 = Math.min(...pts.map((p) => p.x)) - 90, x1 = Math.max(...pts.map((p) => p.x)) + 90;
   const y0 = Math.min(...pts.map((p) => p.y)) - 90, y1 = Math.max(...pts.map((p) => p.y)) + 90;
-  zoomAt(Math.min(1.1, mapwrap.clientWidth / (x1 - x0), mapwrap.clientHeight / (y1 - y0)));
-  mapwrap.scrollLeft = ((x0 + x1) / 2) * scale - mapwrap.clientWidth / 2;
-  mapwrap.scrollTop = ((y0 + y1) / 2) * scale - mapwrap.clientHeight / 2;
-  // 見出しと、飛ばすための覆い
+  const wide = Math.min(1.1, mapwrap.clientWidth / (x1 - x0), mapwrap.clientHeight / (y1 - y0));
+  const near = Math.max(wide, Math.min(1.1, mapwrap.clientWidth / 460, mapwrap.clientHeight / 400));
+  const look = (x, y, smooth) => {
+    const left = x * scale - mapwrap.clientWidth / 2, top = y * scale - mapwrap.clientHeight / 2;
+    if (smooth && mapwrap.scrollTo) mapwrap.scrollTo({ left, top, behavior: 'smooth' });
+    else { mapwrap.scrollLeft = left; mapwrap.scrollTop = top; }
+  };
+  zoomAt(wide);
+  look((x0 + x1) / 2, (y0 + y1) / 2);
+  // 幕：上下の黒い帯、題字、字幕
+  const t = Math.max(0, S.turn - 1);
+  const when = `${2026 + Math.floor(t / 4)}年 ${SEASONS[t % 4]}`;
   const area = mapwrap.parentElement;
   const cover = document.createElement('div');
-  cover.className = 'world-cover';
-  cover.innerHTML = `<div class="world-banner"><b>諸国の動き</b><span id="wb-n"></span><button>飛ばす ›</button></div>`;
+  cover.className = 'world-cover cine';
+  cover.innerHTML = `<div class="cine-bar top"><b>天下の動き</b><span>${when}</span><span id="wb-n"></span><button>飛ばす ›</button></div>
+    <div class="cine-title"><small>${when}</small><b>天下の動き</b></div>
+    <div class="cine-bar bot"><p id="cine-cap"></p></div>`;
   area.appendChild(cover);
-  const step = Math.max(260, Math.min(700, 5000 / list.length));
+  const cap = cover.querySelector('#cine-cap');
+  const caption = (html, cls) => { cap.className = cls || ''; cap.innerHTML = html; cap.style.animation = 'none'; void cap.offsetWidth; cap.style.animation = ''; };
+  // 寄った画の外を少し暗くする
+  const spot = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  spot.setAttribute('class', 'wf-spot');
+  spot.setAttribute('fill-rule', 'evenodd');
+  fx.appendChild(spot);
+  const spotOn = (x, y, r) => spot.setAttribute('d', `M-50,-50H${MAP.width + 50}V${MAP.height + 50}H-50Z M${x - r},${y} a${r},${r} 0 1,0 ${2 * r},0 a${r},${r} 0 1,0 ${-2 * r},0Z`);
+  const flags = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  fx.appendChild(flags);
+  const step = clamp(Math.round(7000 / list.length), 420, 1150);
   let i = 0, timer = null, over = false;
   const finish = () => {
     if (over) return;
@@ -4245,38 +4268,92 @@ function playWorld(owners0, moves, done) {
     done();
   };
   cover.onclick = () => { Sound.tap(); finish(); };
+  // 総まくり：今季、城を増やした家・減らした家
+  const summary = () => {
+    const d = {};
+    Object.entries(owners0).forEach(([id, o]) => {
+      const n = S.castles[id] && S.castles[id].owner;
+      if (!n || n === o) return;
+      d[n] = (d[n] || 0) + 1; d[o] = (d[o] || 0) - 1;
+    });
+    const changed = Object.keys(owners0).filter((id) => S.castles[id] && S.castles[id].owner !== owners0[id]).length;
+    const rows = Object.entries(d).filter(([k, v]) => v && k !== 'none' && CLANS[k]).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    spot.setAttribute('d', '');
+    zoomAt(wide); look((x0 + x1) / 2, (y0 + y1) / 2);
+    cover.insertAdjacentHTML('beforeend', `<div class="cine-sum"><small>${when}</small>
+      <b>${changed ? `${changed}の城が、主を変えた` : 'いずれの城も、持ちこたえた'}</b>
+      ${rows.length ? `<ul>${rows.map(([k, v]) => `<li class="${v > 0 ? 'up' : 'down'} ${k === PLAYER ? 'mine' : ''}">${crestBadge(k, 26)}<span>${CLANS[k].name}</span><em>${v > 0 ? '＋' : '−'}${Math.abs(v)}</em></li>`).join('')}</ul>` : ''}</div>`);
+    Sound.hyoshigi(2);
+    timer = setTimeout(finish, 1700);
+  };
   const next = () => {
     if (over) return;
-    if (i >= list.length) { timer = setTimeout(finish, 700); return; }
+    if (i >= list.length) { timer = setTimeout(summary, 500); return; }
     const m = list[i++];
     $('wb-n').textContent = `${i} / ${list.length}`;
-    const B = MAP.byId[m.to], col = CLANS[m.att] ? CLANS[m.att].color : '#857b6c';
+    const B = MAP.byId[m.to], col = colOf(m.att);
+    const A = m.from ? MAP.byId[m.from] : null;
     const mine = m.def === PLAYER || m.att === PLAYER;
+    const lostMine = m.def === PLAYER && m.won;
+    // カメラを合戦に寄せる
+    look(A ? (A.x + B.x) / 2 : B.x, A ? (A.y + B.y) / 2 : B.y, true);
+    spotOn(A ? (A.x + B.x) / 2 : B.x, A ? (A.y + B.y) / 2 : B.y, A ? Math.hypot(A.x - B.x, A.y - B.y) / 2 + 70 : 80);
+    // 字幕
+    const crest = m.att !== 'none' && CLANS[m.att] ? crestBadge(m.att, 22) : '';
+    const lead = m.kind === 'kijun' ? `${B.short}の国衆、わが家に帰順`
+      : m.kind === 'fall' ? `<b>${nameOf(m.att)}</b>の勢いに、${B.short}が戦わずして降る`
+      : `<b>${nameOf(m.att)}</b>、${A ? A.short : ''}より<b>${B.short}</b>へ攻め入る`;
+    caption(`${crest}<span>${lead}</span>`, mine ? 'mine' : '');
     let html = '';
-    if (m.from) {
+    if (A) {
       // 弓なりの矢：始点から少し離して、終点の手前で止める
-      const A = MAP.byId[m.from];
-      const dx = B.x - A.x, dy = B.y - A.y, d = Math.hypot(dx, dy) || 1;
-      const sx = A.x + (dx / d) * 22, sy = A.y + (dy / d) * 22, ex = B.x - (dx / d) * 26, ey = B.y - (dy / d) * 26;
-      const cx = (sx + ex) / 2 - (dy / d) * d * 0.22, cy = (sy + ey) / 2 + (dx / d) * d * 0.22;
+      const dx = B.x - A.x, dy = B.y - A.y, dd = Math.hypot(dx, dy) || 1;
+      const sx = A.x + (dx / dd) * 22, sy = A.y + (dy / dd) * 22, ex = B.x - (dx / dd) * 26, ey = B.y - (dy / dd) * 26;
+      const cx = (sx + ex) / 2 - (dy / dd) * dd * 0.22, cy = (sy + ey) / 2 + (dx / dd) * dd * 0.22;
       const ang = (Math.atan2(ey - cy, ex - cx) * 180) / Math.PI;
-      html += `<path class="wf-arrow ${m.kind === 'fall' ? 'fall' : ''}" pathLength="100" d="M${sx.toFixed(0)},${sy.toFixed(0)} Q${cx.toFixed(0)},${cy.toFixed(0)} ${ex.toFixed(0)},${ey.toFixed(0)}" style="--c:${col};animation-duration:${(step * 0.55).toFixed(0)}ms"/>
-        <path class="wf-head" d="M0,0 L-13,-7 L-9,0 L-13,7Z" transform="translate(${ex.toFixed(0)},${ey.toFixed(0)}) rotate(${ang.toFixed(0)})" style="--c:${col};animation-delay:${(step * 0.5).toFixed(0)}ms"/>`;
+      html += `<path class="wf-arrow ${m.kind === 'fall' ? 'fall' : ''}" pathLength="100" d="M${sx.toFixed(0)},${sy.toFixed(0)} Q${cx.toFixed(0)},${cy.toFixed(0)} ${ex.toFixed(0)},${ey.toFixed(0)}" style="--c:${col};animation-duration:${(step * 0.5).toFixed(0)}ms"/>
+        <path class="wf-head" d="M0,0 L-13,-7 L-9,0 L-13,7Z" transform="translate(${ex.toFixed(0)},${ey.toFixed(0)}) rotate(${ang.toFixed(0)})" style="--c:${col};animation-delay:${(step * 0.45).toFixed(0)}ms"/>`;
+      // ぶつかった所に砂煙
+      if (m.kind !== 'fall') html += `<g class="wf-dust" transform="translate(${ex.toFixed(0)},${ey.toFixed(0)})" style="animation-delay:${(step * 0.48).toFixed(0)}ms"><circle r="9" cx="-6"/><circle r="12" cx="5" cy="-4"/><circle r="7" cx="9" cy="5"/></g>`;
     }
-    const at = (step * (m.from ? 0.58 : 0.1)).toFixed(0);
+    const at = Math.round(step * (A ? 0.55 : 0.1));
     const word = m.kind === 'kijun' ? '帰順' : m.kind === 'fall' ? '降伏' : m.won ? '落' : '退';
     html += `<g transform="translate(${B.x},${B.y - 6})"><g class="wf-stamp ${m.won ? 'won' : 'lost'} ${mine ? 'mine' : ''}" style="--c:${col};animation-delay:${at}ms">
       <circle r="${word.length > 1 ? 21 : 16}"/><text>${word}</text></g></g>`;
     const grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     grp.innerHTML = html;
-    fx.appendChild(grp);
+    fx.insertBefore(grp, flags);
+    if (A && m.kind !== 'fall') Sound.taiko(0, 0.45);
     timer = setTimeout(() => {
       if (over) return;
-      if (m.won) { paint(m.to, m.att); Sound.stamp(0); }
-      timer = setTimeout(() => { grp.classList.add('fade'); next(); }, step * 0.42);
-    }, +at);
+      if (m.won) {
+        paint(m.to, m.att);
+        Sound.stamp(0);
+        if (m.kind !== 'kijun' && m.kind !== 'fall') {
+          // 火の手があがり、攻め手の旗が立つ（旗は最後まで残す）
+          const fire = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          fire.setAttribute('class', 'wf-fire');
+          fire.setAttribute('transform', `translate(${B.x},${B.y - 4})`);
+          fire.innerHTML = `<path d="M-10,0 C-14,-12 -4,-16 -6,-28 C2,-20 6,-14 4,-6 C8,-10 10,-14 9,-20 C16,-10 14,0 6,2Z"/><path class="in" d="M-4,0 C-6,-8 0,-10 -1,-17 C4,-11 6,-6 4,0Z"/><circle class="sm" r="7" cy="-30"/><circle class="sm" r="9" cx="6" cy="-42"/>`;
+          grp.appendChild(fire);
+          Sound.fire();
+        }
+        const flag = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        flag.setAttribute('class', 'wf-flag');
+        flag.setAttribute('transform', `translate(${B.x + 15},${B.y - 8})`);
+        flag.style.setProperty('--c', col);
+        flag.innerHTML = '<line y1="0" y2="-34"/><path d="M1,-33 h11 v20 h-11Z"/><circle cx="6.5" cy="-23" r="3"/>';
+        flags.appendChild(flag);
+      }
+      const tail = m.kind === 'kijun' || m.kind === 'fall' ? '' : m.won ? `<em class="fell">—— ${B.short}、落城</em>` : `<em class="held">—— ${nameOf(m.def)}、守り抜く</em>`;
+      if (tail) cap.insertAdjacentHTML('beforeend', tail);
+      if (lostMine) { cap.className = 'mine bad'; cover.classList.remove('flash'); void cover.offsetWidth; cover.classList.add('flash'); }
+      timer = setTimeout(() => { grp.classList.add('fade'); next(); }, step * 0.45);
+    }, at);
   };
-  next();
+  // 題字を見せてから始める
+  Sound.taiko(0, 0.7); Sound.taiko(0.3, 0.9);
+  timer = setTimeout(() => { cover.querySelector('.cine-title').classList.add('gone'); zoomAt(near); next(); }, 1000);
 }
 
 function onEndTurn() {
