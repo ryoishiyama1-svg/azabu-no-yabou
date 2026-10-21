@@ -5596,3 +5596,30 @@ render = function (...a) {
   }
   return r;
 };
+
+// ---------- 季節の移り変わりの大演出：地図を新しい季節の色が覆い、筆の一刷けで払われて現れる ----------
+const SEASON_WIPE = [
+  { c1: '#f6d2d5', c2: '#eeb3b9', p: '#f6c9cd', kind: 'petal' },
+  { c1: '#9fc98a', c2: '#5d8a4a', p: '#fff6a0', kind: 'firefly' },
+  { c1: '#e8a05a', c2: '#c8372d', p: '#d9622b', kind: 'leaf' },
+  { c1: '#eef2f5', c2: '#b8c6d4', p: '#ffffff', kind: 'snow' },
+];
+function seasonWipe(turn) {
+  const area = document.querySelector('.map-area');
+  if (!area || $('game').hidden) return;
+  const W = SEASON_WIPE[turn % 4];
+  const box = document.createElement('div');
+  box.className = 'season-wipe';
+  box.style.setProperty('--c1', W.c1); box.style.setProperty('--c2', W.c2);
+  const bits = Array.from({ length: 46 }, (_, i) => {
+    const x = (i * 37) % 100, d = ((i * 0.13) % 1.6).toFixed(2), dur = (2.2 + (i % 5) * 0.35).toFixed(2), s = (0.6 + (i % 4) * 0.25).toFixed(2);
+    return `<i class="sw-bit ${W.kind}" style="left:${x}%;animation-delay:${d}s;animation-duration:${dur}s;--s:${s};--p:${W.p}"></i>`;
+  }).join('');
+  box.innerHTML = `<div class="sw-wash"><span class="sw-kanji">${SEASONS[turn % 4]}</span></div>${bits}`;
+  area.appendChild(box);
+  setTimeout(() => box.remove(), 4200);
+}
+const _swSeason = showSeason;
+showSeason = function (turn, then) {
+  return _swSeason(turn, () => { seasonWipe(turn); then(); });
+};
